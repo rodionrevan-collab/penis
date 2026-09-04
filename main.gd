@@ -192,16 +192,23 @@ func _matches()->Array[Vector2i]:
 		while s<SIZE:
 			var t=board[y][s];var e:=s+1
 			while e<SIZE and board[y][e]==t:e+=1
-			if t>=0 and e-s>=3:for x in range(s,e):f[Vector2i(x,y)]=true
+			if t>=0 and e-s>=3:
+				for x in range(s,e):
+					f[Vector2i(x,y)]=true
 			s=e
 	for x in SIZE:
 		var s:=0
 		while s<SIZE:
 			var t=board[s][x];var e:=s+1
 			while e<SIZE and board[e][x]==t:e+=1
-			if t>=0 and e-s>=3:for y in range(s,e):f[Vector2i(x,y)]=true
+			if t>=0 and e-s>=3:
+				for y in range(s,e):
+					f[Vector2i(x,y)]=true
 			s=e
-	var r:Array[Vector2i]=[];for p in f.keys():r.append(p);return r
+	var r:Array[Vector2i]=[]
+	for p in f.keys():
+		r.append(p)
+	return r
 func _update_best()->void:
 	if score>best:
 		best=score;var f:=FileAccess.open("user://best_score.txt",FileAccess.WRITE);if f:f.store_string(str(best))
