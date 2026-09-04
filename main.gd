@@ -3,214 +3,546 @@ extends Node2D
 const SIZE := 8
 const TYPES := 6
 const CELL := 78.0
-const ORIGIN := Vector2(138, 178)
-const COLORS := [Color("#ff5b67"),Color("#4d9cff"),Color("#43d98b"),Color("#ffd34e"),Color("#b978ff"),Color("#ff9b4a")]
-const SYMBOLS := ["●","◆","■","★","⬟","▲"]
+const ORIGIN := Vector2(138, 202)
+const COLORS := [
+	Color("#ff5b67"), Color("#4d9cff"), Color("#43d98b"),
+	Color("#ffd34e"), Color("#b978ff"), Color("#ff9b4a")
+]
+const SYMBOLS := ["●", "◆", "■", "★", "⬟", "▲"]
+const TYPE_NAMES := ["красных кругов", "синих ромбов", "зелёных квадратов", "звёзд", "фиолетовых кристаллов", "оранжевых треугольников"]
 
-var board:Array = []
-var gems:Dictionary = {}
-var selected := Vector2i(-1,-1)
+const LEVELS := [
+	{"moves": 16, "score": 1800, "type": 0, "count": 18},
+	{"moves": 20, "score": 3200, "type": 3, "count": 30},
+	{"moves": 24, "score": 4500, "type": 1, "count": 35}
+]
+
+var board: Array = []
+var gems: Dictionary = {}
+var selected := Vector2i(-1, -1)
 var busy := false
 var score := 0
 var best := 0
 var combo := 0
+var current_level := 0
+var moves_left := 0
+var destroyed_counts := [0, 0, 0, 0, 0, 0]
 var rng := RandomNumberGenerator.new()
-var root:Node2D
-var fx:Node2D
-var score_label:Label
-var best_label:Label
-var combo_label:Label
-var status:Label
-var sounds:Dictionary = {}
+
+var root: Node2D
+var fx: Node2D
+var score_label: Label
+var best_label: Label
+var combo_label: Label
+var level_label: Label
+var moves_label: Label
+var goal_label: Label
+var status: Label
+var restart_button: Button
+var next_button: Button
+var sounds: Dictionary = {}
 
 class Gem extends Node2D:
 	var kind := 0
 	var color := Color.WHITE
 	var symbol := "●"
 	var chosen := false
-	func setup(k:int,c:Color,s:String)->void:
-		kind=k;color=c;symbol=s;queue_redraw()
-	func select(v:bool)->void:
-		chosen=v
-		var t=create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		t.tween_property(self,"scale",Vector2.ONE*(1.12 if v else 1.0),0.12)
+
+	func setup(k: int, c: Color, s: String) -> void:
+		kind = k
+		color = c
+		symbol = s
 		queue_redraw()
-	func _draw()->void:
-		var s:=28.0
-		draw_circle(Vector2(2,4),s+3,Color(0,0,0,0.28))
-		if chosen: draw_circle(Vector2.ZERO,s+8,Color(color.r,color.g,color.b,0.18))
+
+	func select(v: bool) -> void:
+		chosen = v
+		var tween := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(self, "scale", Vector2.ONE * (1.12 if v else 1.0), 0.12)
+		queue_redraw()
+
+	func _draw() -> void:
+		var s := 28.0
+		draw_circle(Vector2(2, 4), s + 3.0, Color(0, 0, 0, 0.28))
+		if chosen:
+			draw_circle(Vector2.ZERO, s + 8.0, Color(color.r, color.g, color.b, 0.18))
 		match kind:
-			0: draw_circle(Vector2.ZERO,s,color);draw_circle(Vector2.ZERO,s-5,color.darkened(0.08))
-			1: draw_colored_polygon(PackedVector2Array([Vector2(0,-s),Vector2(s,0),Vector2(0,s),Vector2(-s,0)]),color)
-			2: draw_style_box(box(),Rect2(-s,-s,s*2,s*2))
+			0:
+				draw_circle(Vector2.ZERO, s, color)
+				draw_circle(Vector2.ZERO, s - 5.0, color.darkened(0.08))
+			1:
+				draw_colored_polygon(PackedVector2Array([Vector2(0, -s), Vector2(s, 0), Vector2(0, s), Vector2(-s, 0)]), color)
+			2:
+				var square := StyleBoxFlat.new()
+				square.bg_color = color
+				square.border_color = color.lightened(0.22)
+				square.set_border_width_all(3)
+				square.set_corner_radius_all(9)
+				draw_style_box(square, Rect2(-s, -s, s * 2.0, s * 2.0))
 			3:
-				var a:=PackedVector2Array()
-				for i in 10:
-					var ang:float=-PI/2+i*PI/5
-					a.append(Vector2(cos(ang),sin(ang))*(s if i%2==0 else s*.43))
-				draw_colored_polygon(a,color)
+				var star := PackedVector2Array()
+				for i in range(10):
+					var angle := -PI / 2.0 + i * PI / 5.0
+					var radius := s if i % 2 == 0 else s * 0.43
+					star.append(Vector2(cos(angle), sin(angle)) * radius)
+				draw_colored_polygon(star, color)
 			4:
-				var h:=PackedVector2Array()
-				for i in 6:
-					var ang:float=-PI/2+i*PI/3
-					h.append(Vector2(cos(ang),sin(ang))*s)
-				draw_colored_polygon(h,color)
-			5: draw_colored_polygon(PackedVector2Array([Vector2(0,-s),Vector2(s,s),Vector2(-s,s)]),color)
-		draw_circle(Vector2(-s*.32,-s*.34),s*.19,Color(1,1,1,.5))
-		draw_circle(Vector2(-s*.23,-s*.22),s*.08,Color.WHITE)
-		draw_string(ThemeDB.fallback_font,Vector2(-7,6),symbol,HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color(1,1,1,.25))
-	func box()->StyleBoxFlat:
-		var b:=StyleBoxFlat.new();b.bg_color=color;b.border_color=color.lightened(.22);b.set_border_width_all(3);b.set_corner_radius_all(9);return b
+				var hex := PackedVector2Array()
+				for i in range(6):
+					var angle := -PI / 2.0 + i * PI / 3.0
+					hex.append(Vector2(cos(angle), sin(angle)) * s)
+				draw_colored_polygon(hex, color)
+			5:
+				draw_colored_polygon(PackedVector2Array([Vector2(0, -s), Vector2(s, s), Vector2(-s, s)]), color)
+		draw_circle(Vector2(-s * 0.32, -s * 0.34), s * 0.19, Color(1, 1, 1, 0.50))
+		draw_circle(Vector2(-s * 0.23, -s * 0.22), s * 0.08, Color.WHITE)
+		draw_string(ThemeDB.fallback_font, Vector2(-7, 6), symbol, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.25))
 
 class BoardFrame extends Node2D:
-	func _draw()->void:
-		var o:=StyleBoxFlat.new();o.bg_color=Color("#0e172b");o.border_color=Color("#2b3e61");o.set_border_width_all(2);o.set_corner_radius_all(18)
-		draw_style_box(o,Rect2(-314,-314,628,628))
-		var c:=StyleBoxFlat.new();c.bg_color=Color("#0b1426");c.border_color=Color("#172846");c.set_border_width_all(1);c.set_corner_radius_all(10)
+	func _draw() -> void:
+		var outer := StyleBoxFlat.new()
+		outer.bg_color = Color("#0e172b")
+		outer.border_color = Color("#2b3e61")
+		outer.set_border_width_all(2)
+		outer.set_corner_radius_all(18)
+		draw_style_box(outer, Rect2(-314, -314, 628, 628))
+		var cell_style := StyleBoxFlat.new()
+		cell_style.bg_color = Color("#0b1426")
+		cell_style.border_color = Color("#172846")
+		cell_style.set_border_width_all(1)
+		cell_style.set_corner_radius_all(10)
 		for y in SIZE:
-			for x in SIZE: draw_style_box(c,Rect2(-312+x*CELL+4,-312+y*CELL+4,CELL-8,CELL-8))
+			for x in SIZE:
+				draw_style_box(cell_style, Rect2(-312 + x * CELL + 4, -312 + y * CELL + 4, CELL - 8, CELL - 8))
 
-func _ready()->void:
+func _ready() -> void:
 	rng.randomize()
-	best=int(FileAccess.get_file_as_string("user://best_score.txt")) if FileAccess.file_exists("user://best_score.txt") else 0
-	_build_ui();_build_sounds();_new_game()
+	best = int(FileAccess.get_file_as_string("user://best_score.txt")) if FileAccess.file_exists("user://best_score.txt") else 0
+	_build_ui()
+	_build_sounds()
+	_start_level(0)
 
-func _build_ui()->void:
-	var bg:=ColorRect.new();bg.size=Vector2(900,900);bg.color=Color("#090e1b");add_child(bg);move_child(bg,0)
-	var head:=ColorRect.new();head.size=Vector2(900,150);head.color=Color("#111a30");add_child(head);move_child(head,1)
-	var title:=Label.new();title.text="ТРИ В РЯД";title.position=Vector2(138,20);title.add_theme_font_size_override("font_size",38);add_child(title)
-	var sub:=Label.new();sub.text="Собирай 3+ одинаковых фишки и набирай очки";sub.position=Vector2(140,68);sub.add_theme_font_size_override("font_size",14);sub.add_theme_color_override("font_color",Color("#8998b9"));add_child(sub)
-	score_label=_stat("ОЧКИ",Vector2(138,103));best_label=_stat("РЕКОРД",Vector2(300,103));combo_label=_stat("КОМБО",Vector2(462,103))
-	var b:=Button.new();b.text="↻  НОВАЯ ИГРА";b.position=Vector2(670,31);b.size=Vector2(120,48);b.add_theme_font_size_override("font_size",13);b.add_theme_stylebox_override("normal",style(Color("#1b2a4a"),Color("#334a75")));b.add_theme_stylebox_override("hover",style(Color("#263a62"),Color("#6684c4")));b.pressed.connect(_new_game);add_child(b)
-	var frame:=BoardFrame.new();frame.position=ORIGIN+Vector2(312,312);add_child(frame)
-	root=Node2D.new();add_child(root);fx=Node2D.new();add_child(fx)
-	status=Label.new();status.position=Vector2(138,810);status.size=Vector2(624,38);status.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;status.add_theme_font_size_override("font_size",15);status.add_theme_color_override("font_color",Color("#9baad0"));add_child(status)
+func _build_ui() -> void:
+	var bg := ColorRect.new()
+	bg.size = Vector2(900, 900)
+	bg.color = Color("#090e1b")
+	add_child(bg)
+	move_child(bg, 0)
 
-func _stat(n:String,p:Vector2)->Label:
-	var l:=Label.new();l.position=p;l.size=Vector2(130,44);l.text=n+"\n0";l.add_theme_font_size_override("font_size",12);l.add_theme_color_override("font_color",Color("#8494b9"));add_child(l);return l
-func style(bg:Color,border:Color)->StyleBoxFlat:
-	var s:=StyleBoxFlat.new();s.bg_color=bg;s.border_color=border;s.set_border_width_all(1);s.set_corner_radius_all(12);return s
+	var head := ColorRect.new()
+	head.size = Vector2(900, 176)
+	head.color = Color("#111a30")
+	add_child(head)
+	move_child(head, 1)
 
-func _build_sounds()->void:
-	for n in ["select","swap","match","combo","error"]:
-		var p:=AudioStreamPlayer.new();p.stream=_tone(n);p.volume_db=-10;add_child(p);sounds[n]=p
-func _tone(k:String)->AudioStreamWAV:
-	var f:float={"select":520.0,"swap":320.0,"match":680.0,"combo":900.0,"error":180.0}[k];var d:float={"select":.06,"swap":.09,"match":.14,"combo":.22,"error":.13}[k];var rate:=22050;var count:=int(rate*d);var data:=PackedByteArray();data.resize(count*2)
+	var title := Label.new()
+	title.text = "ТРИ В РЯД"
+	title.position = Vector2(138, 14)
+	title.add_theme_font_size_override("font_size", 36)
+	add_child(title)
+
+	var sub := Label.new()
+	sub.text = "Выполни цель уровня до того, как закончатся ходы"
+	sub.position = Vector2(140, 56)
+	sub.add_theme_font_size_override("font_size", 14)
+	sub.add_theme_color_override("font_color", Color("#8998b9"))
+	add_child(sub)
+
+	level_label = _stat("УРОВЕНЬ", Vector2(138, 90))
+	moves_label = _stat("ХОДЫ", Vector2(255, 90))
+	score_label = _stat("ОЧКИ", Vector2(372, 90))
+	best_label = _stat("РЕКОРД", Vector2(489, 90))
+	combo_label = _stat("КОМБО", Vector2(606, 90))
+
+	goal_label = Label.new()
+	goal_label.position = Vector2(138, 140)
+	goal_label.size = Vector2(624, 30)
+	goal_label.add_theme_font_size_override("font_size", 14)
+	goal_label.add_theme_color_override("font_color", Color("#d8e2ff"))
+	add_child(goal_label)
+
+	restart_button = Button.new()
+	restart_button.text = "↻"
+	restart_button.tooltip_text = "Начать уровень заново"
+	restart_button.position = Vector2(780, 25)
+	restart_button.size = Vector2(48, 42)
+	restart_button.add_theme_stylebox_override("normal", _button_style(Color("#1b2a4a"), Color("#334a75")))
+	restart_button.add_theme_stylebox_override("hover", _button_style(Color("#263a62"), Color("#6684c4")))
+	restart_button.pressed.connect(_restart_level)
+	add_child(restart_button)
+
+	next_button = Button.new()
+	next_button.text = "СЛЕДУЮЩИЙ УРОВЕНЬ →"
+	next_button.position = Vector2(632, 838)
+	next_button.size = Vector2(196, 42)
+	next_button.visible = false
+	next_button.add_theme_stylebox_override("normal", _button_style(Color("#1d7049"), Color("#48d991")))
+	next_button.add_theme_stylebox_override("hover", _button_style(Color("#278c5f"), Color("#6df0aa")))
+	next_button.pressed.connect(_next_level)
+	add_child(next_button)
+
+	var frame := BoardFrame.new()
+	frame.position = ORIGIN + Vector2(312, 312)
+	add_child(frame)
+
+	root = Node2D.new()
+	root.name = "Gems"
+	add_child(root)
+	fx = Node2D.new()
+	fx.name = "Effects"
+	add_child(fx)
+
+	status = Label.new()
+	status.position = Vector2(138, 832)
+	status.size = Vector2(470, 38)
+	status.add_theme_font_size_override("font_size", 15)
+	status.add_theme_color_override("font_color", Color("#9baad0"))
+	add_child(status)
+
+func _stat(name: String, pos: Vector2) -> Label:
+	var label := Label.new()
+	label.position = pos
+	label.size = Vector2(108, 44)
+	label.text = name + "\n0"
+	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_color_override("font_color", Color("#8494b9"))
+	add_child(label)
+	return label
+
+func _button_style(fill: Color, border: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = border
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(12)
+	return style
+
+func _build_sounds() -> void:
+	for name in ["select", "swap", "match", "combo", "error"]:
+		var player := AudioStreamPlayer.new()
+		player.stream = _tone(name)
+		player.volume_db = -10.0
+		add_child(player)
+		sounds[name] = player
+
+func _tone(kind: String) -> AudioStreamWAV:
+	var frequencies := {"select": 520.0, "swap": 320.0, "match": 680.0, "combo": 900.0, "error": 180.0}
+	var durations := {"select": 0.06, "swap": 0.09, "match": 0.14, "combo": 0.22, "error": 0.13}
+	var frequency: float = frequencies[kind]
+	var duration: float = durations[kind]
+	var rate := 22050
+	var count := int(rate * duration)
+	var data := PackedByteArray()
+	data.resize(count * 2)
 	for i in count:
-		var t:=float(i)/rate;var env:=1.0-float(i)/count;var freq:=f+(t*220 if k=="match" else 0.0);if k=="combo":freq+=sin(t*25)*120
-		data.encode_s16(i*2,int(sin(TAU*freq*t)*env*.30*32767))
-	var s:=AudioStreamWAV.new();s.format=AudioStreamWAV.FORMAT_16_BITS;s.mix_rate=rate;s.data=data;return s
-func _play(n:String)->void:
-	if sounds.has(n):sounds[n].play()
+		var t := float(i) / rate
+		var env := 1.0 - float(i) / count
+		var f := frequency + (t * 220.0 if kind == "match" else 0.0)
+		if kind == "combo":
+			f += sin(t * 25.0) * 120.0
+		data.encode_s16(i * 2, int(sin(TAU * f * t) * env * 0.30 * 32767.0))
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = rate
+	stream.data = data
+	return stream
 
-func _new_game()->void:
-	busy=true;selected=Vector2i(-1,-1);score=0;combo=0;_generate_board();_clear();_create(true);_labels();status.text="Выберите фишку, затем соседнюю";busy=false
-func _generate_board()->void:
+func _play(name: String) -> void:
+	if sounds.has(name):
+		sounds[name].play()
+
+func _start_level(index: int) -> void:
+	current_level = clampi(index, 0, LEVELS.size() - 1)
+	var data: Dictionary = LEVELS[current_level]
+	moves_left = int(data["moves"])
+	score = 0
+	combo = 0
+	destroyed_counts = [0, 0, 0, 0, 0, 0]
+	selected = Vector2i(-1, -1)
+	busy = true
+	next_button.visible = false
+	_generate_board()
+	_clear_visuals()
+	_create_visuals(true)
+	_update_labels()
+	status.text = "Выберите фишку, затем соседнюю"
+	busy = false
+
+func _restart_level() -> void:
+	_start_level(current_level)
+
+func _next_level() -> void:
+	if current_level + 1 < LEVELS.size():
+		_start_level(current_level + 1)
+	else:
+		_start_level(0)
+
+func _generate_board() -> void:
 	board.clear()
 	for y in SIZE:
-		var row:Array=[]
+		var row: Array = []
 		for x in SIZE:
-			var opts:Array[int]=[]
+			var options: Array[int] = []
 			for t in TYPES:
-				if x>=2 and row[x-1]==t and row[x-2]==t:continue
-				if y>=2 and board[y-1][x]==t and board[y-2][x]==t:continue
-				opts.append(t)
-			row.append(opts[rng.randi_range(0,opts.size()-1)])
+				if x >= 2 and row[x - 1] == t and row[x - 2] == t:
+					continue
+				if y >= 2 and board[y - 1][x] == t and board[y - 2][x] == t:
+					continue
+				options.append(t)
+			row.append(options[rng.randi_range(0, options.size() - 1)])
 		board.append(row)
-func _clear()->void:
-	for n in root.get_children():n.queue_free()
-	for n in fx.get_children():n.queue_free()
+
+func _clear_visuals() -> void:
+	for node in root.get_children():
+		node.queue_free()
+	for node in fx.get_children():
+		node.queue_free()
 	gems.clear()
-func _pos(p:Vector2i)->Vector2:return ORIGIN+Vector2(p.x*CELL+CELL/2,p.y*CELL+CELL/2)
-func _create(intro:=false)->void:
+
+func _cell_pos(p: Vector2i) -> Vector2:
+	return ORIGIN + Vector2(p.x * CELL + CELL / 2.0, p.y * CELL + CELL / 2.0)
+
+func _make_gem(kind: int) -> Gem:
+	var gem := Gem.new()
+	gem.setup(kind, COLORS[kind], SYMBOLS[kind])
+	root.add_child(gem)
+	return gem
+
+func _create_visuals(intro := false) -> void:
 	for y in SIZE:
 		for x in SIZE:
-			var p:=Vector2i(x,y);var g:=Gem.new();g.setup(board[y][x],COLORS[board[y][x]],SYMBOLS[board[y][x]]);g.position=_pos(p);g.scale=Vector2.ZERO if intro else Vector2.ONE;root.add_child(g);gems[p]=g
+			var p := Vector2i(x, y)
+			var gem := _make_gem(board[y][x])
+			gem.position = _cell_pos(p)
+			gem.scale = Vector2.ZERO if intro else Vector2.ONE
+			gems[p] = gem
 			if intro:
-				var tw:=create_tween();tw.tween_interval((x+y)*.012);tw.tween_property(g,"scale",Vector2.ONE,.20).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				var tween := create_tween()
+				tween.tween_interval((x + y) * 0.012)
+				tween.tween_property(gem, "scale", Vector2.ONE, 0.20).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
-func _input(e:InputEvent)->void:
-	if busy or not e is InputEventMouseButton:return
-	var m:=e as InputEventMouseButton
-	if not m.pressed or m.button_index!=MOUSE_BUTTON_LEFT:return
-	var q:=m.position-ORIGIN;var p:=Vector2i(floor(q.x/CELL),floor(q.y/CELL))
-	if p.x>=0 and p.y>=0 and p.x<SIZE and p.y<SIZE:_click(p)
-func _click(p:Vector2i)->void:
-	if selected.x<0:selected=p;gems[p].select(true);status.text="Теперь выберите соседнюю фишку";_play("select");return
-	if p==selected:gems[p].select(false);selected=Vector2i(-1,-1);return
-	if abs(p.x-selected.x)+abs(p.y-selected.y)!=1:status.text="Можно менять только соседние фишки";_play("error");return
-	var a:=selected;gems[a].select(false);selected=Vector2i(-1,-1);_resolve(a,p)
+func _input(event: InputEvent) -> void:
+	if busy or not event is InputEventMouseButton:
+		return
+	var mouse := event as InputEventMouseButton
+	if not mouse.pressed or mouse.button_index != MOUSE_BUTTON_LEFT:
+		return
+	var local := mouse.position - ORIGIN
+	var p := Vector2i(floor(local.x / CELL), floor(local.y / CELL))
+	if p.x >= 0 and p.y >= 0 and p.x < SIZE and p.y < SIZE:
+		_click(p)
 
-func _resolve(a:Vector2i,b:Vector2i)->void:
-	busy=true;_swap_data(a,b);_play("swap");await _swap_anim(a,b);var m:=_matches()
-	if m.is_empty():
-		_swap_data(a,b);await _swap_anim(a,b);status.text="Нет комбинации — обмен отменён";_play("error");busy=false;return
-	combo=0
-	while not m.is_empty():
-		combo+=1;var gained:=m.size()*10*combo;score+=gained;_labels();_play("combo" if combo>1 else "match");_popup(_pos(m[0]),gained);await _destroy(m)
-		for p in m:board[p.y][p.x]=-1
-		await _fall()
-		m=_matches()
-	_update_best();_labels();status.text=("🔥 КАСКАД x%d!"%combo) if combo>1 else "✨ Отлично!";busy=false
-func _swap_data(a:Vector2i,b:Vector2i)->void:
-	var t=board[a.y][a.x];board[a.y][a.x]=board[b.y][b.x];board[b.y][b.x]=t
-	var g=gems[a];gems[a]=gems[b];gems[b]=g
-func _swap_anim(a:Vector2i,b:Vector2i)->void:
-	var t:=create_tween().set_parallel(true);t.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT);t.tween_property(gems[a],"position",_pos(a),.18);t.tween_property(gems[b],"position",_pos(b),.18);await t.finished
-func _destroy(m:Array[Vector2i])->void:
-	for p in m:
-		_spawn_fx(_pos(p),COLORS[board[p.y][p.x]])
-		var g:Gem=gems[p];var t:=create_tween().set_parallel(true);t.tween_property(g,"scale",Vector2.ZERO,.20).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN);t.tween_property(g,"rotation",rng.randf_range(-.5,.5),.20);t.tween_property(g,"modulate:a",0,.16)
-	await get_tree().create_timer(.21).timeout
+func _click(p: Vector2i) -> void:
+	if moves_left <= 0:
+		return
+	if selected.x < 0:
+		selected = p
+		(gems[p] as Gem).select(true)
+		status.text = "Теперь выберите соседнюю фишку"
+		_play("select")
+		return
+	if p == selected:
+		(gems[p] as Gem).select(false)
+		selected = Vector2i(-1, -1)
+		return
+	if abs(p.x - selected.x) + abs(p.y - selected.y) != 1:
+		status.text = "Можно менять только соседние фишки"
+		_play("error")
+		return
+	var a := selected
+	(gems[a] as Gem).select(false)
+	selected = Vector2i(-1, -1)
+	_resolve(a, p)
 
-func _fall()->void:
+func _resolve(a: Vector2i, b: Vector2i) -> void:
+	busy = true
+	_swap_data(a, b)
+	_play("swap")
+	await _swap_anim(a, b)
+	var matches := _find_matches()
+	if matches.is_empty():
+		_swap_data(a, b)
+		await _swap_anim(a, b)
+		status.text = "Нет комбинации — обмен отменён"
+		_play("error")
+		busy = false
+		return
+
+	moves_left -= 1
+	combo = 0
+	while not matches.is_empty():
+		combo += 1
+		var gained := matches.size() * 10 * combo
+		score += gained
+		_play("combo" if combo > 1 else "match")
+		_popup(_cell_pos(matches[0]), gained)
+		await _destroy_matches(matches)
+		await _collapse_and_refill()
+		matches = _find_matches()
+
+	_update_best()
+	_update_labels()
+	_check_level_state()
+	busy = false
+
+func _swap_data(a: Vector2i, b: Vector2i) -> void:
+	var temp = board[a.y][a.x]
+	board[a.y][a.x] = board[b.y][b.x]
+	board[b.y][b.x] = temp
+	var gem_a = gems[a]
+	gems[a] = gems[b]
+	gems[b] = gem_a
+
+func _swap_anim(a: Vector2i, b: Vector2i) -> void:
+	var tween := create_tween().set_parallel(true)
+	tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(gems[a], "position", _cell_pos(a), 0.18)
+	tween.tween_property(gems[b], "position", _cell_pos(b), 0.18)
+	await tween.finished
+
+func _destroy_matches(matches: Array[Vector2i]) -> void:
+	for p in matches:
+		var kind: int = board[p.y][p.x]
+		destroyed_counts[kind] += 1
+		_spawn_fx(_cell_pos(p), COLORS[kind])
+		if gems.has(p):
+			var gem: Gem = gems[p]
+			var tween := create_tween().set_parallel(true)
+			tween.tween_property(gem, "scale", Vector2.ZERO, 0.20).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+			tween.tween_property(gem, "rotation", rng.randf_range(-0.5, 0.5), 0.20)
+			tween.tween_property(gem, "modulate:a", 0.0, 0.16)
+	await get_tree().create_timer(0.21).timeout
+	for p in matches:
+		board[p.y][p.x] = -1
+		if gems.has(p):
+			var gem: Gem = gems[p]
+			gems.erase(p)
+			gem.queue_free()
+	_update_labels()
+
+func _collapse_and_refill() -> void:
+	var moved := false
 	for x in SIZE:
-		var w:=SIZE-1
-		for y in range(SIZE-1,-1,-1):
-			if board[y][x]>=0:board[w][x]=board[y][x];w-=1
-		while w>=0:board[w][x]=rng.randi_range(0,TYPES-1);w-=1
-	for n in root.get_children():n.queue_free()
-	gems.clear()
-	for y in SIZE:
-		for x in SIZE:
-			var p:=Vector2i(x,y);var g:=Gem.new();g.setup(board[y][x],COLORS[board[y][x]],SYMBOLS[board[y][x]]);g.position=_pos(p)-Vector2(0,CELL*rng.randi_range(1,3));g.scale=Vector2.ONE*.82;root.add_child(g);gems[p]=g
-	for p in gems:
-		var t:=create_tween();t.set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT);t.tween_property(gems[p],"position",_pos(p),.30+p.y*.015);t.parallel().tween_property(gems[p],"scale",Vector2.ONE,.20)
-	await get_tree().create_timer(.43).timeout
+		var write_y := SIZE - 1
+		for read_y in range(SIZE - 1, -1, -1):
+			if board[read_y][x] < 0:
+				continue
+			var from := Vector2i(x, read_y)
+			var to := Vector2i(x, write_y)
+			if write_y != read_y:
+				var kind: int = board[read_y][x]
+				board[write_y][x] = kind
+				board[read_y][x] = -1
+				var gem: Gem = gems[from]
+				gems.erase(from)
+				gems[to] = gem
+				var tween := create_tween()
+				tween.tween_property(gem, "position", _cell_pos(to), 0.24 + (write_y - read_y) * 0.035).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+				moved = true
+			write_y -= 1
 
-func _spawn_fx(p:Vector2,c:Color)->void:
+		var spawn_index := 0
+		for y in range(write_y, -1, -1):
+			var kind := rng.randi_range(0, TYPES - 1)
+			board[y][x] = kind
+			var p := Vector2i(x, y)
+			var gem := _make_gem(kind)
+			gem.position = _cell_pos(p) - Vector2(0, CELL * (spawn_index + 2))
+			gem.scale = Vector2.ONE * 0.82
+			gems[p] = gem
+			var tween := create_tween().set_parallel(true)
+			tween.tween_property(gem, "position", _cell_pos(p), 0.28 + spawn_index * 0.035).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+			tween.tween_property(gem, "scale", Vector2.ONE, 0.20)
+			spawn_index += 1
+			moved = true
+
+	if moved:
+		await get_tree().create_timer(0.42).timeout
+
+func _find_matches() -> Array[Vector2i]:
+	var found: Dictionary = {}
+	for y in SIZE:
+		var start := 0
+		while start < SIZE:
+			var kind = board[y][start]
+			var end := start + 1
+			while end < SIZE and board[y][end] == kind:
+				end += 1
+			if kind >= 0 and end - start >= 3:
+				for x in range(start, end):
+					found[Vector2i(x, y)] = true
+			start = end
+	for x in SIZE:
+		var start := 0
+		while start < SIZE:
+			var kind = board[start][x]
+			var end := start + 1
+			while end < SIZE and board[end][x] == kind:
+				end += 1
+			if kind >= 0 and end - start >= 3:
+				for y in range(start, end):
+					found[Vector2i(x, y)] = true
+			start = end
+	var result: Array[Vector2i] = []
+	for p in found.keys():
+		result.append(p)
+	return result
+
+func _check_level_state() -> void:
+	var data: Dictionary = LEVELS[current_level]
+	var target_type: int = int(data["type"])
+	var score_done := score >= int(data["score"])
+	var pieces_done := destroyed_counts[target_type] >= int(data["count"])
+	if score_done and pieces_done:
+		status.text = "✅ УРОВЕНЬ ПРОЙДЕН!"
+		next_button.visible = true
+		if current_level == LEVELS.size() - 1:
+			next_button.text = "СЫГРАТЬ СНАЧАЛА →"
+		else:
+			next_button.text = "СЛЕДУЮЩИЙ УРОВЕНЬ →"
+		return
+	if moves_left <= 0:
+		status.text = "❌ Ходы закончились. Нажмите ↻ и попробуйте снова"
+		return
+	status.text = "Хорошо! Продолжайте выполнять цель уровня"
+
+func _update_best() -> void:
+	if score > best:
+		best = score
+		var file := FileAccess.open("user://best_score.txt", FileAccess.WRITE)
+		if file:
+			file.store_string(str(best))
+
+func _update_labels() -> void:
+	var data: Dictionary = LEVELS[current_level]
+	var target_type: int = int(data["type"])
+	level_label.text = "УРОВЕНЬ\n%d" % (current_level + 1)
+	moves_label.text = "ХОДЫ\n%d" % moves_left
+	score_label.text = "ОЧКИ\n%d" % score
+	best_label.text = "РЕКОРД\n%d" % best
+	combo_label.text = "КОМБО\n%s" % ("x%d" % combo if combo > 0 else "—")
+	goal_label.text = "ЦЕЛЬ: %d / %d очков     •     %d / %d %s" % [score, int(data["score"]), destroyed_counts[target_type], int(data["count"]), TYPE_NAMES[target_type]]
+
+func _spawn_fx(p: Vector2, color: Color) -> void:
 	for i in 14:
-		var d:=Polygon2D.new();d.polygon=PackedVector2Array([Vector2(-3,-3),Vector2(3,-3),Vector2(3,3),Vector2(-3,3)]);d.color=c.lightened(.15);d.position=p;fx.add_child(d);var a:=TAU*i/14.0;var tw:=create_tween().set_parallel(true);tw.tween_property(d,"position",p+Vector2(cos(a),sin(a))*rng.randf_range(30,58),.36);tw.tween_property(d,"scale",Vector2.ZERO,.36);tw.tween_property(d,"modulate:a",0,.36);tw.chain().tween_callback(d.queue_free)
-	var flash:=Polygon2D.new();flash.polygon=PackedVector2Array([Vector2(-20,-20),Vector2(20,-20),Vector2(20,20),Vector2(-20,20)]);flash.color=Color(1,1,1,.55);flash.position=p;fx.add_child(flash);var ft:=create_tween();ft.tween_property(flash,"scale",Vector2(1.7,1.7),.07);ft.parallel().tween_property(flash,"modulate:a",0,.14);ft.tween_callback(flash.queue_free)
-func _popup(p:Vector2,n:int)->void:
-	var l:=Label.new();l.text="+%d"%n;l.position=p-Vector2(18,15);l.add_theme_font_size_override("font_size",20);fx.add_child(l);var t:=create_tween();t.tween_property(l,"position",l.position-Vector2(0,40),.45);t.parallel().tween_property(l,"modulate:a",0,.45);t.tween_callback(l.queue_free)
+		var dot := Polygon2D.new()
+		dot.polygon = PackedVector2Array([Vector2(-3, -3), Vector2(3, -3), Vector2(3, 3), Vector2(-3, 3)])
+		dot.color = color.lightened(0.15)
+		dot.position = p
+		fx.add_child(dot)
+		var angle := TAU * float(i) / 14.0
+		var tween := create_tween().set_parallel(true)
+		tween.tween_property(dot, "position", p + Vector2(cos(angle), sin(angle)) * rng.randf_range(30.0, 58.0), 0.36)
+		tween.tween_property(dot, "scale", Vector2.ZERO, 0.36)
+		tween.tween_property(dot, "modulate:a", 0.0, 0.36)
+		tween.chain().tween_callback(dot.queue_free)
 
-func _matches()->Array[Vector2i]:
-	var f:Dictionary={}
-	for y in SIZE:
-		var s:=0
-		while s<SIZE:
-			var t=board[y][s];var e:=s+1
-			while e<SIZE and board[y][e]==t:e+=1
-			if t>=0 and e-s>=3:
-				for x in range(s,e):
-					f[Vector2i(x,y)]=true
-			s=e
-	for x in SIZE:
-		var s:=0
-		while s<SIZE:
-			var t=board[s][x];var e:=s+1
-			while e<SIZE and board[e][x]==t:e+=1
-			if t>=0 and e-s>=3:
-				for y in range(s,e):
-					f[Vector2i(x,y)]=true
-			s=e
-	var r:Array[Vector2i]=[]
-	for p in f.keys():
-		r.append(p)
-	return r
-func _update_best()->void:
-	if score>best:
-		best=score;var f:=FileAccess.open("user://best_score.txt",FileAccess.WRITE);if f:f.store_string(str(best))
-func _labels()->void:
-	score_label.text="ОЧКИ\n%d"%score;best_label.text="РЕКОРД\n%d"%best;combo_label.text="КОМБО\n%s"%("x%d"%combo if combo>0 else "—")
+func _popup(p: Vector2, amount: int) -> void:
+	var label := Label.new()
+	label.text = "+%d" % amount
+	label.position = p - Vector2(18, 15)
+	label.add_theme_font_size_override("font_size", 20)
+	fx.add_child(label)
+	var tween := create_tween()
+	tween.tween_property(label, "position", label.position - Vector2(0, 40), 0.45)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.45)
+	tween.tween_callback(label.queue_free)
