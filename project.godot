@@ -1,0 +1,17 @@
+[application]
+config/name="Три в ряд"
+run/main_scene="res://Main.tscn"
+
+[display]
+window/size/viewport_width=900
+window/size/viewport_height=900
+window/size/window_width_override=900
+window/size/window_height_override=900
+window/stretch/mode="canvas_items"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+
+[gui]
+theme/default_font_multichannel_signed_distance_field=true
