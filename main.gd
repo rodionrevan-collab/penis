@@ -4,13 +4,9 @@ const SIZE := 8
 const TYPES := 6
 const CELL := 78.0
 const ORIGIN := Vector2(138, 202)
-const COLORS := [
-	Color("#ff5b67"), Color("#4d9cff"), Color("#43d98b"),
-	Color("#ffd34e"), Color("#b978ff"), Color("#ff9b4a")
-]
+const COLORS := [Color("#ff5b67"), Color("#4d9cff"), Color("#43d98b"), Color("#ffd34e"), Color("#b978ff"), Color("#ff9b4a")]
 const SYMBOLS := ["●", "◆", "■", "★", "⬟", "▲"]
 const TYPE_NAMES := ["красных кругов", "синих ромбов", "зелёных квадратов", "звёзд", "фиолетовых кристаллов", "оранжевых треугольников"]
-
 const LEVELS := [
 	{"moves": 16, "score": 1800, "type": 0, "count": 18},
 	{"moves": 20, "score": 3200, "type": 3, "count": 30},
@@ -26,9 +22,8 @@ var best := 0
 var combo := 0
 var current_level := 0
 var moves_left := 0
-var destroyed_counts := [0, 0, 0, 0, 0, 0]
+var destroyed_counts: Array = [0, 0, 0, 0, 0, 0]
 var rng := RandomNumberGenerator.new()
-
 var root: Node2D
 var fx: Node2D
 var score_label: Label
@@ -47,19 +42,16 @@ class Gem extends Node2D:
 	var color := Color.WHITE
 	var symbol := "●"
 	var chosen := false
-
 	func setup(k: int, c: Color, s: String) -> void:
 		kind = k
 		color = c
 		symbol = s
 		queue_redraw()
-
 	func select(v: bool) -> void:
 		chosen = v
 		var tween := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tween.tween_property(self, "scale", Vector2.ONE * (1.12 if v else 1.0), 0.12)
 		queue_redraw()
-
 	func _draw() -> void:
 		var s := 28.0
 		draw_circle(Vector2(2, 4), s + 3.0, Color(0, 0, 0, 0.28))
@@ -95,7 +87,6 @@ class Gem extends Node2D:
 				draw_colored_polygon(PackedVector2Array([Vector2(0, -s), Vector2(s, s), Vector2(-s, s)]), color)
 		draw_circle(Vector2(-s * 0.32, -s * 0.34), s * 0.19, Color(1, 1, 1, 0.50))
 		draw_circle(Vector2(-s * 0.23, -s * 0.22), s * 0.08, Color.WHITE)
-		draw_string(ThemeDB.fallback_font, Vector2(-7, 6), symbol, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.25))
 
 class BoardFrame extends Node2D:
 	func _draw() -> void:
@@ -127,39 +118,33 @@ func _build_ui() -> void:
 	bg.color = Color("#090e1b")
 	add_child(bg)
 	move_child(bg, 0)
-
 	var head := ColorRect.new()
 	head.size = Vector2(900, 176)
 	head.color = Color("#111a30")
 	add_child(head)
 	move_child(head, 1)
-
 	var title := Label.new()
 	title.text = "ТРИ В РЯД"
 	title.position = Vector2(138, 14)
 	title.add_theme_font_size_override("font_size", 36)
 	add_child(title)
-
 	var sub := Label.new()
 	sub.text = "Выполни цель уровня до того, как закончатся ходы"
 	sub.position = Vector2(140, 56)
 	sub.add_theme_font_size_override("font_size", 14)
 	sub.add_theme_color_override("font_color", Color("#8998b9"))
 	add_child(sub)
-
 	level_label = _stat("УРОВЕНЬ", Vector2(138, 90))
 	moves_label = _stat("ХОДЫ", Vector2(255, 90))
 	score_label = _stat("ОЧКИ", Vector2(372, 90))
 	best_label = _stat("РЕКОРД", Vector2(489, 90))
 	combo_label = _stat("КОМБО", Vector2(606, 90))
-
 	goal_label = Label.new()
 	goal_label.position = Vector2(138, 140)
 	goal_label.size = Vector2(624, 30)
 	goal_label.add_theme_font_size_override("font_size", 14)
 	goal_label.add_theme_color_override("font_color", Color("#d8e2ff"))
 	add_child(goal_label)
-
 	restart_button = Button.new()
 	restart_button.text = "↻"
 	restart_button.tooltip_text = "Начать уровень заново"
@@ -169,7 +154,6 @@ func _build_ui() -> void:
 	restart_button.add_theme_stylebox_override("hover", _button_style(Color("#263a62"), Color("#6684c4")))
 	restart_button.pressed.connect(_restart_level)
 	add_child(restart_button)
-
 	next_button = Button.new()
 	next_button.text = "СЛЕДУЮЩИЙ УРОВЕНЬ →"
 	next_button.position = Vector2(632, 838)
@@ -179,18 +163,15 @@ func _build_ui() -> void:
 	next_button.add_theme_stylebox_override("hover", _button_style(Color("#278c5f"), Color("#6df0aa")))
 	next_button.pressed.connect(_next_level)
 	add_child(next_button)
-
 	var frame := BoardFrame.new()
 	frame.position = ORIGIN + Vector2(312, 312)
 	add_child(frame)
-
 	root = Node2D.new()
 	root.name = "Gems"
 	add_child(root)
 	fx = Node2D.new()
 	fx.name = "Effects"
 	add_child(fx)
-
 	status = Label.new()
 	status.position = Vector2(138, 832)
 	status.size = Vector2(470, 38)
@@ -225,10 +206,10 @@ func _build_sounds() -> void:
 		sounds[name] = player
 
 func _tone(kind: String) -> AudioStreamWAV:
-	var frequencies := {"select": 520.0, "swap": 320.0, "match": 680.0, "combo": 900.0, "error": 180.0}
-	var durations := {"select": 0.06, "swap": 0.09, "match": 0.14, "combo": 0.22, "error": 0.13}
-	var frequency: float = frequencies[kind]
-	var duration: float = durations[kind]
+	var frequencies: Dictionary = {"select": 520.0, "swap": 320.0, "match": 680.0, "combo": 900.0, "error": 180.0}
+	var durations: Dictionary = {"select": 0.06, "swap": 0.09, "match": 0.14, "combo": 0.22, "error": 0.13}
+	var frequency: float = float(frequencies[kind])
+	var duration: float = float(durations[kind])
 	var rate := 22050
 	var count := int(rate * duration)
 	var data := PackedByteArray()
@@ -271,10 +252,7 @@ func _restart_level() -> void:
 	_start_level(current_level)
 
 func _next_level() -> void:
-	if current_level + 1 < LEVELS.size():
-		_start_level(current_level + 1)
-	else:
-		_start_level(0)
+	_start_level(current_level + 1 if current_level + 1 < LEVELS.size() else 0)
 
 func _generate_board() -> void:
 	board.clear()
@@ -358,7 +336,7 @@ func _resolve(a: Vector2i, b: Vector2i) -> void:
 	_swap_data(a, b)
 	_play("swap")
 	await _swap_anim(a, b)
-	var matches := _find_matches()
+	var matches: Array[Vector2i] = _find_matches()
 	if matches.is_empty():
 		_swap_data(a, b)
 		await _swap_anim(a, b)
@@ -366,19 +344,17 @@ func _resolve(a: Vector2i, b: Vector2i) -> void:
 		_play("error")
 		busy = false
 		return
-
 	moves_left -= 1
 	combo = 0
 	while not matches.is_empty():
 		combo += 1
-		var gained := matches.size() * 10 * combo
+		var gained: int = matches.size() * 10 * combo
 		score += gained
 		_play("combo" if combo > 1 else "match")
 		_popup(_cell_pos(matches[0]), gained)
 		await _destroy_matches(matches)
 		await _collapse_and_refill()
 		matches = _find_matches()
-
 	_update_best()
 	_update_labels()
 	_check_level_state()
@@ -420,7 +396,7 @@ func _destroy_matches(matches: Array[Vector2i]) -> void:
 	_update_labels()
 
 func _collapse_and_refill() -> void:
-	var moved := false
+	var max_fall_time := 0.0
 	for x in SIZE:
 		var write_y := SIZE - 1
 		for read_y in range(SIZE - 1, -1, -1):
@@ -435,11 +411,12 @@ func _collapse_and_refill() -> void:
 				var gem: Gem = gems[from]
 				gems.erase(from)
 				gems[to] = gem
+				var distance := write_y - read_y
+				var duration := 0.18 + distance * 0.055
+				max_fall_time = max(max_fall_time, duration)
 				var tween := create_tween()
-				tween.tween_property(gem, "position", _cell_pos(to), 0.24 + (write_y - read_y) * 0.035).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-				moved = true
+				tween.tween_property(gem, "position", _cell_pos(to), duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 			write_y -= 1
-
 		var spawn_index := 0
 		for y in range(write_y, -1, -1):
 			var kind := rng.randi_range(0, TYPES - 1)
@@ -449,14 +426,15 @@ func _collapse_and_refill() -> void:
 			gem.position = _cell_pos(p) - Vector2(0, CELL * (spawn_index + 2))
 			gem.scale = Vector2.ONE * 0.82
 			gems[p] = gem
+			var spawn_distance := spawn_index + 2
+			var spawn_duration := 0.22 + spawn_index * 0.05
+			max_fall_time = max(max_fall_time, spawn_duration)
 			var tween := create_tween().set_parallel(true)
-			tween.tween_property(gem, "position", _cell_pos(p), 0.28 + spawn_index * 0.035).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-			tween.tween_property(gem, "scale", Vector2.ONE, 0.20)
+			tween.tween_property(gem, "position", _cell_pos(p), spawn_duration).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+			tween.tween_property(gem, "scale", Vector2.ONE, 0.18)
 			spawn_index += 1
-			moved = true
-
-	if moved:
-		await get_tree().create_timer(0.42).timeout
+	if max_fall_time > 0.0:
+		await get_tree().create_timer(max_fall_time + 0.05).timeout
 
 func _find_matches() -> Array[Vector2i]:
 	var found: Dictionary = {}
@@ -490,15 +468,14 @@ func _find_matches() -> Array[Vector2i]:
 func _check_level_state() -> void:
 	var data: Dictionary = LEVELS[current_level]
 	var target_type: int = int(data["type"])
-	var score_done := score >= int(data["score"])
-	var pieces_done := destroyed_counts[target_type] >= int(data["count"])
+	var target_score: int = int(data["score"])
+	var target_count: int = int(data["count"])
+	var score_done: bool = score >= target_score
+	var pieces_done: bool = destroyed_counts[target_type] >= target_count
 	if score_done and pieces_done:
 		status.text = "✅ УРОВЕНЬ ПРОЙДЕН!"
 		next_button.visible = true
-		if current_level == LEVELS.size() - 1:
-			next_button.text = "СЫГРАТЬ СНАЧАЛА →"
-		else:
-			next_button.text = "СЛЕДУЮЩИЙ УРОВЕНЬ →"
+		next_button.text = "СЫГРАТЬ СНАЧАЛА →" if current_level == LEVELS.size() - 1 else "СЛЕДУЮЩИЙ УРОВЕНЬ →"
 		return
 	if moves_left <= 0:
 		status.text = "❌ Ходы закончились. Нажмите ↻ и попробуйте снова"
