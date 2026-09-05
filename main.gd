@@ -141,7 +141,7 @@ func _make_label(text: String, pos: Vector2, size: Vector2, font_size: int, colo
 	label.size = size
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
-	add_child(label)
+	game_layer.add_child(label)
 	return label
 
 func _build_game_layer() -> void:
@@ -154,7 +154,6 @@ func _build_game_layer() -> void:
 	bg.color = Color("#080e1c")
 	game_layer.add_child(bg)
 	var head := ColorRect.new()
-	head.position = Vector2(0, 0)
 	head.size = Vector2(900, 176)
 	head.color = Color("#111b33")
 	game_layer.add_child(head)
@@ -163,8 +162,8 @@ func _build_game_layer() -> void:
 	accent.size = Vector2(700, 2)
 	accent.color = Color("#263b61")
 	game_layer.add_child(accent)
-	var title := _make_label("ТРИ В РЯД", Vector2(138, 12), Vector2(500, 42), 36, Color("#f2f5ff"))
-	var sub := _make_label("Выполни цель уровня до того, как закончатся ходы", Vector2(140, 53), Vector2(580, 28), 13, Color("#8495bb"))
+	_make_label("ТРИ В РЯД", Vector2(138, 12), Vector2(500, 42), 36, Color("#f2f5ff"))
+	_make_label("Выполни цель уровня до того, как закончатся ходы", Vector2(140, 53), Vector2(580, 28), 13, Color("#8495bb"))
 	level_label = _stat("УРОВЕНЬ", Vector2(138, 88))
 	moves_label = _stat("ХОДЫ", Vector2(255, 88))
 	score_label = _stat("ОЧКИ", Vector2(372, 88))
@@ -620,7 +619,7 @@ func _on_level_lost() -> void:
 func _show_result_modal(won: bool) -> void:
 	if modal:
 		modal.queue_free()
-	modal = null
+		modal = null
 	modal = Control.new()
 	modal.name = "ResultModal"
 	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
