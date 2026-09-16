@@ -211,7 +211,7 @@ func _build_game_layer()->void:
 	status=Label.new(); status.position=Vector2(138,832); status.size=Vector2(624,34); status.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; status.add_theme_font_size_override("font_size",14); status.add_theme_color_override("font_color",Color("#9baad0")); game_layer.add_child(status)
 
 func _stat(n:String,p:Vector2)->Label:
-	var l:=Label.new(); l.position=p; l.size=Vector2(105,45); l.text=n+"\n0"; l.add_theme_font_size_override("font_size",12); l.add_theme_color_override("font_color",Color("#8395bd")); game_layer.add_child(l); return l
+	var l:=Label.new(); l.position=p; l.size=Vector2(105,45); l.text=n+"\n0"; l.add_theme_font_size_override("font_size",12); l.add_theme_color_override("font_color",Color("#8395bd"); game_layer.add_child(l); return l
 
 func _generate_board()->void:
 	board.clear()
@@ -296,16 +296,20 @@ func _find_matches()->Array[Vector2i]:
 		while s<SIZE:
 			var k=board[y][s]; var e:=s+1
 			while e<SIZE and board[y][e]==k: e+=1
-			if k>=0 and e-s>=3: for x in range(s,e): found[Vector2i(x,y)]=true
+			if k>=0 and e-s>=3:
+				for x in range(s,e): found[Vector2i(x,y)]=true
 			s=e
 	for x in SIZE:
 		var s:=0
 		while s<SIZE:
 			var k=board[s][x]; var e:=s+1
 			while e<SIZE and board[e][x]==k: e+=1
-			if k>=0 and e-s>=3: for y in range(s,e): found[Vector2i(x,y)]=true
+			if k>=0 and e-s>=3:
+				for y in range(s,e): found[Vector2i(x,y)]=true
 			s=e
-	var result:Array[Vector2i]=[]; for p in found.keys(): result.append(p); return result
+	var result:Array[Vector2i]=[]
+	for p in found.keys(): result.append(p)
+	return result
 
 func _check_level_state()->void:
 	var data:Dictionary=LEVELS[current_level]; var type:int=int(data["type"]); var score_done:bool=score>=int(data["score"]); var pieces_done:bool=destroyed_counts[type]>=int(data["count"])
