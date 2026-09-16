@@ -227,8 +227,8 @@ func _generate_board()->void:
 			board.append(row)
 
 func _clear_visuals()->void:
-	for n in root.get_children(): n.queue_free()
-	for n in fx.get_children(): n.queue_free()
+	for n in root.get_children(): n.free()
+	for n in fx.get_children(): n.free()
 	gems.clear()
 func _cell_pos(p:Vector2i)->Vector2: return ORIGIN+Vector2(p.x*CELL+CELL/2,p.y*CELL+CELL/2)
 func _make_gem(k:int)->Gem:
@@ -238,7 +238,7 @@ func _create_visuals(intro:=false)->void:
 		for x in SIZE:
 			var p:=Vector2i(x,y); var g:=_make_gem(board[y][x]); g.position=_cell_pos(p); g.scale=Vector2.ZERO if intro else Vector2.ONE; gems[p]=g
 			if intro:
-				var t:=create_tween(); t.tween_interval((x+y)*.012); t.tween_property(g,"scale",Vector2.ONE,.2).set_trans(Tween.TRANS_BACK)
+				var t:=g.create_tween(); t.tween_interval((x+y)*.012); t.tween_property(g,"scale",Vector2.ONE,.2).set_trans(Tween.TRANS_BACK)
 
 func _input(event:InputEvent)->void:
 	if busy or not game_layer.visible or not event is InputEventMouseButton: return
@@ -264,12 +264,12 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 func _swap_data(a:Vector2i,b:Vector2i)->void:
 	var temp=board[a.y][a.x]; board[a.y][a.x]=board[b.y][b.x]; board[b.y][b.x]=temp; var ga=gems[a]; gems[a]=gems[b]; gems[b]=ga
 func _swap_anim(a:Vector2i,b:Vector2i)->void:
-	var t:=create_tween().set_parallel(true); t.set_trans(Tween.TRANS_BACK); t.tween_property(gems[a],"position",_cell_pos(a),.18); t.tween_property(gems[b],"position",_cell_pos(b),.18); await t.finished
+	var ga:Gem=gems[a]; var gb:Gem=gems[b]; var t:=ga.create_tween().set_parallel(true); t.set_trans(Tween.TRANS_BACK); t.tween_property(ga,"position",_cell_pos(a),.18); t.tween_property(gb,"position",_cell_pos(b),.18); await t.finished
 func _destroy_matches(matches:Array[Vector2i])->void:
 	for p in matches:
 		var kind:int=board[p.y][p.x]; destroyed_counts[kind]+=1; _spawn_fx(_cell_pos(p),COLORS[kind])
 		if gems.has(p):
-			var g:Gem=gems[p]; var t:=create_tween().set_parallel(true); t.tween_property(g,"scale",Vector2.ZERO,.20).set_trans(Tween.TRANS_BACK); t.tween_property(g,"rotation",rng.randf_range(-.5,.5),.20); t.tween_property(g,"modulate:a",0,.16)
+			var g:Gem=gems[p]; var t:=g.create_tween().set_parallel(true); t.tween_property(g,"scale",Vector2.ZERO,.20).set_trans(Tween.TRANS_BACK); t.tween_property(g,"rotation",rng.randf_range(-.5,.5),.20); t.tween_property(g,"modulate:a",0,.16)
 	await get_tree().create_timer(.21).timeout
 	for p in matches:
 		board[p.y][p.x]=-1
@@ -282,11 +282,11 @@ func _collapse_and_refill()->void:
 		for read_y in range(SIZE-1,-1,-1):
 			if board[read_y][x]<0: continue
 			if write_y!=read_y:
-				var kind:int=board[read_y][x]; board[write_y][x]=kind; board[read_y][x]=-1; var g:Gem=gems[Vector2i(x,read_y)]; gems.erase(Vector2i(x,read_y)); gems[Vector2i(x,write_y)]=g; var d:=write_y-read_y; var dur:=.18+d*.055; max_time=max(max_time,dur); var tw:=create_tween(); tw.tween_property(g,"position",_cell_pos(Vector2i(x,write_y)),dur).set_trans(Tween.TRANS_QUAD)
+				var kind:int=board[read_y][x]; board[write_y][x]=kind; board[read_y][x]=-1; var g:Gem=gems[Vector2i(x,read_y)]; gems.erase(Vector2i(x,read_y)); gems[Vector2i(x,write_y)]=g; var d:=write_y-read_y; var dur:=.18+d*.055; max_time=max(max_time,dur); var tw:=g.create_tween(); tw.tween_property(g,"position",_cell_pos(Vector2i(x,write_y)),dur).set_trans(Tween.TRANS_QUAD)
 			write_y-=1
 		var spawn:=0
 		for y in range(write_y,-1,-1):
-			var kind:=rng.randi_range(0,TYPES-1); board[y][x]=kind; var p:=Vector2i(x,y); var g:=_make_gem(kind); g.position=_cell_pos(p)-Vector2(0,CELL*(spawn+2)); g.scale=Vector2.ONE*.82; gems[p]=g; var dur:=.22+spawn*.05; max_time=max(max_time,dur); var tw:=create_tween().set_parallel(true); tw.tween_property(g,"position",_cell_pos(p),dur).set_trans(Tween.TRANS_BOUNCE); tw.tween_property(g,"scale",Vector2.ONE,.18); spawn+=1
+			var kind:=rng.randi_range(0,TYPES-1); board[y][x]=kind; var p:=Vector2i(x,y); var g:=_make_gem(kind); g.position=_cell_pos(p)-Vector2(0,CELL*(spawn+2)); g.scale=Vector2.ONE*.82; gems[p]=g; var dur:=.22+spawn*.05; max_time=max(max_time,dur); var tw:=g.create_tween().set_parallel(true); tw.tween_property(g,"position",_cell_pos(p),dur).set_trans(Tween.TRANS_BOUNCE); tw.tween_property(g,"scale",Vector2.ONE,.18); spawn+=1
 	if max_time>0: await get_tree().create_timer(max_time+.05).timeout
 
 func _find_matches()->Array[Vector2i]:
@@ -338,9 +338,9 @@ func _update_labels()->void:
 	var d:Dictionary=LEVELS[current_level]; var type:int=int(d["type"]); level_label.text="УРОВЕНЬ\n%d"%(current_level+1); moves_label.text="ХОДЫ\n%d"%moves_left; score_label.text="ОЧКИ\n%d"%score; best_label.text="РЕКОРД\n%d"%best; combo_label.text="КОМБО\n%s"%("x%d"%combo if combo>0 else "—"); goal_label.text="ЦЕЛЬ: %d / %d очков   •   %d / %d %s"%[score,int(d["score"]),destroyed_counts[type],int(d["count"]),TYPE_NAMES[type]]
 func _spawn_fx(p:Vector2,c:Color)->void:
 	for i in 14:
-		var d:=Polygon2D.new(); d.polygon=PackedVector2Array([Vector2(-3,-3),Vector2(3,-3),Vector2(3,3),Vector2(-3,3)]); d.color=c.lightened(.15); d.position=p; fx.add_child(d); var a:=TAU*float(i)/14.0; var t:=create_tween().set_parallel(true); t.tween_property(d,"position",p+Vector2(cos(a),sin(a))*rng.randf_range(30,58),.36); t.tween_property(d,"scale",Vector2.ZERO,.36); t.tween_property(d,"modulate:a",0,.36); t.chain().tween_callback(d.queue_free)
+		var d:=Polygon2D.new(); d.polygon=PackedVector2Array([Vector2(-3,-3),Vector2(3,-3),Vector2(3,3),Vector2(-3,3)]); d.color=c.lightened(.15); d.position=p; fx.add_child(d); var a:=TAU*float(i)/14.0; var t:=d.create_tween().set_parallel(true); t.tween_property(d,"position",p+Vector2(cos(a),sin(a))*rng.randf_range(30,58),.36); t.tween_property(d,"scale",Vector2.ZERO,.36); t.tween_property(d,"modulate:a",0,.36); t.chain().tween_callback(d.queue_free)
 func _popup(p:Vector2,n:int)->void:
-	var l:=Label.new(); l.text="+%d"%n; l.position=p-Vector2(18,15); l.add_theme_font_size_override("font_size",20); fx.add_child(l); var t:=create_tween(); t.tween_property(l,"position",l.position-Vector2(0,40),.45); t.parallel().tween_property(l,"modulate:a",0,.45); t.tween_callback(l.queue_free)
+	var l:=Label.new(); l.text="+%d"%n; l.position=p-Vector2(18,15); l.add_theme_font_size_override("font_size",20); fx.add_child(l); var t:=l.create_tween(); t.tween_property(l,"position",l.position-Vector2(0,40),.45); t.parallel().tween_property(l,"modulate:a",0,.45); t.tween_callback(l.queue_free)
 func _build_sounds()->void:
 	for n in ["select","swap","match","combo","error"]:
 		var p:=AudioStreamPlayer.new(); p.stream=_tone(n); p.volume_db=-10; add_child(p); sounds[n]=p
