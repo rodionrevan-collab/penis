@@ -55,7 +55,10 @@ class Gem extends Node2D:
 	var symbol := "●"
 	var chosen := false
 	func setup(k: int, c: Color, s: String) -> void:
-		kind = k; color = c; symbol = s; queue_redraw()
+		kind = k
+		color = c
+		symbol = s
+		queue_redraw()
 	func select(v: bool) -> void:
 		chosen = v
 		var t := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -64,37 +67,61 @@ class Gem extends Node2D:
 	func _draw() -> void:
 		var s := 28.0
 		draw_circle(Vector2(2, 4), s + 4.0, Color(0, 0, 0, 0.28))
-		if chosen: draw_circle(Vector2.ZERO, s + 9.0, Color(color.r, color.g, color.b, 0.20))
+		if chosen:
+			draw_circle(Vector2.ZERO, s + 9.0, Color(color.r, color.g, color.b, 0.20))
 		match kind:
-			0: draw_circle(Vector2.ZERO, s, color)
-			1: draw_colored_polygon(PackedVector2Array([Vector2(0,-s),Vector2(s,0),Vector2(0,s),Vector2(-s,0)]), color)
+			0:
+				draw_circle(Vector2.ZERO, s, color)
+			1:
+				draw_colored_polygon(PackedVector2Array([Vector2(0,-s),Vector2(s,0),Vector2(0,s),Vector2(-s,0)]), color)
 			2:
-				var b := StyleBoxFlat.new(); b.bg_color=color; b.border_color=color.lightened(.22); b.set_border_width_all(3); b.set_corner_radius_all(9)
+				var b := StyleBoxFlat.new()
+				b.bg_color = color
+				b.border_color = color.lightened(.22)
+				b.set_border_width_all(3)
+				b.set_corner_radius_all(9)
 				draw_style_box(b, Rect2(-s,-s,s*2,s*2))
 			3:
 				var a := PackedVector2Array()
 				for i in range(10):
-					var ang := -PI/2.0 + i*PI/5.0; a.append(Vector2(cos(ang),sin(ang))*(s if i%2==0 else s*.43))
+					var ang := -PI/2.0 + i*PI/5.0
+					a.append(Vector2(cos(ang),sin(ang))*(s if i%2==0 else s*.43))
 				draw_colored_polygon(a,color)
 			4:
 				var h := PackedVector2Array()
 				for i in range(6):
-					var ang := -PI/2.0 + i*PI/3.0; h.append(Vector2(cos(ang),sin(ang))*s)
+					var ang := -PI/2.0 + i*PI/3.0
+					h.append(Vector2(cos(ang),sin(ang))*s)
 				draw_colored_polygon(h,color)
-			5: draw_colored_polygon(PackedVector2Array([Vector2(0,-s),Vector2(s,s),Vector2(-s,s)]), color)
+			5:
+				draw_colored_polygon(PackedVector2Array([Vector2(0,-s),Vector2(s,s),Vector2(-s,s)]), color)
 		draw_circle(Vector2(-s*.32,-s*.34), s*.19, Color(1,1,1,.5))
 		draw_circle(Vector2(-s*.23,-s*.22), s*.08, Color.WHITE)
 
 class BoardFrame extends Node2D:
 	func _draw() -> void:
-		var o := StyleBoxFlat.new(); o.bg_color=Color("#0e172b"); o.border_color=Color("#344e7c"); o.set_border_width_all(2); o.set_corner_radius_all(18)
+		var o := StyleBoxFlat.new()
+		o.bg_color=Color("#0e172b")
+		o.border_color=Color("#344e7c")
+		o.set_border_width_all(2)
+		o.set_corner_radius_all(18)
 		draw_style_box(o,Rect2(-314,-314,628,628))
-		var c := StyleBoxFlat.new(); c.bg_color=Color("#0b1426"); c.border_color=Color("#172846"); c.set_border_width_all(1); c.set_corner_radius_all(10)
+		var c := StyleBoxFlat.new()
+		c.bg_color=Color("#0b1426")
+		c.border_color=Color("#172846")
+		c.set_border_width_all(1)
+		c.set_corner_radius_all(10)
 		for y in SIZE:
-			for x in SIZE: draw_style_box(c,Rect2(-312+x*CELL+4,-312+y*CELL+4,CELL-8,CELL-8))
+			for x in SIZE:
+				draw_style_box(c,Rect2(-312+x*CELL+4,-312+y*CELL+4,CELL-8,CELL-8))
 
 func _ready() -> void:
-	rng.randomize(); _build_levels(); _load_progress(); _build_sounds(); _build_game_layer(); _show_menu()
+	rng.randomize()
+	_build_levels()
+	_load_progress()
+	_build_sounds()
+	_build_game_layer()
+	_show_menu()
 
 func _build_levels() -> void:
 	LEVELS.clear()
@@ -110,32 +137,50 @@ func _build_levels() -> void:
 			target_type = (i - 90) % TYPES
 		LEVELS.append({"moves":moves,"score":target_score,"type":target_type,"count":target_count,"mechanic":tier})
 	completed.resize(100)
-	for i in range(100): completed[i] = false
+	for i in range(100):
+		completed[i] = false
 
 func _load_progress() -> void:
-	if FileAccess.file_exists("user://island_unlocked.txt"): unlocked_level=clampi(int(FileAccess.get_file_as_string("user://island_unlocked.txt")),0,99)
+	if FileAccess.file_exists("user://island_unlocked.txt"):
+		unlocked_level=clampi(int(FileAccess.get_file_as_string("user://island_unlocked.txt")),0,99)
 	if FileAccess.file_exists("user://island_completed.txt"):
 		var text:=FileAccess.get_file_as_string("user://island_completed.txt")
 		var parts:=text.split(",")
-		for i in range(min(parts.size(),100)): completed[i]=parts[i]=="1"
-	if FileAccess.file_exists("user://best_score.txt"): best=int(FileAccess.get_file_as_string("user://best_score.txt"))
+		for i in range(min(parts.size(),100)):
+			completed[i]=parts[i]=="1"
+	if FileAccess.file_exists("user://best_score.txt"):
+		best=int(FileAccess.get_file_as_string("user://best_score.txt"))
 
 func _save_progress() -> void:
-	var u:=FileAccess.open("user://island_unlocked.txt",FileAccess.WRITE); if u: u.store_string(str(unlocked_level))
+	var u:=FileAccess.open("user://island_unlocked.txt",FileAccess.WRITE)
+	if u:
+		u.store_string(str(unlocked_level))
 	var f:=FileAccess.open("user://island_completed.txt",FileAccess.WRITE)
 	if f:
-		var parts:=PackedStringArray(); for v in completed: parts.append("1" if v else "0"); f.store_string(",".join(parts))
+		var parts:=PackedStringArray()
+		for v in completed:
+			parts.append("1" if v else "0")
+		f.store_string(",".join(parts))
 
 func _style(fill:Color,border:Color,r:=12)->StyleBoxFlat:
-	var s:=StyleBoxFlat.new(); s.bg_color=fill; s.border_color=border; s.set_border_width_all(1); s.set_corner_radius_all(r); return s
+	var s:=StyleBoxFlat.new()
+	s.bg_color=fill
+	s.border_color=border
+	s.set_border_width_all(1)
+	s.set_corner_radius_all(r)
+	return s
 
 func _show_menu() -> void:
 	busy=true
 	if game_layer: game_layer.visible=false
 	if map_layer: map_layer.visible=false
-	if modal: modal.queue_free(); modal=null
+	if modal:
+		modal.queue_free()
+		modal=null
 	if menu_layer: menu_layer.queue_free()
-	menu_layer=Control.new(); menu_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(menu_layer)
+	menu_layer=Control.new()
+	menu_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(menu_layer)
 	var bg:=ColorRect.new(); bg.size=Vector2(900,900); bg.color=Color("#071525"); menu_layer.add_child(bg)
 	var sky:=ColorRect.new(); sky.size=Vector2(900,170); sky.color=Color("#103553"); menu_layer.add_child(sky)
 	var title:=Label.new(); title.text="МИРЫ"; title.position=Vector2(70,35); title.add_theme_font_size_override("font_size",42); title.add_theme_color_override("font_color",Color("#f4f7ff")); menu_layer.add_child(title)
@@ -160,6 +205,7 @@ func _show_map()->void:
 	busy=true
 	if menu_layer: menu_layer.visible=false
 	if game_layer: game_layer.visible=false
+	if modal: modal.queue_free(); modal=null
 	if map_layer: map_layer.queue_free()
 	map_layer=Control.new(); map_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(map_layer)
 	var bg:=ColorRect.new(); bg.size=Vector2(900,900); bg.color=Color("#062033"); map_layer.add_child(bg)
@@ -190,11 +236,23 @@ func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 
 func _start_level(index:int)->void:
 	if index>unlocked_level: return
-	current_level=index; var data:Dictionary=LEVELS[index]; moves_left=int(data["moves"]); score=0; combo=0; destroyed_counts=[0,0,0,0,0,0]; selected=Vector2i(-1,-1); busy=true
+	current_level=index
+	var data:Dictionary=LEVELS[index]
+	moves_left=int(data["moves"])
+	score=0
+	combo=0
+	destroyed_counts=[0,0,0,0,0,0]
+	selected=Vector2i(-1,-1)
+	busy=true
 	if map_layer: map_layer.visible=false
 	if menu_layer: menu_layer.visible=false
 	game_layer.visible=true
-	_generate_board(); _clear_visuals(); _create_visuals(true); _update_labels(); status.text="Уровень %d • %s"%[index+1,MECHANICS[int(data["mechanic"])]]; busy=false
+	_generate_board()
+	_clear_visuals()
+	_create_visuals()
+	_update_labels()
+	status.text="Уровень %d • %s"%[index+1,MECHANICS[int(data["mechanic")]]]
+	busy=false
 
 func _build_game_layer()->void:
 	game_layer=Control.new(); game_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(game_layer)
@@ -215,16 +273,16 @@ func _stat(n:String,p:Vector2)->Label:
 
 func _generate_board()->void:
 	board.clear()
-	for y in SIZE:
+	for y in range(SIZE):
 		var row:Array=[]
-		for x in SIZE:
+		for x in range(SIZE):
 			var opts:Array[int]=[]
-			for t in TYPES:
+			for t in range(TYPES):
 				if x>=2 and row[x-1]==t and row[x-2]==t: continue
 				if y>=2 and board[y-1][x]==t and board[y-2][x]==t: continue
 				opts.append(t)
 			row.append(opts[rng.randi_range(0,opts.size()-1)])
-			board.append(row)
+		board.append(row)
 
 func _clear_visuals()->void:
 	for n in root.get_children(): n.free()
@@ -233,76 +291,169 @@ func _clear_visuals()->void:
 func _cell_pos(p:Vector2i)->Vector2: return ORIGIN+Vector2(p.x*CELL+CELL/2,p.y*CELL+CELL/2)
 func _make_gem(k:int)->Gem:
 	var g:=Gem.new(); g.setup(k,COLORS[k],SYMBOLS[k]); root.add_child(g); return g
-func _create_visuals(intro:=false)->void:
-	for y in SIZE:
-		for x in SIZE:
-			var p:=Vector2i(x,y); var g:=_make_gem(board[y][x]); g.position=_cell_pos(p); g.scale=Vector2.ZERO if intro else Vector2.ONE; gems[p]=g
-			if intro:
-				var t:=g.create_tween(); t.tween_interval((x+y)*.012); t.tween_property(g,"scale",Vector2.ONE,.2).set_trans(Tween.TRANS_BACK)
+
+func _create_visuals()->void:
+	for y in range(SIZE):
+		for x in range(SIZE):
+			var p:=Vector2i(x,y)
+			var g:=_make_gem(board[y][x])
+			g.position=_cell_pos(p)
+			g.scale=Vector2.ONE
+			g.modulate=Color.WHITE
+			g.rotation=0.0
+			gems[p]=g
 
 func _input(event:InputEvent)->void:
 	if busy or not game_layer.visible or not event is InputEventMouseButton: return
 	var m:=event as InputEventMouseButton
 	if not m.pressed or m.button_index!=MOUSE_BUTTON_LEFT: return
-	var local:=m.position-ORIGIN; var p:=Vector2i(floor(local.x/CELL),floor(local.y/CELL))
+	var local:=m.position-ORIGIN
+	var p:=Vector2i(floor(local.x/CELL),floor(local.y/CELL))
 	if p.x>=0 and p.y>=0 and p.x<SIZE and p.y<SIZE: _click(p)
+
 func _click(p:Vector2i)->void:
 	if moves_left<=0: return
-	if selected.x<0: selected=p; (gems[p] as Gem).select(true); status.text="Выберите соседнюю фишку"; _play("select"); return
-	if p==selected: (gems[p] as Gem).select(false); selected=Vector2i(-1,-1); return
-	if abs(p.x-selected.x)+abs(p.y-selected.y)!=1: status.text="Можно менять только соседние фишки"; _play("error"); return
-	var a:=selected; (gems[a] as Gem).select(false); selected=Vector2i(-1,-1); _resolve(a,p)
+	if not gems.has(p): return
+	if selected.x<0:
+		selected=p
+		(gems[p] as Gem).select(true)
+		status.text="Выберите соседнюю фишку"
+		_play("select")
+		return
+	if p==selected:
+		(gems[p] as Gem).select(false)
+		selected=Vector2i(-1,-1)
+		return
+	if abs(p.x-selected.x)+abs(p.y-selected.y)!=1:
+		status.text="Можно менять только соседние фишки"
+		_play("error")
+		return
+	var a:=selected
+	(gems[a] as Gem).select(false)
+	selected=Vector2i(-1,-1)
+	_resolve(a,p)
 
 func _resolve(a:Vector2i,b:Vector2i)->void:
-	busy=true; _swap_data(a,b); _play("swap"); await _swap_anim(a,b); var matches:Array[Vector2i]=_find_matches()
-	if matches.is_empty(): _swap_data(a,b); await _swap_anim(a,b); status.text="Нет комбинации — обмен отменён"; _play("error"); busy=false; return
-	moves_left-=1; combo=0
+	busy=true
+	_swap_data(a,b)
+	_play("swap")
+	await _swap_anim(a,b)
+	var matches:Array[Vector2i]=_find_matches()
+	if matches.is_empty():
+		_swap_data(a,b)
+		await _swap_anim(a,b)
+		status.text="Нет комбинации — обмен отменён"
+		_play("error")
+		busy=false
+		return
+	moves_left-=1
+	combo=0
 	while not matches.is_empty():
-		combo+=1; var gained:int=matches.size()*10*combo; score+=gained; _play("combo" if combo>1 else "match"); _popup(_cell_pos(matches[0]),gained); await _destroy_matches(matches); await _collapse_and_refill(); matches=_find_matches()
-	_update_best(); _update_labels(); _check_level_state(); busy=false
+		combo+=1
+		var gained:int=matches.size()*10*combo
+		score+=gained
+		_play("combo" if combo>1 else "match")
+		_popup(_cell_pos(matches[0]),gained)
+		await _destroy_matches(matches)
+		await _collapse_and_refill()
+		matches=_find_matches()
+	_update_best()
+	_update_labels()
+	_check_level_state()
+	if not busy:
+		busy=false
 
 func _swap_data(a:Vector2i,b:Vector2i)->void:
-	var temp=board[a.y][a.x]; board[a.y][a.x]=board[b.y][b.x]; board[b.y][b.x]=temp; var ga=gems[a]; gems[a]=gems[b]; gems[b]=ga
+	var temp=board[a.y][a.x]
+	board[a.y][a.x]=board[b.y][b.x]
+	board[b.y][b.x]=temp
+	var ga=gems[a]
+	gems[a]=gems[b]
+	gems[b]=ga
+
 func _swap_anim(a:Vector2i,b:Vector2i)->void:
-	var ga:Gem=gems[a]; var gb:Gem=gems[b]; var t:=ga.create_tween().set_parallel(true); t.set_trans(Tween.TRANS_BACK); t.tween_property(ga,"position",_cell_pos(a),.18); t.tween_property(gb,"position",_cell_pos(b),.18); await t.finished
+	var ga:Gem=gems[a]
+	var gb:Gem=gems[b]
+	var t:=ga.create_tween().set_parallel(true)
+	t.set_trans(Tween.TRANS_BACK)
+	t.tween_property(ga,"position",_cell_pos(a),.18)
+	t.tween_property(gb,"position",_cell_pos(b),.18)
+	await t.finished
+
 func _destroy_matches(matches:Array[Vector2i])->void:
 	for p in matches:
-		var kind:int=board[p.y][p.x]; destroyed_counts[kind]+=1; _spawn_fx(_cell_pos(p),COLORS[kind])
+		var kind:int=board[p.y][p.x]
+		destroyed_counts[kind]+=1
+		_spawn_fx(_cell_pos(p),COLORS[kind])
 		if gems.has(p):
-			var g:Gem=gems[p]; var t:=g.create_tween().set_parallel(true); t.tween_property(g,"scale",Vector2.ZERO,.20).set_trans(Tween.TRANS_BACK); t.tween_property(g,"rotation",rng.randf_range(-.5,.5),.20); t.tween_property(g,"modulate:a",0,.16)
+			var g:Gem=gems[p]
+			var t:=g.create_tween().set_parallel(true)
+			t.tween_property(g,"scale",Vector2.ZERO,.20).set_trans(Tween.TRANS_BACK)
+			t.tween_property(g,"rotation",rng.randf_range(-.5,.5),.20)
+			t.tween_property(g,"modulate:a",0,.16)
 	await get_tree().create_timer(.21).timeout
 	for p in matches:
 		board[p.y][p.x]=-1
-		if gems.has(p): var g:Gem=gems[p]; gems.erase(p); g.queue_free()
+		if gems.has(p):
+			var g:Gem=gems[p]
+			gems.erase(p)
+			g.queue_free()
 
 func _collapse_and_refill()->void:
 	var max_time:=0.0
-	for x in SIZE:
+	for x in range(SIZE):
 		var write_y:=SIZE-1
 		for read_y in range(SIZE-1,-1,-1):
 			if board[read_y][x]<0: continue
 			if write_y!=read_y:
-				var kind:int=board[read_y][x]; board[write_y][x]=kind; board[read_y][x]=-1; var g:Gem=gems[Vector2i(x,read_y)]; gems.erase(Vector2i(x,read_y)); gems[Vector2i(x,write_y)]=g; var d:=write_y-read_y; var dur:=.18+d*.055; max_time=max(max_time,dur); var tw:=g.create_tween(); tw.tween_property(g,"position",_cell_pos(Vector2i(x,write_y)),dur).set_trans(Tween.TRANS_QUAD)
+				var kind:int=board[read_y][x]
+				board[write_y][x]=kind
+				board[read_y][x]=-1
+				var old_p:=Vector2i(x,read_y)
+				var new_p:=Vector2i(x,write_y)
+				if not gems.has(old_p): continue
+				var g:Gem=gems[old_p]
+				gems.erase(old_p)
+				gems[new_p]=g
+				var d:=write_y-read_y
+				var dur:=.18+d*.055
+				max_time=max(max_time,dur)
+				var tw:=g.create_tween()
+				tw.tween_property(g,"position",_cell_pos(new_p),dur).set_trans(Tween.TRANS_QUAD)
 			write_y-=1
 		var spawn:=0
 		for y in range(write_y,-1,-1):
-			var kind:=rng.randi_range(0,TYPES-1); board[y][x]=kind; var p:=Vector2i(x,y); var g:=_make_gem(kind); g.position=_cell_pos(p)-Vector2(0,CELL*(spawn+2)); g.scale=Vector2.ONE*.82; gems[p]=g; var dur:=.22+spawn*.05; max_time=max(max_time,dur); var tw:=g.create_tween().set_parallel(true); tw.tween_property(g,"position",_cell_pos(p),dur).set_trans(Tween.TRANS_BOUNCE); tw.tween_property(g,"scale",Vector2.ONE,.18); spawn+=1
+			var kind:=rng.randi_range(0,TYPES-1)
+			board[y][x]=kind
+			var p:=Vector2i(x,y)
+			var g:=_make_gem(kind)
+			g.position=_cell_pos(p)-Vector2(0,CELL*(spawn+2))
+			g.scale=Vector2.ONE*.82
+			gems[p]=g
+			var dur:=.22+spawn*.05
+			max_time=max(max_time,dur)
+			var tw:=g.create_tween().set_parallel(true)
+			tw.tween_property(g,"position",_cell_pos(p),dur).set_trans(Tween.TRANS_BOUNCE)
+			tw.tween_property(g,"scale",Vector2.ONE,.18)
+			spawn+=1
 	if max_time>0: await get_tree().create_timer(max_time+.05).timeout
 
 func _find_matches()->Array[Vector2i]:
 	var found:Dictionary={}
-	for y in SIZE:
+	for y in range(SIZE):
 		var s:=0
 		while s<SIZE:
-			var k=board[y][s]; var e:=s+1
+			var k=board[y][s]
+			var e:=s+1
 			while e<SIZE and board[y][e]==k: e+=1
 			if k>=0 and e-s>=3:
 				for x in range(s,e): found[Vector2i(x,y)]=true
 			s=e
-	for x in SIZE:
+	for x in range(SIZE):
 		var s:=0
 		while s<SIZE:
-			var k=board[s][x]; var e:=s+1
+			var k=board[s][x]
+			var e:=s+1
 			while e<SIZE and board[e][x]==k: e+=1
 			if k>=0 and e-s>=3:
 				for y in range(s,e): found[Vector2i(x,y)]=true
@@ -312,42 +463,115 @@ func _find_matches()->Array[Vector2i]:
 	return result
 
 func _check_level_state()->void:
-	var data:Dictionary=LEVELS[current_level]; var type:int=int(data["type"]); var score_done:bool=score>=int(data["score"]); var pieces_done:bool=destroyed_counts[type]>=int(data["count"])
-	if score_done and pieces_done: _win(); return
-	if moves_left<=0: _lose(); return
-	status.text="Продолжайте! %s"%MECHANICS[int(data["mechanic"]) ]
+	var data:Dictionary=LEVELS[current_level]
+	var type:int=int(data["type"])
+	var score_done:bool=score>=int(data["score"])
+	var pieces_done:bool=destroyed_counts[type]>=int(data["count"])
+	if score_done and pieces_done:
+		_win()
+		return
+	if moves_left<=0:
+		_lose()
+		return
+	status.text="Продолжайте! %s"%MECHANICS[int(data["mechanic"])]
+
 func _win()->void:
-	busy=true; completed[current_level]=true; if current_level<99: unlocked_level=max(unlocked_level,current_level+1); _save_progress(); _update_labels(); _result_modal(true)
+	busy=true
+	completed[current_level]=true
+	if current_level<99: unlocked_level=max(unlocked_level,current_level+1)
+	_save_progress()
+	_update_labels()
+	_result_modal(true)
+
 func _lose()->void:
-	busy=true; _result_modal(false)
+	busy=true
+	_result_modal(false)
+
 func _result_modal(won:bool)->void:
-	modal=Control.new(); modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); modal.mouse_filter=Control.MOUSE_FILTER_STOP; var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.02,0.04,0.09,.8); modal.add_child(shade); var p:=Panel.new(); p.position=Vector2(145,245); p.size=Vector2(610,350); p.add_theme_stylebox_override("panel",_style(Color("#111c31"),Color("#38527d"),22)); modal.add_child(p)
+	modal=Control.new()
+	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.02,0.04,0.09,.8); modal.add_child(shade)
+	var p:=Panel.new(); p.position=Vector2(145,245); p.size=Vector2(610,350); p.add_theme_stylebox_override("panel",_style(Color("#111c31"),Color("#38527d"),22)); modal.add_child(p)
 	var t:=Label.new(); t.text="УРОВЕНЬ ПРОЙДЕН! 🎉" if won else "ХОДЫ ЗАКОНЧИЛИСЬ"; t.position=Vector2(40,35); t.size=Vector2(530,55); t.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; t.add_theme_font_size_override("font_size",29); t.add_theme_color_override("font_color",Color("#63e6a0") if won else Color("#ff8794")); p.add_child(t)
 	var tx:=Label.new(); tx.text=("Поздравляем!\nВсе цели уровня %d выполнены.\n\nОчки: %d     Ходов осталось: %d"%[current_level+1,score,moves_left]) if won else ("Попробуй ещё раз!\nЦель не выполнена.\n\nОчки: %d"%score); tx.position=Vector2(55,105); tx.size=Vector2(500,105); tx.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; tx.add_theme_font_size_override("font_size",16); tx.add_theme_color_override("font_color",Color("#c5d1e8")); p.add_child(tx)
 	var primary:=Button.new(); primary.position=Vector2(65,255); primary.size=Vector2(230,52); primary.add_theme_font_size_override("font_size",13); primary.add_theme_stylebox_override("normal",_style(Color("#237b50") if won else Color("#334d78"),Color("#62dfa1") if won else Color("#6484b8"))); primary.text=("СЛЕДУЮЩИЙ УРОВЕНЬ →" if current_level<99 else "ВЕРНУТЬСЯ НА КАРТУ") if won else "ПОПРОБОВАТЬ СНОВА"; primary.pressed.connect(_modal_primary.bind(won)); p.add_child(primary)
 	var secondary:=Button.new(); secondary.position=Vector2(315,255); secondary.size=Vector2(230,52); secondary.text="ВЕРНУТЬСЯ В ЛОББИ"; secondary.add_theme_stylebox_override("normal",_style(Color("#182943"),Color("#466187"))); secondary.pressed.connect(_show_map); p.add_child(secondary); game_layer.add_child(modal)
+
 func _modal_primary(won:bool)->void:
 	if won and current_level<99: _start_level(current_level+1)
 	elif won: _show_map()
 	else: _start_level(current_level)
-func _restart_level()->void: _start_level(current_level)
+
+func _restart_level()->void:
+	_start_level(current_level)
 
 func _update_best()->void:
-	if score>best: best=score; var f:=FileAccess.open("user://best_score.txt",FileAccess.WRITE); if f: f.store_string(str(best))
+	if score>best:
+		best=score
+		var f:=FileAccess.open("user://best_score.txt",FileAccess.WRITE)
+		if f: f.store_string(str(best))
+
 func _update_labels()->void:
-	var d:Dictionary=LEVELS[current_level]; var type:int=int(d["type"]); level_label.text="УРОВЕНЬ\n%d"%(current_level+1); moves_label.text="ХОДЫ\n%d"%moves_left; score_label.text="ОЧКИ\n%d"%score; best_label.text="РЕКОРД\n%d"%best; combo_label.text="КОМБО\n%s"%("x%d"%combo if combo>0 else "—"); goal_label.text="ЦЕЛЬ: %d / %d очков   •   %d / %d %s"%[score,int(d["score"]),destroyed_counts[type],int(d["count"]),TYPE_NAMES[type]]
+	var d:Dictionary=LEVELS[current_level]
+	var type:int=int(d["type"])
+	level_label.text="УРОВЕНЬ\n%d"%(current_level+1)
+	moves_label.text="ХОДЫ\n%d"%moves_left
+	score_label.text="ОЧКИ\n%d"%score
+	best_label.text="РЕКОРД\n%d"%best
+	combo_label.text="КОМБО\n%s"%("x%d"%combo if combo>0 else "—")
+	goal_label.text="ЦЕЛЬ: %d / %d очков   •   %d / %d %s"%[score,int(d["score"]),destroyed_counts[type],int(d["count"]),TYPE_NAMES[type]]
+
 func _spawn_fx(p:Vector2,c:Color)->void:
-	for i in 14:
-		var d:=Polygon2D.new(); d.polygon=PackedVector2Array([Vector2(-3,-3),Vector2(3,-3),Vector2(3,3),Vector2(-3,3)]); d.color=c.lightened(.15); d.position=p; fx.add_child(d); var a:=TAU*float(i)/14.0; var t:=d.create_tween().set_parallel(true); t.tween_property(d,"position",p+Vector2(cos(a),sin(a))*rng.randf_range(30,58),.36); t.tween_property(d,"scale",Vector2.ZERO,.36); t.tween_property(d,"modulate:a",0,.36); t.chain().tween_callback(d.queue_free)
+	for i in range(14):
+		var d:=Polygon2D.new()
+		d.polygon=PackedVector2Array([Vector2(-3,-3),Vector2(3,-3),Vector2(3,3),Vector2(-3,3)])
+		d.color=c.lightened(.15)
+		d.position=p
+		fx.add_child(d)
+		var a:=TAU*float(i)/14.0
+		var t:=d.create_tween().set_parallel(true)
+		t.tween_property(d,"position",p+Vector2(cos(a),sin(a))*rng.randf_range(30,58),.36)
+		t.tween_property(d,"scale",Vector2.ZERO,.36)
+		t.tween_property(d,"modulate:a",0,.36)
+		t.chain().tween_callback(d.queue_free)
+
 func _popup(p:Vector2,n:int)->void:
-	var l:=Label.new(); l.text="+%d"%n; l.position=p-Vector2(18,15); l.add_theme_font_size_override("font_size",20); fx.add_child(l); var t:=l.create_tween(); t.tween_property(l,"position",l.position-Vector2(0,40),.45); t.parallel().tween_property(l,"modulate:a",0,.45); t.tween_callback(l.queue_free)
+	var l:=Label.new()
+	l.text="+%d"%n
+	l.position=p-Vector2(18,15)
+	l.add_theme_font_size_override("font_size",20)
+	fx.add_child(l)
+	var t:=l.create_tween()
+	t.tween_property(l,"position",l.position-Vector2(0,40),.45)
+	t.parallel().tween_property(l,"modulate:a",0,.45)
+	t.tween_callback(l.queue_free)
+
 func _build_sounds()->void:
 	for n in ["select","swap","match","combo","error"]:
-		var p:=AudioStreamPlayer.new(); p.stream=_tone(n); p.volume_db=-10; add_child(p); sounds[n]=p
+		var p:=AudioStreamPlayer.new()
+		p.stream=_tone(n)
+		p.volume_db=-10
+		add_child(p)
+		sounds[n]=p
+
 func _tone(k:String)->AudioStreamWAV:
-	var freq:float={"select":520.0,"swap":320.0,"match":680.0,"combo":900.0,"error":180.0}[k]; var dur:float={"select":.06,"swap":.09,"match":.14,"combo":.22,"error":.13}[k]; var rate:=22050; var count:=int(rate*dur); var data:=PackedByteArray(); data.resize(count*2)
-	for i in count:
-		var t:=float(i)/rate; var env:=1.0-float(i)/count; data.encode_s16(i*2,int(sin(TAU*freq*t)*env*.3*32767))
-	var s:=AudioStreamWAV.new(); s.format=AudioStreamWAV.FORMAT_16_BITS; s.mix_rate=rate; s.data=data; return s
+	var freq:float={"select":520.0,"swap":320.0,"match":680.0,"combo":900.0,"error":180.0}[k]
+	var dur:float={"select":.06,"swap":.09,"match":.14,"combo":.22,"error":.13}[k]
+	var rate:=22050
+	var count:=int(rate*dur)
+	var data:=PackedByteArray()
+	data.resize(count*2)
+	for i in range(count):
+		var t:=float(i)/rate
+		var env:=1.0-float(i)/count
+		data.encode_s16(i*2,int(sin(TAU*freq*t)*env*.3*32767))
+	var s:=AudioStreamWAV.new()
+	s.format=AudioStreamWAV.FORMAT_16_BITS
+	s.mix_rate=rate
+	s.data=data
+	return s
+
 func _play(n:String)->void:
-	if sounds.has(n): (sounds[n] as AudioStreamPlayer).play()
+	if sounds.has(n):
+		(sounds[n] as AudioStreamPlayer).play()
