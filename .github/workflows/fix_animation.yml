@@ -1,0 +1,38 @@
+name: Fix match-3 animation
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/fix_animation.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch stale tweens and reset visuals
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('main.gd')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('var t:=create_tween(); t.tween_interval((x+y)*.012); t.tween_property(g,"scale",Vector2.ONE,.2).set_trans(Tween.TRANS_BACK)', 'var t:=g.create_tween(); t.tween_interval((x+y)*.012); t.tween_property(g,"scale",Vector2.ONE,.2).set_trans(Tween.TRANS_BACK)')
+          s = s.replace('var t:=create_tween().set_parallel(true); t.set_trans(Tween.TRANS_BACK); t.tween_property(gems[a],"position",_cell_pos(a),.18); t.tween_property(gems[b],"position",_cell_pos(b),.18); await t.finished', 'var ga:Gem=gems[a]; var gb:Gem=gems[b]; var t:=ga.create_tween().set_parallel(true); t.set_trans(Tween.TRANS_BACK); t.tween_property(ga,"position",_cell_pos(a),.18); t.tween_property(gb,"position",_cell_pos(b),.18); await t.finished')
+          s = s.replace('var g:Gem=gems[p]; var t:=create_tween().set_parallel(true);', 'var g:Gem=gems[p]; var t:=g.create_tween().set_parallel(true);')
+          s = s.replace('var tw:=create_tween(); tw.tween_property(g,"position",_cell_pos(Vector2i(x,write_y)),dur)', 'var tw:=g.create_tween(); tw.tween_property(g,"position",_cell_pos(Vector2i(x,write_y)),dur)')
+          s = s.replace('var tw:=create_tween().set_parallel(true); tw.tween_property(g,"position",_cell_pos(p),dur)', 'var tw:=g.create_tween().set_parallel(true); tw.tween_property(g,"position",_cell_pos(p),dur)')
+          s = s.replace('var t:=create_tween().set_parallel(true); t.tween_property(d,"position",', 'var t:=d.create_tween().set_parallel(true); t.tween_property(d,"position",')
+          s = s.replace('var t:=create_tween(); t.tween_property(l,"position",', 'var t:=l.create_tween(); t.tween_property(l,"position",')
+          old = 'func _clear_visuals()->void:\n\tfor n in root.get_children(): n.queue_free()\n\tfor n in fx.get_children(): n.queue_free()\n\tgems.clear()'
+          new = 'func _clear_visuals()->void:\n\tfor n in root.get_children(): n.free()\n\tfor n in fx.get_children(): n.free()\n\tgems.clear()'
+          s = s.replace(old, new)
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add main.gd
+          git diff --cached --quiet || git commit -m 'Fix stale match-3 animations when starting level'
+          git push
