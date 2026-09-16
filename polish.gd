@@ -22,7 +22,16 @@ func _process(delta: float) -> void:
 	var game_layer = game.get("game_layer")
 	if not is_instance_valid(game_layer) or not game_layer.visible:
 		return
-	if bool(game.get("busy")) or shuffle_cooldown > 0.0:
+
+	# main.gd оставляет busy=true после успешного каскада.
+	# Снимаем блокировку только когда анимации фишек действительно закончились.
+	if bool(game.get("busy")):
+		if game.get("modal") == null and _board_animation_finished():
+			game.set("busy", false)
+		else:
+			return
+
+	if shuffle_cooldown > 0.0:
 		return
 	if int(game.get("moves_left")) <= 0:
 		return
@@ -32,6 +41,28 @@ func _process(delta: float) -> void:
 	var board = game.get("board")
 	if board is Array and not _has_legal_move(board):
 		_shuffle_board()
+
+func _board_animation_finished() -> bool:
+	var board = game.get("board")
+	var gems = game.get("gems")
+	if not board is Array or not gems is Dictionary:
+		return false
+	for y in range(8):
+		for x in range(8):
+			if board[y][x] < 0:
+				return false
+			var p := Vector2i(x, y)
+			if not gems.has(p):
+				return false
+			var gem = gems[p]
+			if not is_instance_valid(gem):
+				return false
+			var target: Vector2 = game.call("_cell_pos", p)
+			if gem.position.distance_to(target) > 1.0:
+				return false
+			if gem.scale.distance_to(Vector2.ONE) > 0.02:
+				return false
+	return true
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not event is InputEventKey:
