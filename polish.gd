@@ -7,6 +7,7 @@ extends Node
 var game: Node
 var shuffle_cooldown := 0.0
 var patched_menu: Control
+var last_level := -1
 
 func _ready() -> void:
 	game = get_parent()
@@ -16,6 +17,16 @@ func _process(delta: float) -> void:
 	if not is_instance_valid(game):
 		return
 	shuffle_cooldown = maxf(0.0, shuffle_cooldown - delta)
+	var current_level := int(game.get("current_level"))
+	if last_level == -1:
+		last_level = current_level
+	elif current_level != last_level:
+		# При переходе на следующий уровень старая модалка должна исчезнуть.
+		var old_modal = game.get("modal")
+		if is_instance_valid(old_modal):
+			old_modal.queue_free()
+			game.set("modal", null)
+		last_level = current_level
 	var menu = game.get("menu_layer")
 	if is_instance_valid(menu) and menu.visible and patched_menu != menu:
 		_patch_menu()
