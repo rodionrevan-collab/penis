@@ -6,7 +6,7 @@ extends Node
 
 var game: Node
 var shuffle_cooldown := 0.0
-var menu_patched := false
+var patched_menu: Control
 
 func _ready() -> void:
 	game = get_parent()
@@ -17,7 +17,7 @@ func _process(delta: float) -> void:
 		return
 	shuffle_cooldown = maxf(0.0, shuffle_cooldown - delta)
 	var menu = game.get("menu_layer")
-	if is_instance_valid(menu) and menu.visible and not menu_patched:
+	if is_instance_valid(menu) and menu.visible and patched_menu != menu:
 		_patch_menu()
 	var game_layer = game.get("game_layer")
 	if not is_instance_valid(game_layer) or not game_layer.visible:
@@ -72,7 +72,7 @@ func _patch_menu() -> void:
 	cards[1].position = Vector2(470, 220)
 	cards[2].position = Vector2(285, 520)
 	cards[3].visible = false
-	menu_patched = true
+	patched_menu = menu
 
 func _has_legal_move(board: Array) -> bool:
 	for y in range(8):
