@@ -1,4 +1,5 @@
 name: Godot validation
+
 on:
   push:
   pull_request:
@@ -26,4 +27,5 @@ jobs:
         run: ./godot --headless --path . --editor --quit
 
       - name: Run match-3 smoke test
-        run: ./godot --headless --path . --script tests/smoke_test.gd
+        shell: bash
+        run: timeout 30s ./godot --headless --path . --script tests/smoke_test.gd --quit-after 10
