@@ -58,7 +58,7 @@ func _initialize() -> void:
 	g.specials[Vector2i(3,3)] = 3
 	g.specials[Vector2i(3,4)] = 3
 	var bomb_combo:Array[Vector2i] = g._special_combo_cells(Vector2i(3,3),Vector2i(3,4))
-	assert(bomb_combo.size() == 20)
+	assert(bomb_combo.size() == 25)
 
 	# Радужная фишка очищает все фишки выбранного типа.
 	g.board = board
