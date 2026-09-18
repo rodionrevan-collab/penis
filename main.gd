@@ -32,6 +32,8 @@ var current_level := 0
 var moves_left := 0
 var destroyed_counts: Array = [0, 0, 0, 0, 0, 0]
 var specials: Dictionary = {} # 1 horizontal, 2 vertical, 3 bomb, 4 rainbow
+var blockers: Dictionary = {} # cell -> remaining hits
+var blocker_nodes: Dictionary = {}
 var unlocked_level := 0
 var completed: Array[bool] = []
 var rng := RandomNumberGenerator.new()
@@ -257,6 +259,7 @@ func _start_level(index:int)->void:
 	combo=0
 	destroyed_counts=[0,0,0,0,0,0]
 	specials.clear()
+	_setup_blockers(int(data.get("blockers",0)))
 	selected=Vector2i(-1,-1)
 	busy=true
 	if map_layer: map_layer.visible=false
@@ -312,6 +315,77 @@ func _make_gem(k:int, sp:int = 0)->Gem:
 	root.add_child(g)
 	return g
 
+func _setup_blockers(count:int)->void:
+	blockers.clear()
+	blocker_nodes.clear()
+	if count <= 0:
+		return
+	var candidates:Array[Vector2i]=[]
+	for y in range(1,SIZE-1):
+		for x in range(1,SIZE-1):
+			candidates.append(Vector2i(x,y))
+	candidates.shuffle()
+	for i in range(mini(count,candidates.size())):
+		var p:Vector2i=candidates[i]
+		var hits:=1 if current_level < 20 else (2 if current_level < 60 else 3)
+		blockers[p]=hits
+
+func _blocker_name()->String:
+	var tier:=int(LEVELS[current_level]["mechanic"])
+	return ["Фрукты","Лианы","Кокосы","Прилив","Тотемы","Обезьяны","Карты","Туман","Огненные камни","Финальный тотем"][tier]
+
+func _blocker_symbol(hits:int)->String:
+	var tier:=int(LEVELS[current_level]["mechanic"])
+	if tier==1: return "≋"
+	if tier==2: return "●" if hits>=2 else "◌"
+	if tier==3: return "~"
+	if tier==4: return "◆"
+	if tier==5: return "M"
+	if tier==6: return "▣"
+	if tier==7: return "?"
+	if tier==8: return "!"
+	if tier==9: return "☠"
+	return "X"
+
+func _create_blocker_visuals()->void:
+	for n in blocker_nodes.values():
+		if is_instance_valid(n): n.queue_free()
+	blocker_nodes.clear()
+	for p in blockers.keys():
+		var l:=Label.new()
+		l.text=_blocker_symbol(int(blockers[p]))
+		l.position=_cell_pos(p)-Vector2(24,25)
+		l.size=Vector2(48,48)
+		l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+		l.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+		l.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		l.add_theme_font_size_override("font_size",24)
+		l.add_theme_color_override("font_color",Color(1,1,1,.82))
+		game_layer.add_child(l)
+		blocker_nodes[p]=l
+
+func _damage_blockers(cleared:Array[Vector2i])->void:
+	if blockers.is_empty(): return
+	var damaged:Dictionary={}
+	for p in cleared:
+		for dy in range(-1,2):
+			for dx in range(-1,2):
+				var q:=Vector2i(p.x+dx,p.y+dy)
+				if blockers.has(q): damaged[q]=true
+	for p in damaged.keys():
+		blockers[p]=int(blockers[p])-1
+		if blockers[p] <= 0:
+			blockers.erase(p)
+			if blocker_nodes.has(p):
+				var node=blocker_nodes[p]
+				if is_instance_valid(node): node.queue_free()
+				blocker_nodes.erase(p)
+		else:
+			if blocker_nodes.has(p) and is_instance_valid(blocker_nodes[p]):
+				blocker_nodes[p].text=_blocker_symbol(int(blockers[p]))
+	if not blockers.is_empty() and status:
+		status.text="%s: осталось %d"%[_blocker_name(),blockers.size()]
+
 func _create_visuals()->void:
 	for y in range(SIZE):
 		for x in range(SIZE):
@@ -323,6 +397,7 @@ func _create_visuals()->void:
 			g.modulate=Color.WHITE
 			g.rotation=0.0
 			gems[p]=g
+	_create_blocker_visuals()
 
 func _input(event:InputEvent)->void:
 	if busy or not game_layer.visible:
@@ -479,6 +554,7 @@ func _destroy_matches(matches:Array[Vector2i])->void:
 			t.tween_property(g,"scale",Vector2.ZERO,.20).set_trans(Tween.TRANS_BACK)
 			t.tween_property(g,"rotation",rng.randf_range(-.5,.5),.20)
 			t.tween_property(g,"modulate:a",0,.16)
+	_damage_blockers(matches)
 	await get_tree().create_timer(.21).timeout
 	for p in matches:
 		board[p.y][p.x]=-1
@@ -744,7 +820,8 @@ func _check_level_state()->void:
 	var type:int=int(data["type"])
 	var score_done:bool=score>=int(data["score"])
 	var pieces_done:bool=destroyed_counts[type]>=int(data["count"])
-	if score_done and pieces_done:
+	var blockers_done:bool=blockers.is_empty()
+	if score_done and pieces_done and blockers_done:
 		_win()
 		return
 	if moves_left<=0:
@@ -797,7 +874,8 @@ func _update_labels()->void:
 	score_label.text="ОЧКИ\n%d"%score
 	best_label.text="РЕКОРД\n%d"%best
 	combo_label.text="КОМБО\n%s"%("x%d"%combo if combo>0 else "—")
-	goal_label.text="ЦЕЛЬ: %d / %d очков   •   %d / %d %s"%[score,int(d["score"]),destroyed_counts[type],int(d["count"]),TYPE_NAMES[type]]
+	var obstacle_text:=("" if blockers.is_empty() else "   •   %s: %d"%[_blocker_name(),blockers.size()])
+	goal_label.text="ЦЕЛЬ: %d / %d очков   •   %d / %d %s%s"%[score,int(d["score"]),destroyed_counts[type],int(d["count"]),TYPE_NAMES[type],obstacle_text]
 
 func _spawn_fx(p:Vector2,c:Color)->void:
 	for i in range(14):
