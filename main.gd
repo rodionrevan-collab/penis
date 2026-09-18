@@ -625,7 +625,7 @@ func _match_groups()->Array:
 	for y in range(SIZE):
 		var x:=0
 		while x<SIZE:
-			var k:=board[y][x]
+			var k:int=int(board[y][x])
 			var e:=x+1
 			while e<SIZE and board[y][e]==k: e+=1
 			if k>=0 and e-x>=3:
@@ -636,7 +636,7 @@ func _match_groups()->Array:
 	for x in range(SIZE):
 		var y:=0
 		while y<SIZE:
-			var k:=board[y][x]
+			var k:int=int(board[y][x])
 			var e:=y+1
 			while e<SIZE and board[e][x]==k: e+=1
 			if k>=0 and e-y>=3:
@@ -692,7 +692,7 @@ func _special_combo_cells(a:Vector2i,b:Vector2i)->Array[Vector2i]:
 		return result
 	if sa==4 or sb==4:
 		var normal_p:=b if sa==4 else a
-		var target:=board[normal_p.y][normal_p.x]
+		var target:int=int(board[normal_p.y][normal_p.x])
 		if target>=0 and target<TYPES:
 			for y in range(SIZE):
 				for x in range(SIZE):
@@ -733,7 +733,7 @@ func _special_effect_cells(a:Vector2i,b:Vector2i)->Array[Vector2i]:
 			for y in range(maxi(0,p.y-1),mini(SIZE,p.y+2)):
 				for x in range(maxi(0,p.x-1),mini(SIZE,p.x+2)): result.append(Vector2i(x,y))
 		elif sp==4:
-			var target:=board[b.y][b.x] if p==a else board[a.y][a.x]
+			var target:int=int(board[b.y][b.x] if p==a else board[a.y][a.x])
 			if target>=0 and target<TYPES:
 				for y in range(SIZE):
 					for x in range(SIZE):
