@@ -631,7 +631,6 @@ func _special_combo_cells(a:Vector2i,b:Vector2i)->Array[Vector2i]:
 		return result
 	if (sa==3 and (sb==1 or sb==2)) or (sb==3 and (sa==1 or sa==2)):
 		var line_p:=a if (sa==1 or sa==2) else b
-		var line_type:=sa if (sa==1 or sa==2) else sb
 		for y in range(maxi(0,line_p.y-1),mini(SIZE,line_p.y+2)):
 			for x in range(SIZE): result.append(Vector2i(x,y))
 		for x in range(maxi(0,line_p.x-1),mini(SIZE,line_p.x+2)):
