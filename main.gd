@@ -31,6 +31,7 @@ var combo := 0
 var current_level := 0
 var moves_left := 0
 var destroyed_counts: Array = [0, 0, 0, 0, 0, 0]
+var specials: Dictionary = {} # 1 horizontal, 2 vertical, 3 bomb, 4 rainbow
 var unlocked_level := 0
 var completed: Array[bool] = []
 var rng := RandomNumberGenerator.new()
@@ -56,10 +57,12 @@ class Gem extends Node2D:
 	var color := Color.WHITE
 	var symbol := "●"
 	var chosen := false
-	func setup(k: int, c: Color, s: String) -> void:
+	var special_type := 0
+	func setup(k: int, c: Color, s: String, sp: int = 0) -> void:
 		kind = k
 		color = c
 		symbol = s
+		special_type = sp
 		queue_redraw()
 	func select(v: bool) -> void:
 		chosen = v
@@ -99,6 +102,16 @@ class Gem extends Node2D:
 				draw_colored_polygon(PackedVector2Array([Vector2(0,-s),Vector2(s,s),Vector2(-s,s)]), color)
 		draw_circle(Vector2(-s*.32,-s*.34), s*.19, Color(1,1,1,.5))
 		draw_circle(Vector2(-s*.23,-s*.22), s*.08, Color.WHITE)
+		if special_type == 1:
+			draw_line(Vector2(-s*.72, 0), Vector2(s*.72, 0), Color.WHITE, 4.0)
+		elif special_type == 2:
+			draw_line(Vector2(0, -s*.72), Vector2(0, s*.72), Color.WHITE, 4.0)
+		elif special_type == 3:
+			draw_circle(Vector2.ZERO, s*.48, Color(1,1,1,.22))
+			draw_arc(Vector2.ZERO, s*.48, 0, TAU, 16, Color.WHITE, 3.0)
+		elif special_type == 4:
+			draw_circle(Vector2.ZERO, s*.38, Color.WHITE)
+			draw_arc(Vector2.ZERO, s*.62, 0, TAU, 18, Color.WHITE, 3.0)
 
 class BoardFrame extends Node2D:
 	func _draw() -> void:
@@ -243,6 +256,7 @@ func _start_level(index:int)->void:
 	score=0
 	combo=0
 	destroyed_counts=[0,0,0,0,0,0]
+	specials.clear()
 	selected=Vector2i(-1,-1)
 	busy=true
 	if map_layer: map_layer.visible=false
@@ -290,15 +304,20 @@ func _clear_visuals()->void:
 	for n in root.get_children(): n.free()
 	for n in fx.get_children(): n.free()
 	gems.clear()
+	specials.clear()
 func _cell_pos(p:Vector2i)->Vector2: return ORIGIN+Vector2(p.x*CELL+CELL/2,p.y*CELL+CELL/2)
-func _make_gem(k:int)->Gem:
-	var g:=Gem.new(); g.setup(k,COLORS[k],SYMBOLS[k]); root.add_child(g); return g
+func _make_gem(k:int, sp:int = 0)->Gem:
+	var g:=Gem.new()
+	g.setup(k,COLORS[k],SYMBOLS[k],sp)
+	root.add_child(g)
+	return g
 
 func _create_visuals()->void:
 	for y in range(SIZE):
 		for x in range(SIZE):
 			var p:=Vector2i(x,y)
-			var g:=_make_gem(board[y][x])
+			var sp:int=int(specials.get(p,0))
+			var g:=_make_gem(board[y][x],sp)
 			g.position=_cell_pos(p)
 			g.scale=Vector2.ONE
 			g.modulate=Color.WHITE
@@ -382,8 +401,9 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 	_swap_data(a,b)
 	_play("swap")
 	await _swap_anim(a,b)
+	var special_triggered := int(specials.get(a,0)) != 0 or int(specials.get(b,0)) != 0
 	var matches:Array[Vector2i]=_find_matches()
-	if matches.is_empty():
+	if matches.is_empty() and not special_triggered:
 		_swap_data(a,b)
 		await _swap_anim(a,b)
 		status.text="Нет комбинации — обмен отменён"
@@ -392,15 +412,25 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 		return
 	moves_left-=1
 	combo=0
-	while not matches.is_empty():
+	while true:
 		combo+=1
-		var gained:int=matches.size()*10*combo
+		var wave:Array[Vector2i]=matches.duplicate()
+		if special_triggered:
+			wave.append_array(_special_effect_cells(a,b))
+			special_triggered=false
+		wave=_unique_cells(wave)
+		if wave.is_empty():
+			break
+		_create_special_from_match(wave)
+		var gained:int=wave.size()*10*combo
 		score+=gained
 		_play("combo" if combo>1 else "match")
-		_popup(_cell_pos(matches[0]),gained)
-		await _destroy_matches(matches)
+		_popup(_cell_pos(wave[0]),gained)
+		await _destroy_matches(wave)
 		await _collapse_and_refill()
 		matches=_find_matches()
+		if matches.is_empty():
+			break
 	_update_best()
 	_update_labels()
 	_check_level_state()
@@ -411,6 +441,12 @@ func _swap_data(a:Vector2i,b:Vector2i)->void:
 	var temp=board[a.y][a.x]
 	board[a.y][a.x]=board[b.y][b.x]
 	board[b.y][b.x]=temp
+	var sp_a:=int(specials.get(a,0))
+	var sp_b:=int(specials.get(b,0))
+	specials.erase(a)
+	specials.erase(b)
+	if sp_a != 0: specials[b]=sp_a
+	if sp_b != 0: specials[a]=sp_b
 	var ga=gems[a]
 	gems[a]=gems[b]
 	gems[b]=ga
@@ -427,7 +463,8 @@ func _swap_anim(a:Vector2i,b:Vector2i)->void:
 func _destroy_matches(matches:Array[Vector2i])->void:
 	for p in matches:
 		var kind:int=board[p.y][p.x]
-		destroyed_counts[kind]+=1
+		if kind >= 0 and kind < destroyed_counts.size():
+			destroyed_counts[kind]+=1
 		_spawn_fx(_cell_pos(p),COLORS[kind])
 		if gems.has(p):
 			var g:Gem=gems[p]
@@ -438,6 +475,7 @@ func _destroy_matches(matches:Array[Vector2i])->void:
 	await get_tree().create_timer(.21).timeout
 	for p in matches:
 		board[p.y][p.x]=-1
+		specials.erase(p)
 		if gems.has(p):
 			var g:Gem=gems[p]
 			gems.erase(p)
@@ -451,7 +489,11 @@ func _collapse_and_refill()->void:
 			if board[read_y][x]<0: continue
 			if write_y!=read_y:
 				var kind:int=board[read_y][x]
+				var old_special:=int(specials.get(Vector2i(x,read_y),0))
 				board[write_y][x]=kind
+				if old_special != 0:
+					specials.erase(Vector2i(x,read_y))
+					specials[Vector2i(x,write_y)]=old_special
 				board[read_y][x]=-1
 				var old_p:=Vector2i(x,read_y)
 				var new_p:=Vector2i(x,write_y)
@@ -470,7 +512,9 @@ func _collapse_and_refill()->void:
 			var kind:=rng.randi_range(0,TYPES-1)
 			board[y][x]=kind
 			var p:=Vector2i(x,y)
-			var g:=_make_gem(kind)
+			var sp:=int(specials.get(p,0))
+			var g:=_make_gem(kind,sp)
+			specials.erase(p)
 			g.position=_cell_pos(p)-Vector2(0,CELL*(spawn+2))
 			g.scale=Vector2.ONE*.82
 			gems[p]=g
@@ -481,6 +525,98 @@ func _collapse_and_refill()->void:
 			tw.tween_property(g,"scale",Vector2.ONE,.18)
 			spawn+=1
 	if max_time>0: await get_tree().create_timer(max_time+.05).timeout
+
+func _unique_cells(cells:Array[Vector2i])->Array[Vector2i]:
+	var seen:Dictionary={}
+	var result:Array[Vector2i]=[]
+	for p in cells:
+		if _valid_cell(p) and not seen.has(p):
+			seen[p]=true
+			result.append(p)
+	return result
+
+func _match_groups()->Array:
+	var groups:Array=[]
+	for y in range(SIZE):
+		var x:=0
+		while x<SIZE:
+			var k:=board[y][x]
+			var e:=x+1
+			while e<SIZE and board[y][e]==k: e+=1
+			if k>=0 and e-x>=3:
+				var cells:Array[Vector2i]=[]
+				for xx in range(x,e): cells.append(Vector2i(xx,y))
+				groups.append({"cells":cells,"horizontal":true})
+			x=e
+	for x in range(SIZE):
+		var y:=0
+		while y<SIZE:
+			var k:=board[y][x]
+			var e:=y+1
+			while e<SIZE and board[e][x]==k: e+=1
+			if k>=0 and e-y>=3:
+				var cells:Array[Vector2i]=[]
+				for yy in range(y,e): cells.append(Vector2i(x,yy))
+				groups.append({"cells":cells,"horizontal":false})
+			y=e
+	return groups
+
+func _create_special_from_match(cells:Array[Vector2i])->void:
+	var groups:=_match_groups()
+	for group in groups:
+		var gc:Array=group["cells"]
+		var overlap:=0
+		for p in gc:
+			if cells.has(p): overlap+=1
+		if overlap < 3: continue
+		var chosen:Vector2i=gc[mini(2,gc.size()-1)]
+		var special_type:=0
+		if gc.size() >= 5:
+			special_type=4
+		elif gc.size() == 4:
+			special_type=1 if bool(group["horizontal"]) else 2
+		else:
+			for other in groups:
+				if other == group: continue
+				var oc:Array=other["cells"]
+				for p in gc:
+					if oc.has(p) and cells.has(p):
+						special_type=3
+						chosen=p
+						break
+				if special_type==3: break
+		if special_type != 0:
+			specials[chosen]=special_type
+			if gems.has(chosen):
+				var g:Gem=gems[chosen]
+				g.special_type=special_type
+				g.scale=Vector2.ONE
+				g.modulate.a=1.0
+				g.queue_redraw()
+			cells.erase(chosen)
+			return
+
+func _special_effect_cells(a:Vector2i,b:Vector2i)->Array[Vector2i]:
+	var result:Array[Vector2i]=[]
+	for p in [a,b]:
+		var sp:=int(specials.get(p,0))
+		if sp==1:
+			for x in range(SIZE): result.append(Vector2i(x,p.y))
+		elif sp==2:
+			for y in range(SIZE): result.append(Vector2i(p.x,y))
+		elif sp==3:
+			for y in range(maxi(0,p.y-1),mini(SIZE,p.y+2)):
+				for x in range(maxi(0,p.x-1),mini(SIZE,p.x+2)): result.append(Vector2i(x,y))
+		elif sp==4:
+			var target:=board[b.y][b.x] if p==a else board[a.y][a.x]
+			if target>=0 and target<TYPES:
+				for y in range(SIZE):
+					for x in range(SIZE):
+						if board[y][x]==target: result.append(Vector2i(x,y))
+			else:
+				for y in range(SIZE):
+					for x in range(SIZE): result.append(Vector2i(x,y))
+	return _unique_cells(result)
 
 func _find_matches()->Array[Vector2i]:
 	var found:Dictionary={}
