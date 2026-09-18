@@ -189,8 +189,7 @@ func _show_menu() -> void:
 	var sub:=Label.new(); sub.text="Выбери остров и отправляйся в путешествие"; sub.position=Vector2(73,90); sub.add_theme_font_size_override("font_size",16); sub.add_theme_color_override("font_color",Color("#91abc9")); menu_layer.add_child(sub)
 	_create_island_card(0,Vector2(100,220),true,"ЗАБЫТЫЕ ТРОПИКИ","Остров-обучение","Джунгли • пляж • древние тотемы • пираты")
 	_create_island_card(1,Vector2(470,220),false,"???","Следующий остров","Откроется в будущей главе")
-	_create_island_card(2,Vector2(100,520),false,"???","Следующий остров","Новая тема и новые механики")
-	_create_island_card(3,Vector2(470,520),false,"???","Следующий остров","Новые приключения впереди")
+	_create_island_card(2,Vector2(285,520),false,"???","Следующий остров","Новые приключения впереди")
 	var foot:=Label.new(); foot.text="Пока доступен только первый остров. Здесь будет развиваться вся система миров."; foot.position=Vector2(100,820); foot.size=Vector2(700,35); foot.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; foot.add_theme_font_size_override("font_size",13); foot.add_theme_color_override("font_color",Color("#7188aa")); menu_layer.add_child(foot)
 	busy=false
 
