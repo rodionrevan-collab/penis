@@ -277,12 +277,12 @@ func _build_game_layer()->void:
 	var bg:=ColorRect.new(); bg.size=Vector2(900,900); bg.color=Color("#080e1c"); game_layer.add_child(bg)
 	var head:=ColorRect.new(); head.size=Vector2(900,176); head.color=Color("#111b33"); game_layer.add_child(head)
 	var title:=Label.new(); title.text="ТРИ В РЯД"; title.position=Vector2(138,12); title.add_theme_font_size_override("font_size",36); title.add_theme_color_override("font_color",Color("#f2f5ff")); game_layer.add_child(title)
-	var hint:=Label.new(); hint.text="Выполни две цели уровня до окончания ходов"; hint.position=Vector2(140,53); hint.add_theme_font_size_override("font_size",13); hint.add_theme_color_override("font_color",Color("#8495bb")); game_layer.add_child(hint)
+	var hint_desc:=Label.new(); hint_desc.text="Выполни две цели уровня до окончания ходов"; hint_desc.position=Vector2(140,53); hint_desc.add_theme_font_size_override("font_size",13); hint_desc.add_theme_color_override("font_color",Color("#8495bb")); game_layer.add_child(hint_desc)
 	level_label=_stat("УРОВЕНЬ",Vector2(138,88)); moves_label=_stat("ХОДЫ",Vector2(255,88)); score_label=_stat("ОЧКИ",Vector2(372,88)); best_label=_stat("РЕКОРД",Vector2(489,88)); combo_label=_stat("КОМБО",Vector2(606,88))
 	goal_label=Label.new(); goal_label.position=Vector2(138,138); goal_label.size=Vector2(620,28); goal_label.add_theme_font_size_override("font_size",13); goal_label.add_theme_color_override("font_color",Color("#dce5ff")); game_layer.add_child(goal_label)
 	var restart:=Button.new(); restart.text="↻"; restart.position=Vector2(780,24); restart.size=Vector2(48,42); restart.add_theme_font_size_override("font_size",20); restart.add_theme_stylebox_override("normal",_style(Color("#1a2a4b"),Color("#3b5787"))); restart.pressed.connect(_restart_level); game_layer.add_child(restart)
 	var mapb:=Button.new(); mapb.text="КАРТА"; mapb.position=Vector2(670,86); mapb.size=Vector2(98,34); mapb.add_theme_font_size_override("font_size",12); mapb.add_theme_stylebox_override("normal",_style(Color("#16243f"),Color("#30486f"))); mapb.pressed.connect(_show_map); game_layer.add_child(mapb)
-	var hint:=Button.new(); hint.text="ПОДСКАЗКА"; hint.position=Vector2(670,126); hint.size=Vector2(98,34); hint.add_theme_font_size_override("font_size",10); hint.add_theme_stylebox_override("normal",_style(Color("#18324b"),Color("#3f7292"))); hint.pressed.connect(_show_hint); game_layer.add_child(hint)
+	var hint_button:=Button.new(); hint_button.text="ПОДСКАЗКА"; hint_button.position=Vector2(670,126); hint_button.size=Vector2(98,34); hint_button.add_theme_font_size_override("font_size",10); hint_button.add_theme_stylebox_override("normal",_style(Color("#18324b"),Color("#3f7292"))); hint_button.pressed.connect(_show_hint); game_layer.add_child(hint_button)
 	var frame:=BoardFrame.new(); frame.position=ORIGIN+Vector2(312,312); game_layer.add_child(frame)
 	root=Node2D.new(); game_layer.add_child(root); fx=Node2D.new(); game_layer.add_child(fx)
 	status=Label.new(); status.position=Vector2(138,832); status.size=Vector2(624,34); status.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; status.add_theme_font_size_override("font_size",14); status.add_theme_color_override("font_color",Color("#9baad0")); game_layer.add_child(status)
@@ -829,7 +829,7 @@ func _check_level_state()->void:
 	if moves_left<=0:
 		_lose()
 		return
-	status.text="Продолжайте! %s"%MECHANICS[int(data["mechanic")]]
+	status.text="Продолжайте! %s"%MECHANICS[int(data["mechanic"])]
 
 func _win()->void:
 	busy=true
