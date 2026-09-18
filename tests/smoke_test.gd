@@ -79,5 +79,25 @@ func _initialize() -> void:
 	g._damage_blockers([Vector2i(4,2), Vector2i(2,4)])
 	assert(g.blockers.is_empty())
 
+
+	# Поле без обычных ходов, но со специальной фишкой всё равно считается playable.
+	var polish = load("res://polish.gd").new()
+	polish.game = g
+	var dead_board:Array = [
+		[0,1,2,0,1,2,0,1],
+		[1,2,0,1,2,0,1,2],
+		[2,0,1,2,0,1,2,0],
+		[0,1,2,0,1,2,0,1],
+		[1,2,0,1,2,0,1,2],
+		[2,0,1,2,0,1,2,0],
+		[0,1,2,0,1,2,0,1],
+		[1,2,0,1,2,0,1,2]
+	]
+	g.board = dead_board
+	g.specials.clear()
+	assert(polish._has_legal_move(dead_board) == false)
+	g.specials[Vector2i(3,3)] = 1
+	assert(polish._has_legal_move(dead_board) == true)
+
 	print("SMOKE TEST PASSED: matches + special gems")
 	quit()
