@@ -258,15 +258,15 @@ func _start_level(index:int)->void:
 	score=0
 	combo=0
 	destroyed_counts=[0,0,0,0,0,0]
-	specials.clear()
-	_setup_blockers(int(data.get("blockers",0)))
 	selected=Vector2i(-1,-1)
 	busy=true
 	if map_layer: map_layer.visible=false
 	if menu_layer: menu_layer.visible=false
 	game_layer.visible=true
-	_generate_board()
+	# Сначала удаляем старые визуальные блокираторы, затем создаём состояние нового уровня.
 	_clear_visuals()
+	_generate_board()
+	_setup_blockers(int(data.get("blockers",0)))
 	_create_visuals()
 	_update_labels()
 	status.text="Уровень %d • %s"%[index+1,MECHANICS[int(data["mechanic"])]]
@@ -306,6 +306,9 @@ func _generate_board()->void:
 func _clear_visuals()->void:
 	for n in root.get_children(): n.free()
 	for n in fx.get_children(): n.free()
+	for n in blocker_nodes.values():
+		if is_instance_valid(n): n.free()
+	blocker_nodes.clear()
 	gems.clear()
 	specials.clear()
 func _cell_pos(p:Vector2i)->Vector2: return ORIGIN+Vector2(p.x*CELL+CELL/2,p.y*CELL+CELL/2)
@@ -317,7 +320,6 @@ func _make_gem(k:int, sp:int = 0)->Gem:
 
 func _setup_blockers(count:int)->void:
 	blockers.clear()
-	blocker_nodes.clear()
 	if count <= 0:
 		return
 	var candidates:Array[Vector2i]=[]
