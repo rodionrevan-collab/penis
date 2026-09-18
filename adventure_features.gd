@@ -49,7 +49,7 @@ func _process(delta: float) -> void:
 		banner.modulate.a = move_toward(banner.modulate.a, 0.0, delta * 2.0)
 
 func _build_hud() -> void:
-	var layer := game.get("game_layer")
+	var layer: Control = game.get("game_layer") as Control
 	if not is_instance_valid(layer):
 		return
 	banner = Label.new()
