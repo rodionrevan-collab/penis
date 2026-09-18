@@ -117,12 +117,20 @@ func _patch_menu() -> void:
 	patched_menu = menu
 
 func _has_legal_move(board: Array) -> bool:
+	# Любая соседняя специальная фишка уже является допустимым ходом:
+	# её можно передвинуть для активации даже без обычной тройки.
+	var specials = game.get("specials")
 	for y in range(8):
 		for x in range(8):
-			if x + 1 < 8 and _swap_creates_match(board, x, y, x + 1, y):
-				return true
-			if y + 1 < 8 and _swap_creates_match(board, x, y, x, y + 1):
-				return true
+			var a := Vector2i(x, y)
+			if x + 1 < 8:
+				var b := Vector2i(x + 1, y)
+				if (specials is Dictionary and (specials.has(a) or specials.has(b))) or _swap_creates_match(board, x, y, x + 1, y):
+					return true
+			if y + 1 < 8:
+				var b := Vector2i(x, y + 1)
+				if (specials is Dictionary and (specials.has(a) or specials.has(b))) or _swap_creates_match(board, x, y, x, y + 1):
+					return true
 	return false
 
 func _swap_creates_match(board: Array, x1: int, y1: int, x2: int, y2: int) -> bool:
