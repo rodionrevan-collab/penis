@@ -401,7 +401,10 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 	_swap_data(a,b)
 	_play("swap")
 	await _swap_anim(a,b)
-	var special_triggered := int(specials.get(a,0)) != 0 or int(specials.get(b,0)) != 0
+	var special_a := int(specials.get(a,0))
+	var special_b := int(specials.get(b,0))
+	var special_triggered := special_a != 0 or special_b != 0
+	var special_combo := special_a != 0 and special_b != 0
 	var matches:Array[Vector2i]=_find_matches()
 	if matches.is_empty() and not special_triggered:
 		_swap_data(a,b)
@@ -415,7 +418,11 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 	while true:
 		combo+=1
 		var wave:Array[Vector2i]=matches.duplicate()
-		if special_triggered:
+		if special_combo:
+			wave.append_array(_special_combo_cells(a,b))
+			special_combo=false
+			special_triggered=false
+		elif special_triggered:
 			wave.append_array(_special_effect_cells(a,b))
 			special_triggered=false
 		wave=_unique_cells(wave)
@@ -595,6 +602,47 @@ func _create_special_from_match(cells:Array[Vector2i])->void:
 				g.queue_redraw()
 			cells.erase(chosen)
 			return
+
+func _special_combo_cells(a:Vector2i,b:Vector2i)->Array[Vector2i]:
+	var result:Array[Vector2i]=[]
+	var sa:=int(specials.get(a,0))
+	var sb:=int(specials.get(b,0))
+	if sa==4 and sb==4:
+		for y in range(SIZE):
+			for x in range(SIZE):
+				result.append(Vector2i(x,y))
+		return result
+	if sa==4 or sb==4:
+		var normal_p:=b if sa==4 else a
+		var target:=board[normal_p.y][normal_p.x]
+		if target>=0 and target<TYPES:
+			for y in range(SIZE):
+				for x in range(SIZE):
+					if board[y][x]==target:
+						result.append(Vector2i(x,y))
+			return result
+		for y in range(SIZE):
+			for x in range(SIZE):
+				result.append(Vector2i(x,y))
+		return result
+	if (sa==1 or sa==2) and (sb==1 or sb==2):
+		for x in range(SIZE): result.append(Vector2i(x,a.y))
+		for y in range(SIZE): result.append(Vector2i(a.x,y))
+		return result
+	if (sa==3 and (sb==1 or sb==2)) or (sb==3 and (sa==1 or sa==2)):
+		var line_p:=a if (sa==1 or sa==2) else b
+		var line_type:=sa if (sa==1 or sa==2) else sb
+		for y in range(maxi(0,line_p.y-1),mini(SIZE,line_p.y+2)):
+			for x in range(SIZE): result.append(Vector2i(x,y))
+		for x in range(maxi(0,line_p.x-1),mini(SIZE,line_p.x+2)):
+			for y in range(SIZE): result.append(Vector2i(x,y))
+		return result
+	if sa==3 and sb==3:
+		for y in range(maxi(0,a.y-2),mini(SIZE,a.y+3)):
+			for x in range(maxi(0,a.x-2),mini(SIZE,a.x+3)):
+				result.append(Vector2i(x,y))
+		return result
+	return _special_effect_cells(a,b)
 
 func _special_effect_cells(a:Vector2i,b:Vector2i)->Array[Vector2i]:
 	var result:Array[Vector2i]=[]
