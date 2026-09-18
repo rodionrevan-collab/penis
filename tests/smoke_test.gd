@@ -72,8 +72,11 @@ func _initialize() -> void:
 	g.current_level=10
 	g.blockers.clear()
 	g.blocker_nodes.clear()
-	g.blockers[Vector2i(3,3)] = 1
+	g.blockers[Vector2i(3,3)] = 2
 	g._damage_blockers([Vector2i(3,2)])
+	assert(g.blockers.size() == 1)
+	assert(int(g.blockers[Vector2i(3,3)]) == 1)
+	g._damage_blockers([Vector2i(4,2), Vector2i(2,4)])
 	assert(g.blockers.is_empty())
 
 	print("SMOKE TEST PASSED: matches + special gems")
