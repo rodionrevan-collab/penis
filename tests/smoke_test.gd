@@ -67,5 +67,14 @@ func _initialize() -> void:
 	var rainbow_cells:Array[Vector2i] = g._special_effect_cells(Vector2i(3,3),Vector2i(0,0))
 	assert(rainbow_cells.size() > 1)
 
+	# Блокиратор требует попадания рядом и снимается за нужное число ударов.
+	g._build_levels()
+	g.current_level=10
+	g.blockers.clear()
+	g.blocker_nodes.clear()
+	g.blockers[Vector2i(3,3)] = 1
+	g._damage_blockers([Vector2i(3,2)])
+	assert(g.blockers.is_empty())
+
 	print("SMOKE TEST PASSED: matches + special gems")
 	quit()
