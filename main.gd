@@ -48,6 +48,8 @@ var moves_label: Label
 var goal_label: Label
 var status: Label
 var sounds: Dictionary = {}
+var touch_start := Vector2.ZERO
+var touch_active := false
 
 class Gem extends Node2D:
 	var kind := 0
@@ -264,6 +266,7 @@ func _build_game_layer()->void:
 	goal_label=Label.new(); goal_label.position=Vector2(138,138); goal_label.size=Vector2(620,28); goal_label.add_theme_font_size_override("font_size",13); goal_label.add_theme_color_override("font_color",Color("#dce5ff")); game_layer.add_child(goal_label)
 	var restart:=Button.new(); restart.text="↻"; restart.position=Vector2(780,24); restart.size=Vector2(48,42); restart.add_theme_font_size_override("font_size",20); restart.add_theme_stylebox_override("normal",_style(Color("#1a2a4b"),Color("#3b5787"))); restart.pressed.connect(_restart_level); game_layer.add_child(restart)
 	var mapb:=Button.new(); mapb.text="КАРТА"; mapb.position=Vector2(670,86); mapb.size=Vector2(98,34); mapb.add_theme_font_size_override("font_size",12); mapb.add_theme_stylebox_override("normal",_style(Color("#16243f"),Color("#30486f"))); mapb.pressed.connect(_show_map); game_layer.add_child(mapb)
+	var hint:=Button.new(); hint.text="ПОДСКАЗКА"; hint.position=Vector2(670,126); hint.size=Vector2(98,34); hint.add_theme_font_size_override("font_size",10); hint.add_theme_stylebox_override("normal",_style(Color("#18324b"),Color("#3f7292"))); hint.pressed.connect(_show_hint); game_layer.add_child(hint)
 	var frame:=BoardFrame.new(); frame.position=ORIGIN+Vector2(312,312); game_layer.add_child(frame)
 	root=Node2D.new(); game_layer.add_child(root); fx=Node2D.new(); game_layer.add_child(fx)
 	status=Label.new(); status.position=Vector2(138,832); status.size=Vector2(624,34); status.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; status.add_theme_font_size_override("font_size",14); status.add_theme_color_override("font_color",Color("#9baad0")); game_layer.add_child(status)
@@ -304,12 +307,54 @@ func _create_visuals()->void:
 			gems[p]=g
 
 func _input(event:InputEvent)->void:
-	if busy or not game_layer.visible or not event is InputEventMouseButton: return
-	var m:=event as InputEventMouseButton
-	if not m.pressed or m.button_index!=MOUSE_BUTTON_LEFT: return
-	var local:=m.position-ORIGIN
-	var p:=Vector2i(floor(local.x/CELL),floor(local.y/CELL))
-	if p.x>=0 and p.y>=0 and p.x<SIZE and p.y<SIZE: _click(p)
+	if busy or not game_layer.visible:
+		return
+	if event is InputEventScreenTouch:
+		var touch:=event as InputEventScreenTouch
+		if touch.pressed:
+			touch_start=touch.position
+			touch_active=true
+		else:
+			if not touch_active: return
+			touch_active=false
+			var delta:=touch.position-touch_start
+			if delta.length()>24.0:
+				var from:=_board_cell_from_position(touch_start)
+				var dir:=Vector2i.ZERO
+				if abs(delta.x)>abs(delta.y): dir=Vector2i(1 if delta.x>0 else -1,0)
+				else: dir=Vector2i(0,1 if delta.y>0 else -1)
+				var to:=from+dir
+				if _valid_cell(from) and _valid_cell(to):
+					_swipe_move(from,to)
+			elif _valid_cell(_board_cell_from_position(touch.position)):
+				_click(_board_cell_from_position(touch.position))
+		return
+	if event is InputEventMouseButton:
+		var m:=event as InputEventMouseButton
+		if not m.pressed or m.button_index!=MOUSE_BUTTON_LEFT: return
+		var p:=_board_cell_from_position(m.position)
+		if _valid_cell(p): _click(p)
+
+func _board_cell_from_position(pos:Vector2)->Vector2i:
+	var local:=pos-ORIGIN
+	return Vector2i(floor(local.x/CELL),floor(local.y/CELL))
+
+func _valid_cell(p:Vector2i)->bool:
+	return p.x>=0 and p.y>=0 and p.x<SIZE and p.y<SIZE
+
+func _swipe_move(a:Vector2i,b:Vector2i)->void:
+	if selected.x>=0:
+		if selected!=a:
+			(gems[selected] as Gem).select(false)
+			selected=Vector2i(-1,-1)
+		_click(a)
+	if selected==a:
+		(gems[a] as Gem).select(false)
+		selected=Vector2i(-1,-1)
+		_resolve(a,b)
+	else:
+		_click(a)
+
 
 func _click(p:Vector2i)->void:
 	if moves_left<=0: return
@@ -461,6 +506,56 @@ func _find_matches()->Array[Vector2i]:
 	var result:Array[Vector2i]=[]
 	for p in found.keys(): result.append(p)
 	return result
+
+func _show_hint()->void:
+	if busy or moves_left<=0: return
+	var move:=_find_hint_move()
+	if move.is_empty():
+		status.text="Ходов нет — поле будет перемешано"
+		return
+	var a:Vector2i=move[0]
+	var b:Vector2i=move[1]
+	(gems[a] as Gem).select(true)
+	(gems[b] as Gem).select(true)
+	status.text="Подсказка: поменяйте соседние фишки"
+	_play("select")
+	await get_tree().create_timer(0.65).timeout
+	if is_instance_valid(gems.get(a)) and selected.x<0: (gems[a] as Gem).select(false)
+	if is_instance_valid(gems.get(b)) and selected.x<0: (gems[b] as Gem).select(false)
+
+func _find_hint_move()->Array:
+	for y in range(SIZE):
+		for x in range(SIZE):
+			if x+1<SIZE and _swap_creates_match(board,x,y,x+1,y): return [Vector2i(x,y),Vector2i(x+1,y)]
+			if y+1<SIZE and _swap_creates_match(board,x,y,x,y+1): return [Vector2i(x,y),Vector2i(x,y+1)]
+	return []
+
+func _swap_creates_match(b:Array,x1:int,y1:int,x2:int,y2:int)->bool:
+	var a=b[y1][x1]
+	var c=b[y2][x2]
+	if a==c: return false
+	b[y1][x1]=c
+	b[y2][x2]=a
+	var ok:=_cell_has_match(b,x1,y1) or _cell_has_match(b,x2,y2)
+	b[y1][x1]=a
+	b[y2][x2]=c
+	return ok
+
+func _cell_has_match(b:Array,x:int,y:int)->bool:
+	var k=b[y][x]
+	if k<0: return false
+	var n:=1
+	var i:=x-1
+	while i>=0 and b[y][i]==k: n+=1; i-=1
+	i=x+1
+	while i<SIZE and b[y][i]==k: n+=1; i+=1
+	if n>=3: return true
+	n=1
+	i=y-1
+	while i>=0 and b[i][x]==k: n+=1; i-=1
+	i=y+1
+	while i<SIZE and b[i][x]==k: n+=1; i+=1
+	return n>=3
 
 func _check_level_state()->void:
 	var data:Dictionary=LEVELS[current_level]
