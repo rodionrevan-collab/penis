@@ -45,6 +45,21 @@ func _initialize() -> void:
 	var bomb_cells:Array[Vector2i] = g._special_effect_cells(Vector2i(3,3),Vector2i(3,4))
 	assert(bomb_cells.size() == 9)
 
+	# Комбинация линия + линия очищает крестом.
+	g.board = board
+	g.specials.clear()
+	g.specials[Vector2i(2,2)] = 1
+	g.specials[Vector2i(2,3)] = 2
+	var line_combo:Array[Vector2i] = g._special_combo_cells(Vector2i(2,2),Vector2i(2,3))
+	assert(line_combo.size() == 15)
+
+	# Комбинация бомба + бомба даёт область 5x5.
+	g.specials.clear()
+	g.specials[Vector2i(3,3)] = 3
+	g.specials[Vector2i(3,4)] = 3
+	var bomb_combo:Array[Vector2i] = g._special_combo_cells(Vector2i(3,3),Vector2i(3,4))
+	assert(bomb_combo.size() == 20)
+
 	# Радужная фишка очищает все фишки выбранного типа.
 	g.board = board
 	g.specials.clear()
