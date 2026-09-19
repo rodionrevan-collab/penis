@@ -223,15 +223,164 @@ func _show_menu() -> void:
 	menu_layer=Control.new()
 	menu_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(menu_layer)
-	var bg:=ColorRect.new(); bg.size=Vector2(900,900); bg.color=Color("#071525"); menu_layer.add_child(bg)
-	var sky:=ColorRect.new(); sky.size=Vector2(900,170); sky.color=Color("#103553"); menu_layer.add_child(sky)
-	var title:=Label.new(); title.text="МИРЫ"; title.position=Vector2(70,35); title.add_theme_font_size_override("font_size",42); title.add_theme_color_override("font_color",Color("#f4f7ff")); menu_layer.add_child(title)
-	var sub:=Label.new(); sub.text="Выбери остров и отправляйся в путешествие"; sub.position=Vector2(73,90); sub.add_theme_font_size_override("font_size",16); sub.add_theme_color_override("font_color",Color("#91abc9")); menu_layer.add_child(sub)
-	_create_island_card(0,Vector2(100,220),true,"ЗАБЫТЫЕ ТРОПИКИ","Остров-обучение","Джунгли • пляж • древние тотемы • пираты")
-	_create_island_card(1,Vector2(470,220),false,"???","Следующий остров","Откроется в будущей главе")
-	_create_island_card(2,Vector2(285,520),false,"???","Следующий остров","Новые приключения впереди")
-	var foot:=Label.new(); foot.text="Пока доступен только первый остров. Здесь будет развиваться вся система миров."; foot.position=Vector2(100,820); foot.size=Vector2(700,35); foot.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; foot.add_theme_font_size_override("font_size",13); foot.add_theme_color_override("font_color",Color("#7188aa")); menu_layer.add_child(foot)
+
+	var bg:=ColorRect.new()
+	bg.size=Vector2(900,900)
+	bg.color=Color("#061321")
+	menu_layer.add_child(bg)
+
+	var header:=ColorRect.new()
+	header.size=Vector2(900,145)
+	header.color=Color("#102f48")
+	menu_layer.add_child(header)
+
+	var title:=Label.new()
+	title.text="ТРИ В РЯД"
+	title.position=Vector2(58,25)
+	title.add_theme_font_size_override("font_size",40)
+	title.add_theme_color_override("font_color",Color("#f5f8ff"))
+	menu_layer.add_child(title)
+
+	var sub:=Label.new()
+	sub.text="ЗАБЫТЫЕ ТРОПИКИ"
+	sub.position=Vector2(61,76)
+	sub.add_theme_font_size_override("font_size",15)
+	sub.add_theme_color_override("font_color",Color("#71d7ad"))
+	menu_layer.add_child(sub)
+
+	var progress:=Label.new()
+	var completed_count:=0
+	for done in completed:
+		if done: completed_count+=1
+	progress.text="ПРОГРЕСС\n%d / 100 уровней"%completed_count
+	progress.position=Vector2(690,31)
+	progress.size=Vector2(145,70)
+	progress.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT
+	progress.add_theme_font_size_override("font_size",13)
+	progress.add_theme_color_override("font_color",Color("#b9cce1"))
+	menu_layer.add_child(progress)
+
+	var hero:=Panel.new()
+	hero.position=Vector2(55,175)
+	hero.size=Vector2(790,245)
+	hero.add_theme_stylebox_override("panel",_style(Color("#0d2236"),Color("#315c79"),24))
+	menu_layer.add_child(hero)
+
+	var hero_title:=Label.new()
+	hero_title.text="ОТПРАВЛЯЙСЯ В ПУТЕШЕСТВИЕ"
+	hero_title.position=Vector2(32,28)
+	hero_title.add_theme_font_size_override("font_size",27)
+	hero_title.add_theme_color_override("font_color",Color("#f3f7ff"))
+	hero.add_child(hero_title)
+
+	var hero_text:=Label.new()
+	hero_text.text="Собирай комбинации, открывай новые механики\nи проходи остров за островом."
+	hero_text.position=Vector2(34,72)
+	hero_text.size=Vector2(430,65)
+	hero_text.add_theme_font_size_override("font_size",14)
+	hero_text.add_theme_color_override("font_color",Color("#8faac2"))
+	hero.add_child(hero_text)
+
+	var continue_btn:=Button.new()
+	continue_btn.text="ПРОДОЛЖИТЬ • УРОВЕНЬ %d"%(unlocked_level+1)
+	continue_btn.position=Vector2(32,157)
+	continue_btn.size=Vector2(300,50)
+	continue_btn.add_theme_font_size_override("font_size",13)
+	continue_btn.add_theme_stylebox_override("normal",_style(Color("#21835b"),Color("#62dfa1"),14))
+	continue_btn.pressed.connect(_show_map)
+	hero.add_child(continue_btn)
+
+	var island:=Panel.new()
+	island.position=Vector2(520,25)
+	island.size=Vector2(235,195)
+	island.add_theme_stylebox_override("panel",_style(Color("#102b3e"),Color("#3a7890"),20))
+	hero.add_child(island)
+
+	var island_icon:=Label.new()
+	island_icon.text="✦"
+	island_icon.position=Vector2(86,15)
+	island_icon.add_theme_font_size_override("font_size",55)
+	island_icon.add_theme_color_override("font_color",Color("#55d7a0"))
+	island.add_child(island_icon)
+
+	var island_title:=Label.new()
+	island_title.text="ЗАБЫТЫЕ ТРОПИКИ"
+	island_title.position=Vector2(15,78)
+	island_title.size=Vector2(205,28)
+	island_title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	island_title.add_theme_font_size_override("font_size",16)
+	island_title.add_theme_color_override("font_color",Color("#f4f7ff"))
+	island.add_child(island_title)
+
+	var island_desc:=Label.new()
+	island_desc.text="Остров 1 • 100 уровней"
+	island_desc.position=Vector2(15,111)
+	island_desc.size=Vector2(205,25)
+	island_desc.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	island_desc.add_theme_font_size_override("font_size",12)
+	island_desc.add_theme_color_override("font_color",Color("#82a8bf"))
+	island.add_child(island_desc)
+
+	var road_title:=Label.new()
+	road_title.text="ПУТЕШЕСТВИЕ ПО МИРАМ"
+	road_title.position=Vector2(60,455)
+	road_title.add_theme_font_size_override("font_size",20)
+	road_title.add_theme_color_override("font_color",Color("#e7eff8"))
+	menu_layer.add_child(road_title)
+
+	var road_sub:=Label.new()
+	road_sub.text="Каждый мир открывается дальше по дороге приключений"
+	road_sub.position=Vector2(60,488)
+	road_sub.add_theme_font_size_override("font_size",12)
+	road_sub.add_theme_color_override("font_color",Color("#718ca4"))
+	menu_layer.add_child(road_sub)
+
+	var road:=Line2D.new()
+	road.width=24
+	road.default_color=Color("#214b5b")
+	road.points=PackedVector2Array([Vector2(150,615),Vector2(360,550),Vector2(585,625),Vector2(770,550)])
+	menu_layer.add_child(road)
+	var road_inner:=Line2D.new()
+	road_inner.width=5
+	road_inner.default_color=Color("#4f8790")
+	road_inner.points=road.points
+	menu_layer.add_child(road_inner)
+
+	_create_world_menu_node(0,Vector2(150,615),"1","ЗАБЫТЫЕ\nТРОПИКИ",true)
+	_create_world_menu_node(1,Vector2(470,590),"2","???",false)
+	_create_world_menu_node(2,Vector2(770,550),"3","???",false)
+
+	var foot:=Label.new()
+	foot.text="100 уровней • специальные фишки • препятствия • новые механики каждые 10 уровней"
+	foot.position=Vector2(70,805)
+	foot.size=Vector2(760,30)
+	foot.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	foot.add_theme_font_size_override("font_size",11)
+	foot.add_theme_color_override("font_color",Color("#617b92"))
+	menu_layer.add_child(foot)
 	busy=false
+
+func _create_world_menu_node(index:int,pos:Vector2,number:String,title_text:String,open:bool)->void:
+	var b:=Button.new()
+	b.position=pos-Vector2(48,48)
+	b.size=Vector2(96,96)
+	b.text=number
+	b.add_theme_font_size_override("font_size",24)
+	b.add_theme_color_override("font_color",Color.WHITE if open else Color("#6d7c8d"))
+	b.add_theme_stylebox_override("normal",_style(Color("#26845c") if open else Color("#182535"),Color("#71e1aa") if open else Color("#35495c"),48))
+	b.add_theme_stylebox_override("hover",_style(Color("#2e9c6d") if open else Color("#1c2b3e"),Color.WHITE if open else Color("#42566d"),48))
+	b.disabled=not open
+	if open:
+		b.pressed.connect(_show_map)
+	menu_layer.add_child(b)
+	var l:=Label.new()
+	l.text=title_text
+	l.position=pos+Vector2(-75,57)
+	l.size=Vector2(150,42)
+	l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size",11)
+	l.add_theme_color_override("font_color",Color("#b8d3df") if open else Color("#5f7184"))
+	menu_layer.add_child(l)
 
 func _create_island_card(index:int,pos:Vector2,open:bool,title_text:String,subtitle:String,desc:String)->void:
 	var panel:=Panel.new(); panel.position=pos; panel.size=Vector2(330,250); panel.add_theme_stylebox_override("panel",_style(Color("#11243b") if open else Color("#0d1828"),Color("#3a6a92") if open else Color("#26374e"),20)); menu_layer.add_child(panel)
