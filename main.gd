@@ -76,6 +76,40 @@ class Gem extends Node2D:
 		draw_circle(Vector2(2, 4), s + 4.0, Color(0, 0, 0, 0.28))
 		if chosen:
 			draw_circle(Vector2.ZERO, s + 9.0, Color(color.r, color.g, color.b, 0.20))
+		if special_type != 0:
+			if special_type == 1:
+				draw_circle(Vector2(-s*.62,0),s*.38,Color("#ffd45a"))
+				draw_circle(Vector2(s*.62,0),s*.38,Color("#ffd45a"))
+				draw_rect(Rect2(-s*.62,-s*.38,s*1.24,s*.76),Color("#ffd45a"))
+				draw_line(Vector2(-s*.55,0),Vector2(s*.55,0),Color.WHITE,5.0)
+				draw_line(Vector2(-s*.40,-s*.16),Vector2(-s*.18,0),Color.WHITE,3.0)
+				draw_line(Vector2(-s*.40,s*.16),Vector2(-s*.18,0),Color.WHITE,3.0)
+				draw_line(Vector2(s*.40,-s*.16),Vector2(s*.18,0),Color.WHITE,3.0)
+				draw_line(Vector2(s*.40,s*.16),Vector2(s*.18,0),Color.WHITE,3.0)
+			elif special_type == 2:
+				draw_circle(Vector2(0,-s*.62),s*.38,Color("#ffd45a"))
+				draw_circle(Vector2(0,s*.62),s*.38,Color("#ffd45a"))
+				draw_rect(Rect2(-s*.38,-s*.62,s*.76,s*1.24),Color("#ffd45a"))
+				draw_line(Vector2(0,-s*.55),Vector2(0,s*.55),Color.WHITE,5.0)
+				draw_line(Vector2(-s*.16,-s*.40),Vector2(0,-s*.18),Color.WHITE,3.0)
+				draw_line(Vector2(s*.16,-s*.40),Vector2(0,-s*.18),Color.WHITE,3.0)
+				draw_line(Vector2(-s*.16,s*.40),Vector2(0,s*.18),Color.WHITE,3.0)
+				draw_line(Vector2(s*.16,s*.40),Vector2(0,s*.18),Color.WHITE,3.0)
+			elif special_type == 3:
+				draw_circle(Vector2(2,4),s*.82,Color(0,0,0,.32))
+				draw_circle(Vector2.ZERO,s*.72,Color("#27344b"))
+				draw_circle(Vector2(-s*.20,-s*.20),s*.22,Color("#8ea0bd"))
+				draw_circle(Vector2(s*.18,s*.22),s*.14,Color("#111827"))
+				draw_line(Vector2(s*.34,-s*.52),Vector2(s*.60,-s*.78),Color("#f4b34d"),4.0)
+				draw_circle(Vector2(s*.64,-s*.82),s*.10,Color("#ff6b4a"))
+			elif special_type == 4:
+				var rainbow_colors:Array[Color]=[Color("#ff5b67"),Color("#ff9b4a"),Color("#ffd34e"),Color("#43d98b"),Color("#4d9cff"),Color("#b978ff")]
+				draw_circle(Vector2(2,4),s*.78,Color(0,0,0,.28))
+				draw_circle(Vector2.ZERO,s*.70,Color.WHITE)
+				for i in range(6):
+					draw_arc(Vector2.ZERO,s*.58,-PI/2.0+i*TAU/6.0,-PI/2.0+(i+1)*TAU/6.0,8,rainbow_colors[i],7.0)
+				draw_circle(Vector2.ZERO,s*.20,Color("#f5f7ff"))
+			return
 		match kind:
 			0:
 				draw_circle(Vector2.ZERO, s, color)
@@ -104,16 +138,6 @@ class Gem extends Node2D:
 				draw_colored_polygon(PackedVector2Array([Vector2(0,-s),Vector2(s,s),Vector2(-s,s)]), color)
 		draw_circle(Vector2(-s*.32,-s*.34), s*.19, Color(1,1,1,.5))
 		draw_circle(Vector2(-s*.23,-s*.22), s*.08, Color.WHITE)
-		if special_type == 1:
-			draw_line(Vector2(-s*.72, 0), Vector2(s*.72, 0), Color.WHITE, 4.0)
-		elif special_type == 2:
-			draw_line(Vector2(0, -s*.72), Vector2(0, s*.72), Color.WHITE, 4.0)
-		elif special_type == 3:
-			draw_circle(Vector2.ZERO, s*.48, Color(1,1,1,.22))
-			draw_arc(Vector2.ZERO, s*.48, 0, TAU, 16, Color.WHITE, 3.0)
-		elif special_type == 4:
-			draw_circle(Vector2.ZERO, s*.38, Color.WHITE)
-			draw_arc(Vector2.ZERO, s*.62, 0, TAU, 18, Color.WHITE, 3.0)
 
 class BoardFrame extends Node2D:
 	func _draw() -> void:
@@ -152,7 +176,8 @@ func _build_levels() -> void:
 			target_score = 6000 + (i - 90) * 250
 			target_count = 100
 			target_type = (i - 90) % TYPES
-		LEVELS.append({"moves":moves,"score":target_score,"type":target_type,"count":target_count,"mechanic":tier})
+		var blocker_count:=0 if tier==0 else mini(10,2+tier)
+		LEVELS.append({"moves":moves,"score":target_score,"type":target_type,"count":target_count,"mechanic":tier,"blockers":blocker_count})
 	completed.resize(100)
 	for i in range(100):
 		completed[i] = false
@@ -219,6 +244,9 @@ func _create_island_card(index:int,pos:Vector2,open:bool,title_text:String,subti
 
 func _show_map()->void:
 	busy=true
+	if modal:
+		modal.queue_free()
+		modal=null
 	if menu_layer: menu_layer.visible=false
 	if game_layer: game_layer.visible=false
 	if modal: modal.queue_free(); modal=null
@@ -252,6 +280,9 @@ func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 
 func _start_level(index:int)->void:
 	if index>unlocked_level: return
+	if modal:
+		modal.queue_free()
+		modal=null
 	current_level=index
 	var data:Dictionary=LEVELS[index]
 	moves_left=int(data["moves"])
@@ -502,6 +533,12 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 		elif special_triggered:
 			wave.append_array(_special_effect_cells(a,b))
 			special_triggered=false
+		var matched_specials:Array[Vector2i]=[]
+		for p in wave:
+			if specials.has(p):
+				matched_specials.append(p)
+		for p in matched_specials:
+			wave.append_array(_special_effect_cells(p,p))
 		wave=_unique_cells(wave)
 		if wave.is_empty():
 			break
@@ -545,11 +582,21 @@ func _swap_anim(a:Vector2i,b:Vector2i)->void:
 	await t.finished
 
 func _destroy_matches(matches:Array[Vector2i])->void:
+	var preserved_rainbows:Dictionary={}
 	for p in matches:
 		var kind:int=board[p.y][p.x]
+		var sp:int=int(specials.get(p,0))
 		if kind >= 0 and kind < destroyed_counts.size():
 			destroyed_counts[kind]+=1
 		_spawn_fx(_cell_pos(p),COLORS[kind])
+		if sp==4 and rng.randf()<0.05:
+			preserved_rainbows[p]=true
+			if gems.has(p):
+				var survivor:Gem=gems[p]
+				var st:=survivor.create_tween()
+				st.tween_property(survivor,"scale",Vector2.ONE*1.16,.10)
+				st.tween_property(survivor,"scale",Vector2.ONE,.18)
+			continue
 		if gems.has(p):
 			var g:Gem=gems[p]
 			var t:=g.create_tween().set_parallel(true)
@@ -559,12 +606,16 @@ func _destroy_matches(matches:Array[Vector2i])->void:
 	_damage_blockers(matches)
 	await get_tree().create_timer(.21).timeout
 	for p in matches:
+		if preserved_rainbows.has(p):
+			continue
 		board[p.y][p.x]=-1
 		specials.erase(p)
 		if gems.has(p):
 			var g:Gem=gems[p]
 			gems.erase(p)
 			g.queue_free()
+	if not preserved_rainbows.is_empty() and status:
+		status.text="Радужная фишка выжила!"
 
 func _collapse_and_refill()->void:
 	var max_time:=0.0
@@ -655,6 +706,10 @@ func _create_special_from_match(cells:Array[Vector2i])->void:
 			if cells.has(p): overlap+=1
 		if overlap < 3: continue
 		var chosen:Vector2i=gc[mini(2,gc.size()-1)]
+		for candidate in gc:
+			if not specials.has(candidate) and cells.has(candidate):
+				chosen=candidate
+				break
 		var special_type:=0
 		if gc.size() >= 5:
 			special_type=4
@@ -855,9 +910,15 @@ func _result_modal(won:bool)->void:
 	var secondary:=Button.new(); secondary.position=Vector2(315,255); secondary.size=Vector2(230,52); secondary.text="ВЕРНУТЬСЯ В ЛОББИ"; secondary.add_theme_stylebox_override("normal",_style(Color("#182943"),Color("#466187"))); secondary.pressed.connect(_show_map); p.add_child(secondary); game_layer.add_child(modal)
 
 func _modal_primary(won:bool)->void:
-	if won and current_level<99: _start_level(current_level+1)
-	elif won: _show_map()
-	else: _start_level(current_level)
+	if modal:
+		modal.queue_free()
+		modal=null
+	if won and current_level<99:
+		_start_level(current_level+1)
+	elif won:
+		_show_map()
+	else:
+		_start_level(current_level)
 
 func _restart_level()->void:
 	_start_level(current_level)
