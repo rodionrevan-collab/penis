@@ -34,6 +34,8 @@ var destroyed_counts: Array = [0, 0, 0, 0, 0, 0]
 var specials: Dictionary = {} # 1 horizontal, 2 vertical, 3 bomb, 4 rainbow
 var blockers: Dictionary = {} # cell -> remaining hits
 var blocker_nodes: Dictionary = {}
+var spiders: Dictionary = {} # cell -> true
+var spider_nodes: Dictionary = {}
 var unlocked_level := 0
 var completed: Array[bool] = []
 var rng := RandomNumberGenerator.new()
@@ -139,6 +141,18 @@ class Gem extends Node2D:
 		draw_circle(Vector2(-s*.32,-s*.34), s*.19, Color(1,1,1,.5))
 		draw_circle(Vector2(-s*.23,-s*.22), s*.08, Color.WHITE)
 
+class SpiderMark extends Node2D:
+	func _draw() -> void:
+		draw_circle(Vector2(1,2),8,Color(0,0,0,.35))
+		draw_circle(Vector2.ZERO,6,Color("#2b2330"))
+		draw_circle(Vector2(0,-5),4,Color("#35293a"))
+		for i in range(4):
+			var y:=float(i-1.5)*3.0
+			draw_line(Vector2(-4,y),Vector2(-13,y-4),Color("#6d5575"),2.0)
+			draw_line(Vector2(4,y),Vector2(13,y-4),Color("#6d5575"),2.0)
+		draw_circle(Vector2(-1.5,-6),1.2,Color("#ff5d6c"))
+		draw_circle(Vector2(1.5,-6),1.2,Color("#ff5d6c"))
+
 class BoardFrame extends Node2D:
 	func _draw() -> void:
 		var o := StyleBoxFlat.new()
@@ -176,8 +190,9 @@ func _build_levels() -> void:
 			target_score = 6000 + (i - 90) * 250
 			target_count = 100
 			target_type = (i - 90) % TYPES
-		var blocker_count:=0 if tier==0 else mini(10,2+tier)
-		LEVELS.append({"moves":moves,"score":target_score,"type":target_type,"count":target_count,"mechanic":tier,"blockers":blocker_count})
+		var blocker_count:=0 if tier==0 else mini(12,2+tier)
+		var spider_count:=0 if tier<2 else mini(5,1+int((tier-2)/2))
+		LEVELS.append({"moves":moves,"score":target_score,"type":target_type,"count":target_count,"mechanic":tier,"blockers":blocker_count,"spiders":spider_count})
 	completed.resize(100)
 	for i in range(100):
 		completed[i] = false
@@ -445,8 +460,9 @@ func _start_level(index:int)->void:
 	game_layer.visible=true
 	# Сначала удаляем старые визуальные блокираторы, затем создаём состояние нового уровня.
 	_clear_visuals()
-	_generate_board()
 	_setup_blockers(int(data.get("blockers",0)))
+	_generate_board()
+	_setup_spiders(int(data.get("spiders",0)))
 	_create_visuals()
 	_update_labels()
 	status.text="Уровень %d • %s"%[index+1,MECHANICS[int(data["mechanic"])]]
@@ -475,6 +491,9 @@ func _generate_board()->void:
 	for y in range(SIZE):
 		var row:Array=[]
 		for x in range(SIZE):
+			if blockers.has(Vector2i(x,y)):
+				row.append(-1)
+				continue
 			var opts:Array[int]=[]
 			for t in range(TYPES):
 				if x>=2 and row[x-1]==t and row[x-2]==t: continue
@@ -491,6 +510,10 @@ func _clear_visuals()->void:
 	blocker_nodes.clear()
 	gems.clear()
 	specials.clear()
+	spiders.clear()
+	for n in spider_nodes.values():
+		if is_instance_valid(n): n.free()
+	spider_nodes.clear()
 func _cell_pos(p:Vector2i)->Vector2: return ORIGIN+Vector2(p.x*CELL+CELL/2,p.y*CELL+CELL/2)
 func _make_gem(k:int, sp:int = 0)->Gem:
 	var g:=Gem.new()
@@ -502,15 +525,42 @@ func _setup_blockers(count:int)->void:
 	blockers.clear()
 	if count <= 0:
 		return
+	var center:=Vector2i(rng.randi_range(2,5),rng.randi_range(2,5))
 	var candidates:Array[Vector2i]=[]
 	for y in range(1,SIZE-1):
 		for x in range(1,SIZE-1):
 			candidates.append(Vector2i(x,y))
+	candidates.sort_custom(func(a:Vector2i,b:Vector2i)->bool:
+		return abs(a.x-center.x)+abs(a.y-center.y) < abs(b.x-center.x)+abs(b.y-center.y)
+	)
+	var hits:=1 if current_level < 20 else (2 if current_level < 60 else 3)
+	for p in candidates:
+		if blockers.size() >= mini(count,candidates.size()): break
+		blockers[p]=hits
+
+func _setup_spiders(count:int)->void:
+	spiders.clear()
+	if count<=0: return
+	var candidates:Array[Vector2i]=[]
+	for y in range(SIZE):
+		for x in range(SIZE):
+			var p:=Vector2i(x,y)
+			if not blockers.has(p) and board[y][x]>=0:
+				candidates.append(p)
 	candidates.shuffle()
 	for i in range(mini(count,candidates.size())):
-		var p:Vector2i=candidates[i]
-		var hits:=1 if current_level < 20 else (2 if current_level < 60 else 3)
-		blockers[p]=hits
+		spiders[candidates[i]]=true
+
+func _create_spider_visuals()->void:
+	for n in spider_nodes.values():
+		if is_instance_valid(n): n.queue_free()
+	spider_nodes.clear()
+	for p in spiders.keys():
+		var mark:=SpiderMark.new()
+		mark.position=_cell_pos(p)+Vector2(20,-21)
+		mark.scale=Vector2.ONE*.75
+		root.add_child(mark)
+		spider_nodes[p]=mark
 
 func _blocker_name()->String:
 	var tier:=int(LEVELS[current_level]["mechanic"])
@@ -572,6 +622,8 @@ func _create_visuals()->void:
 	for y in range(SIZE):
 		for x in range(SIZE):
 			var p:=Vector2i(x,y)
+			if blockers.has(p) or board[y][x] < 0:
+				continue
 			var sp:int=int(specials.get(p,0))
 			var g:=_make_gem(board[y][x],sp)
 			g.position=_cell_pos(p)
@@ -580,6 +632,7 @@ func _create_visuals()->void:
 			g.rotation=0.0
 			gems[p]=g
 	_create_blocker_visuals()
+	_create_spider_visuals()
 
 func _input(event:InputEvent)->void:
 	if busy or not game_layer.visible:
@@ -615,7 +668,7 @@ func _board_cell_from_position(pos:Vector2)->Vector2i:
 	return Vector2i(floor(local.x/CELL),floor(local.y/CELL))
 
 func _valid_cell(p:Vector2i)->bool:
-	return p.x>=0 and p.y>=0 and p.x<SIZE and p.y<SIZE
+	return p.x>=0 and p.y>=0 and p.x<SIZE and p.y<SIZE and not blockers.has(p) and board[p.y][p.x]>=0
 
 func _swipe_move(a:Vector2i,b:Vector2i)->void:
 	if selected.x>=0:
@@ -717,6 +770,23 @@ func _swap_data(a:Vector2i,b:Vector2i)->void:
 	specials.erase(b)
 	if sp_a != 0: specials[b]=sp_a
 	if sp_b != 0: specials[a]=sp_b
+	var spider_a:=bool(spiders.get(a,false))
+	var spider_b:=bool(spiders.get(b,false))
+	spiders.erase(a)
+	spiders.erase(b)
+	if spider_a: spiders[b]=true
+	if spider_b: spiders[a]=true
+	if spider_nodes.has(a) and spider_nodes.has(b):
+		var sn_a=spider_nodes[a]
+		var sn_b=spider_nodes[b]
+		spider_nodes.erase(a)
+		spider_nodes.erase(b)
+		spider_nodes[a]=sn_b
+		spider_nodes[b]=sn_a
+		spider_nodes[a].position=_cell_pos(a)+Vector2(20,-21)
+		spider_nodes[b].position=_cell_pos(b)+Vector2(20,-21)
+	elif spider_a or spider_b:
+		_create_spider_visuals()
 	var ga=gems[a]
 	gems[a]=gems[b]
 	gems[b]=ga
@@ -759,6 +829,11 @@ func _destroy_matches(matches:Array[Vector2i])->void:
 			continue
 		board[p.y][p.x]=-1
 		specials.erase(p)
+		spiders.erase(p)
+		if spider_nodes.has(p):
+			var sn=spider_nodes[p]
+			spider_nodes.erase(p)
+			if is_instance_valid(sn): sn.queue_free()
 		if gems.has(p):
 			var g:Gem=gems[p]
 			gems.erase(p)
@@ -769,47 +844,60 @@ func _destroy_matches(matches:Array[Vector2i])->void:
 func _collapse_and_refill()->void:
 	var max_time:=0.0
 	for x in range(SIZE):
-		var write_y:=SIZE-1
-		for read_y in range(SIZE-1,-1,-1):
-			if board[read_y][x]<0: continue
-			if write_y!=read_y:
-				var kind:int=board[read_y][x]
-				var old_special:=int(specials.get(Vector2i(x,read_y),0))
-				board[write_y][x]=kind
-				if old_special != 0:
-					specials.erase(Vector2i(x,read_y))
-					specials[Vector2i(x,write_y)]=old_special
-				board[read_y][x]=-1
-				var old_p:=Vector2i(x,read_y)
-				var new_p:=Vector2i(x,write_y)
-				if not gems.has(old_p): continue
-				var g:Gem=gems[old_p]
-				gems.erase(old_p)
-				gems[new_p]=g
-				var d:=write_y-read_y
-				var dur:=.18+d*.055
+		var segment_bottom:=SIZE-1
+		while segment_bottom>=0:
+			while segment_bottom>=0 and blockers.has(Vector2i(x,segment_bottom)):
+				segment_bottom-=1
+			if segment_bottom<0: break
+			var segment_top:=segment_bottom
+			while segment_top>=0 and not blockers.has(Vector2i(x,segment_top)):
+				segment_top-=1
+			var write_y:=segment_bottom
+			for read_y in range(segment_bottom,segment_top,-1):
+				if board[read_y][x]<0: continue
+				if write_y!=read_y:
+					var kind:int=board[read_y][x]
+					var old_p:=Vector2i(x,read_y)
+					var new_p:=Vector2i(x,write_y)
+					var old_special:=int(specials.get(old_p,0))
+					var old_spider:=bool(spiders.get(old_p,false))
+					board[write_y][x]=kind
+					board[read_y][x]=-1
+					specials.erase(old_p)
+					if old_special!=0: specials[new_p]=old_special
+					spiders.erase(old_p)
+					if old_spider: spiders[new_p]=true
+					if gems.has(old_p):
+						var g:Gem=gems[old_p]
+						gems.erase(old_p)
+						gems[new_p]=g
+						var dur:=.18+(write_y-read_y)*.055
+						max_time=max(max_time,dur)
+						g.create_tween().tween_property(g,"position",_cell_pos(new_p),dur).set_trans(Tween.TRANS_QUAD)
+					if spider_nodes.has(old_p):
+						var sn=spider_nodes[old_p]
+						spider_nodes.erase(old_p)
+						spider_nodes[new_p]=sn
+						sn.create_tween().tween_property(sn,"position",_cell_pos(new_p)+Vector2(20,-21),dur).set_trans(Tween.TRANS_QUAD)
+				write_y-=1
+			for y in range(write_y,segment_top,-1):
+				var kind:=rng.randi_range(0,TYPES-1)
+				board[y][x]=kind
+				var p:=Vector2i(x,y)
+				var g:=_make_gem(kind,0)
+				g.position=_cell_pos(p)-Vector2(0,CELL*(write_y-y+2))
+				g.scale=Vector2.ONE*.82
+				gems[p]=g
+				var spawn:=write_y-y
+				var dur:=.22+spawn*.05
 				max_time=max(max_time,dur)
-				var tw:=g.create_tween()
-				tw.tween_property(g,"position",_cell_pos(new_p),dur).set_trans(Tween.TRANS_QUAD)
-			write_y-=1
-		var spawn:=0
-		for y in range(write_y,-1,-1):
-			var kind:=rng.randi_range(0,TYPES-1)
-			board[y][x]=kind
-			var p:=Vector2i(x,y)
-			var sp:=int(specials.get(p,0))
-			var g:=_make_gem(kind,sp)
-			specials.erase(p)
-			g.position=_cell_pos(p)-Vector2(0,CELL*(spawn+2))
-			g.scale=Vector2.ONE*.82
-			gems[p]=g
-			var dur:=.22+spawn*.05
-			max_time=max(max_time,dur)
-			var tw:=g.create_tween().set_parallel(true)
-			tw.tween_property(g,"position",_cell_pos(p),dur).set_trans(Tween.TRANS_BOUNCE)
-			tw.tween_property(g,"scale",Vector2.ONE,.18)
-			spawn+=1
-	if max_time>0: await get_tree().create_timer(max_time+.05).timeout
+				var tw:=g.create_tween().set_parallel(true)
+				tw.tween_property(g,"position",_cell_pos(p),dur).set_trans(Tween.TRANS_BOUNCE)
+				tw.tween_property(g,"scale",Vector2.ONE,.18)
+			segment_bottom=segment_top
+	if max_time>0:
+		await get_tree().create_timer(max_time+.05).timeout
+	_create_spider_visuals()
 
 func _unique_cells(cells:Array[Vector2i])->Array[Vector2i]:
 	var seen:Dictionary={}
@@ -1086,7 +1174,7 @@ func _update_labels()->void:
 	score_label.text="ОЧКИ\n%d"%score
 	best_label.text="РЕКОРД\n%d"%best
 	combo_label.text="КОМБО\n%s"%("x%d"%combo if combo>0 else "—")
-	var obstacle_text:=("" if blockers.is_empty() else "   •   %s: %d"%[_blocker_name(),blockers.size()])
+	var obstacle_text:=("" if blockers.is_empty() else "   •   %s: %d клеток"%[_blocker_name(),blockers.size()])
 	goal_label.text="ЦЕЛЬ: %d / %d очков   •   %d / %d %s%s"%[score,int(d["score"]),destroyed_counts[type],int(d["count"]),TYPE_NAMES[type],obstacle_text]
 
 func _spawn_fx(p:Vector2,c:Color)->void:
