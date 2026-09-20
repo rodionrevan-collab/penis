@@ -684,10 +684,12 @@ func get_mini_activities() -> Array:
 			"map_pos":Vector2(585,275),
 			"unique_required":"tom_log",
 			"type":"sequence",
+			"variant":"compass",
 			"sequence":[0,2,3,1],
 			"labels":["↑","→","←","↓"],
 			"description":"Повтори четыре направления со старой карты, чтобы открыть пиратский маршрут.",
-			"reward":{"stars":3,"booster":"pre_bomb","amount":1}
+			"reward":{"stars":3,"booster":"pre_bomb","amount":1},
+			"collection_id":"pirate_chart"
 		},
 		{
 			"id":"cave_runes",
@@ -696,11 +698,13 @@ func get_mini_activities() -> Array:
 			"zone":4,
 			"map_pos":Vector2(585,450),
 			"unique_required":"keeper_key",
-			"type":"sequence",
-			"sequence":[2,0,3,1,2],
-			"labels":["☀","🌙","≈","◆"],
-			"description":"Активируй руны в правильном порядке, чтобы открыть древний механизм.",
-			"reward":{"stars":4,"booster":"pre_rainbow","amount":1}
+			"type":"odd_one",
+			"variant":"rune",
+			"target_index":3,
+			"labels":["☀","☀","☀","☽","☀"],
+			"description":"Среди одинаковых рун спрятана одна лунная. Найди её и активируй первой.",
+			"reward":{"stars":4,"booster":"pre_rainbow","amount":1},
+			"collection_id":"cave_rune"
 		},
 		{
 			"id":"village_market",
@@ -710,9 +714,26 @@ func get_mini_activities() -> Array:
 			"map_pos":Vector2(340,470),
 			"unique_required":"merchant_token",
 			"type":"collect_three",
+			"variant":"goods",
 			"labels":["🐟 Рыба","🪵 Дерево","🌿 Травы"],
 			"description":"Подготовь три товара для открытия лавки. Нажми каждый товар один раз.",
-			"reward":{"stars":5,"booster":"extra_moves","amount":2}
+			"reward":{"stars":5,"booster":"extra_moves","amount":2},
+			"collection_id":"market_goods"
+		},
+		{
+			"id":"village_trade_route",
+			"name":"Порядок поставок",
+			"icon":"📦",
+			"zone":5,
+			"map_pos":Vector2(465,470),
+			"unique_required":"merchant_token",
+			"type":"order_goods",
+			"variant":"trade_order",
+			"sequence":[2,0,1],
+			"labels":["🌿 Травы","🐟 Рыба","🪵 Дерево"],
+			"description":"Торговец дал список поставки. Отправь товары строго в указанном порядке.",
+			"reward":{"stars":3,"booster":"shuffle","amount":1},
+			"collection_id":"trade_route"
 		}
 	]
 
@@ -751,6 +772,39 @@ func claim_mini_activity(id:String) -> Dictionary:
 	completed_activities[id]=true
 	save()
 	return {"ok":true,"activity":item,"reward":item["reward"]}
+
+func get_collection_items() -> Array:
+	return [
+		{"id":"lisa_badge","name":"Знак хранительницы","icon":"🏵️","kind":"unique"},
+		{"id":"tom_log","name":"Старый морской журнал","icon":"📘","kind":"unique"},
+		{"id":"keeper_key","name":"Ключ от маяка","icon":"🗝️","kind":"unique"},
+		{"id":"merchant_token","name":"Серебряный жетон торговца","icon":"🪙","kind":"unique"},
+		{"id":"pirate_chart","name":"Карта контрабандистов","icon":"🧭","kind":"activity"},
+		{"id":"cave_rune","name":"Лунная руна","icon":"☽","kind":"activity"},
+		{"id":"market_goods","name":"Первый торговый набор","icon":"🧺","kind":"activity"},
+		{"id":"trade_route","name":"Маршрут поставки","icon":"📦","kind":"activity"}
+	]
+
+func is_collection_item_collected(id:String) -> bool:
+	if is_unique_reward_unlocked(id):
+		return true
+	for activity in get_mini_activities():
+		if str(activity.get("collection_id","")) == id:
+			return is_activity_completed(str(activity["id"]))
+	return false
+
+func get_collection_count() -> int:
+	var count:=0
+	for item in get_collection_items():
+		if is_collection_item_collected(str(item["id"])):
+			count += 1
+	return count
+
+func get_collection_total() -> int:
+	return get_collection_items().size()
+
+func get_collection_completion_text() -> String:
+	return "%d / %d коллекционных предметов"%[get_collection_count(),get_collection_total()]
 
 func get_secrets() -> Array:
 	return [
