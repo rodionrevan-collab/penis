@@ -1183,6 +1183,20 @@ func _show_island_collection()->void:
 		var collected:=bool(island_progression.call("is_secret_collection_item_collected",str(secret_item["id"])))
 		secret_lines.append(("%s %s" if collected else "○ %s")%[str(secret_item["icon"]),str(secret_item["name"])])
 	secret_items.text=" • ".join(secret_lines); secret_items.custom_minimum_size=Vector2(680,30); secret_items.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; secret_items.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; secret_items.add_theme_font_size_override("font_size",10); secret_items.add_theme_color_override("font_color",Color("#b7a7c7")); content.add_child(secret_items)
+
+	var secret_reward_available:=bool(island_progression.call("is_secret_collection_reward_available"))
+	var secret_reward_claimed:=bool(island_progression.call("is_secret_collection_reward_claimed"))
+	var secret_reward_row:=Panel.new(); secret_reward_row.custom_minimum_size=Vector2(680,72); secret_reward_row.add_theme_stylebox_override("panel",_style(Color("#29434a") if secret_reward_claimed else (Color("#4b365d") if secret_reward_available else Color("#1b2637")),Color("#65b79c") if secret_reward_claimed else (Color("#d5a7ff") if secret_reward_available else Color("#39485b")),12)); content.add_child(secret_reward_row)
+	var secret_reward_title:=Label.new(); secret_reward_title.text="💠 Секретная коллекция 3/3"; secret_reward_title.position=Vector2(15,10); secret_reward_title.size=Vector2(245,23); secret_reward_title.add_theme_font_size_override("font_size",12); secret_reward_title.add_theme_color_override("font_color",Color("#f1f5ff")); secret_reward_row.add_child(secret_reward_title)
+	var secret_reward_desc:=Label.new(); secret_reward_desc.text="⭐ +10  •  💣 Бомба на старт"; secret_reward_desc.position=Vector2(15,37); secret_reward_desc.size=Vector2(270,22); secret_reward_desc.add_theme_font_size_override("font_size",10); secret_reward_desc.add_theme_color_override("font_color",Color("#d5b5ff")); secret_reward_row.add_child(secret_reward_desc)
+	var secret_claim:=Button.new(); secret_claim.position=Vector2(500,13); secret_claim.size=Vector2(160,46); secret_claim.add_theme_font_size_override("font_size",10); secret_reward_row.add_child(secret_claim)
+	if secret_reward_claimed:
+		secret_claim.text="✓ ПОЛУЧЕНО"; secret_claim.disabled=true; secret_claim.add_theme_stylebox_override("normal",_style(Color("#28433c"),Color("#4d806e"),10))
+	elif secret_reward_available:
+		secret_claim.text="ПОЛУЧИТЬ"; secret_claim.add_theme_stylebox_override("normal",_style(Color("#51376a"),Color("#d9b2ff"),10)); secret_claim.pressed.connect(_claim_secret_collection_reward)
+	else:
+		secret_claim.text="ЕЩЁ НУЖНО %d"%maxi(0,int(island_progression.call("get_secret_collection_total"))-secret_count); secret_claim.disabled=true; secret_claim.add_theme_stylebox_override("normal",_style(Color("#172231"),Color("#33485d"),10))
+
 	var hint:=Label.new(); hint.text="При 100% основной коллекции открывается секретное событие «Сердце острова» на карте. Редкие мини-версии открываются после обычных."; hint.custom_minimum_size=Vector2(680,40); hint.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; hint.add_theme_font_size_override("font_size",10); hint.add_theme_color_override("font_color",Color("#b7a7c7")); content.add_child(hint)
 
 	var close:=Button.new(); close.text="← НАЗАД НА ОСТРОВ"; close.position=Vector2(170,700); close.size=Vector2(420,42); close.add_theme_stylebox_override("normal",_style(Color("#18334a"),Color("#527a99"),12)); close.pressed.connect(_close_island_visual_map); panel.add_child(close)
@@ -1191,6 +1205,13 @@ func _show_island_collection()->void:
 func _claim_collection_milestone(id:String)->void:
 	if not is_instance_valid(island_progression): return
 	var result:Dictionary=island_progression.call("claim_collection_milestone",id)
+	if not bool(result.get("ok",false)): return
+	_apply_island_reward(result["reward"])
+	_show_island_collection()
+
+func _claim_secret_collection_reward()->void:
+	if not is_instance_valid(island_progression): return
+	var result:Dictionary=island_progression.call("claim_secret_collection_reward")
 	if not bool(result.get("ok",false)): return
 	_apply_island_reward(result["reward"])
 	_show_island_collection()
