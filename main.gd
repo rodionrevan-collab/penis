@@ -7,6 +7,7 @@ const ORIGIN := Vector2(138, 202)
 const COLORS := [Color("#ff5b67"), Color("#4d9cff"), Color("#43d98b"), Color("#ffd34e"), Color("#b978ff"), Color("#ff9b4a")]
 const SYMBOLS := ["●", "◆", "■", "★", "⬟", "▲"]
 const TYPE_NAMES := ["красных кругов", "синих ромбов", "зелёных квадратов", "звёзд", "фиолетовых кристаллов", "оранжевых треугольников"]
+const ISLAND_ART = preload("res://island_art.gd")
 const MECHANICS := [
 	"Фрукты • базовая механика",
 	"Лианы • блокираторы",
@@ -67,6 +68,7 @@ var touch_active := false
 var mechanics: Node
 var island_progression: Node
 var island_stars := 0
+var island_art_factory: Node
 
 class Gem extends Node2D:
 	var kind := 0
@@ -194,6 +196,7 @@ func _ready() -> void:
 	rng.randomize()
 	mechanics = get_node_or_null("IslandMechanics")
 	island_progression = get_node_or_null("IslandProgression")
+	island_art_factory = ISLAND_ART.new()
 	_build_levels()
 	level_stars.resize(100)
 	for i in range(100): level_stars[i] = 0
@@ -497,7 +500,7 @@ func _island_zone_name(zone_id:int)->String:
 			return str(zone["name"])
 	return "Зона"
 
-func _show_island_visual_map()->void:
+func _show_island_visual_map(focus_id:String="")->void:
 	if modal:
 		modal.queue_free()
 		modal=null
@@ -536,44 +539,17 @@ func _show_island_visual_map()->void:
 	island.add_theme_stylebox_override("panel",_style(Color("#14506a"),Color("#4f8f84"),32))
 	panel.add_child(island)
 
-	# Море и зоны острова.
+	# Рисуемый фон острова.
+	var states:Array[bool]=[]
 	for zone_id in range(6):
-		var zone_panel:=Panel.new()
-		var zone_pos:Array[Vector2]=[
-			Vector2(42,70),Vector2(180,65),Vector2(325,105),
-			Vector2(470,85),Vector2(505,340),Vector2(275,385)
-		]
-		var zone_size:Array[Vector2]=[
-			Vector2(210,190),Vector2(210,205),Vector2(230,190),
-			Vector2(230,205),Vector2(220,205),Vector2(250,180)
-		]
-		zone_panel.position=zone_pos[zone_id]
-		zone_panel.size=zone_size[zone_id]
-		var zone_open:=bool(island_progression.call("is_zone_unlocked",zone_id)) if is_instance_valid(island_progression) else zone_id==0
-		var zfill:=Color("#5b965f") if zone_open else Color("#30434a")
-		var zborder:=Color("#9bd36d") if zone_open else Color("#4c6069")
-		zone_panel.add_theme_stylebox_override("panel",_style(Color(zfill.r,zfill.g,zfill.b,.72),zborder,28))
-		island.add_child(zone_panel)
-		var zlabel:=Label.new()
-		zlabel.text=("✓ " if zone_open else "🔒 ")+_island_zone_name(zone_id)
-		zlabel.position=Vector2(10,8)
-		zlabel.size=Vector2(zone_size[zone_id].x-20,26)
-		zlabel.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-		zlabel.add_theme_font_size_override("font_size",11)
-		zlabel.add_theme_color_override("font_color",Color("#eff7e9") if zone_open else Color("#91a0a7"))
-		zone_panel.add_child(zlabel)
-
-	# Линии дорог между зонами.
-	var route:=Line2D.new()
-	route.width=9
-	route.default_color=Color("#d2ae69")
-	route.points=PackedVector2Array([Vector2(125,270),Vector2(260,270),Vector2(400,300),Vector2(585,255),Vector2(610,430),Vector2(400,515)])
-	island.add_child(route)
+		states.append(bool(island_progression.call("is_zone_unlocked",zone_id)) if is_instance_valid(island_progression) else zone_id==0)
+	var backdrop:=island_art_factory.call("create_backdrop",states)
+	island.add_child(backdrop)
 
 	# Объекты, которые можно ремонтировать/осматривать.
 	if is_instance_valid(island_progression):
 		for item in island_progression.objects:
-			_add_island_object_marker(island,str(item["id"]),item)
+			_add_island_object_marker(island,str(item["id"]),item,focus_id)
 
 	# NPC появляются только после ремонта соответствующих объектов.
 	if is_instance_valid(island_progression):
@@ -617,22 +593,28 @@ func _show_island_visual_map()->void:
 	panel.add_child(main_map)
 	map_layer.add_child(modal)
 
-func _add_island_object_marker(parent:Control,id:String,item:Dictionary)->void:
+func _add_island_object_marker(parent:Control,id:String,item:Dictionary,focus_id:String="")->void:
 	var repaired_now:=bool(island_progression.call("is_repaired",id))
 	var zone_id:=int(item["zone"])
 	var zone_open:=bool(island_progression.call("is_zone_unlocked",zone_id))
-	var marker:=Button.new()
 	var p:Vector2=item.get("map_pos",Vector2(100,100))
+	var marker:=Button.new()
 	marker.position=p-Vector2(42,32)
 	marker.size=Vector2(84,64)
-	marker.text=str(item["icon"]) if repaired_now else "🔨"
-	marker.add_theme_font_size_override("font_size",25)
 	marker.tooltip_text=str(item["name"])
 	marker.disabled=not zone_open
-	marker.add_theme_stylebox_override("normal",_style(Color("#275f49") if repaired_now else Color("#6d5032"),Color("#9be07d") if repaired_now else Color("#d7ae62"),14))
-	marker.add_theme_stylebox_override("hover",_style(Color("#318060") if repaired_now else Color("#85613c"),Color.WHITE,14))
+	marker.flat=true
+	marker.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+	marker.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),14))
+	marker.add_theme_stylebox_override("hover",_style(Color(1,1,1,.08),Color(1,1,1,.18),14))
+	marker.add_theme_stylebox_override("pressed",_style(Color(1,1,1,.14),Color(1,1,1,.25),14))
+	var art_node:=island_art_factory.call("create_object",id,repaired_now)
+	art_node.position=Vector2(42,32)
+	marker.add_child(art_node)
 	marker.pressed.connect(_island_object_clicked.bind(id))
 	parent.add_child(marker)
+	if focus_id==id and repaired_now:
+		art_node.play_repair()
 	var label:=Label.new()
 	label.text=str(item["name"])+(" ✓" if repaired_now else "")
 	label.position=p+Vector2(-60,34)
@@ -669,10 +651,13 @@ func _add_island_npc_marker(parent:Control,npc:Dictionary)->void:
 	var b:=Button.new()
 	b.position=p-Vector2(30,30)
 	b.size=Vector2(60,60)
-	b.text=str(npc["icon"])
-	b.add_theme_font_size_override("font_size",24)
-	b.add_theme_stylebox_override("normal",_style(Color("#264866"),Color("#72b7e4"),30))
-	b.add_theme_stylebox_override("hover",_style(Color("#35617f"),Color.WHITE,30))
+	b.flat=true
+	b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),30))
+	b.add_theme_stylebox_override("hover",_style(Color(1,1,1,.08),Color(1,1,1,.18),30))
+	var art_node:=island_art_factory.call("create_npc",str(npc["role"]))
+	art_node.position=Vector2(30,30)
+	b.add_child(art_node)
 	b.pressed.connect(_show_island_npc_dialog.bind(str(npc["id"])))
 	parent.add_child(b)
 	var l:=Label.new(); l.text=str(npc["name"]); l.position=p+Vector2(-50,31); l.size=Vector2(100,22); l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; l.add_theme_font_size_override("font_size",9); l.add_theme_color_override("font_color",Color("#b8dcf1")); parent.add_child(l)
@@ -680,7 +665,18 @@ func _add_island_npc_marker(parent:Control,npc:Dictionary)->void:
 func _add_island_chest_marker(parent:Control,chest:Dictionary)->void:
 	var p:Vector2=chest.get("map_pos",Vector2(100,100))
 	var claimed:=bool(island_progression.call("is_chest_claimed",str(chest["id"])))
-	var b:=Button.new(); b.position=p-Vector2(28,28); b.size=Vector2(56,56); b.text="✓" if claimed else str(chest["icon"]); b.add_theme_font_size_override("font_size",23); b.add_theme_stylebox_override("normal",_style(Color("#39433a") if claimed else Color("#6a5128"),Color("#71917b") if claimed else Color("#e0b956"),28)); b.pressed.connect(_show_island_chests); parent.add_child(b)
+	var b:=Button.new()
+	b.position=p-Vector2(30,28)
+	b.size=Vector2(60,56)
+	b.flat=true
+	b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),20))
+	b.add_theme_stylebox_override("hover",_style(Color(1,1,1,.08),Color("#f0d36f"),20))
+	var art_node:=island_art_factory.call("create_chest",claimed)
+	art_node.position=Vector2(30,28)
+	b.add_child(art_node)
+	b.pressed.connect(_show_island_chests)
+	parent.add_child(b)
 	var l:=Label.new(); l.text=str(chest["name"])+(" • получено" if claimed else " • доступно"); l.position=p+Vector2(-65,28); l.size=Vector2(130,30); l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; l.add_theme_font_size_override("font_size",8); l.add_theme_color_override("font_color",Color("#c9d7c4")); parent.add_child(l)
 
 func _show_island_npc_dialog(id:String)->void:
@@ -762,7 +758,7 @@ func _repair_island_object(id:String)->void:
 		return
 	island_stars-=int(result["cost"])
 	_save_progress()
-	_show_island_repair()
+	_show_island_visual_map(id)
 
 func _apply_island_reward(reward:Dictionary)->void:
 	island_stars+=int(reward.get("stars",0))
