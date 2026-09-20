@@ -310,6 +310,10 @@ func _initialize() -> void:
 	assert(lisa_final["final"] == true)
 	assert(lisa_final["reward"].has("unique"))
 	assert(progression.get_unique_reward_count() == 1)
+	assert(progression.is_unique_reward_unlocked("lisa_badge"))
+	assert(progression.get_npc_quest_dialogue("lisa",1,false) != "")
+	assert(progression.get_npc_quest_dialogue("lisa",2,false) != progression.get_npc_quest_dialogue("lisa",1,false))
+	assert(progression.get_npc_quest_dialogue("lisa",3,true) != "")
 	assert(progression.claim_npc_quest("lisa",10,5,7)["ok"] == false)
 
 	# Секреты открываются зоной и забираются только один раз.
