@@ -12,6 +12,8 @@ var claimed_secrets: Dictionary = {}
 var quest_chain_state: Dictionary = {}
 var unique_rewards: Dictionary = {}
 var completed_events: Dictionary = {}
+var claimed_interactives: Dictionary = {}
+var completed_activities: Dictionary = {}
 
 var objects: Array[Dictionary] = [
 	{"id":"bridge","name":"Старый мост","icon":"🌉","cost":5,"zone":1,"description":"Разрушенный мост открывает путь в джунгли.","reward_text":"Открывает зону: Джунгли","map_pos":Vector2(170,245)},
@@ -76,13 +78,21 @@ func _load() -> void:
 			for id in values:
 				if not id.is_empty():
 					completed_events[id] = true
+		elif key == "interactives":
+			for id in values:
+				if not id.is_empty():
+					claimed_interactives[id] = true
+		elif key == "activities":
+			for id in values:
+				if not id.is_empty():
+					completed_activities[id] = true
 	_migrate_legacy_quests()
 
 func save() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if not file:
 		return
-	file.store_string("repaired=%s|chests=%s|npcs=%s|quests=%s|secrets=%s|queststate=%s|unique=%s|events=%s" % [
+	file.store_string("repaired=%s|chests=%s|npcs=%s|quests=%s|secrets=%s|queststate=%s|unique=%s|events=%s|interactives=%s|activities=%s" % [
 		_keys_text(repaired),
 		_keys_text(claimed_chests),
 		_keys_text(discovered_npcs),
@@ -90,7 +100,9 @@ func save() -> void:
 		_keys_text(claimed_secrets),
 		_quest_state_text(),
 		_keys_text(unique_rewards),
-		_keys_text(completed_events)
+		_keys_text(completed_events),
+		_keys_text(claimed_interactives),
+		_keys_text(completed_activities)
 	])
 	file.flush()
 
@@ -585,6 +597,161 @@ func claim_island_event(id:String) -> Dictionary:
 	save()
 	return {"ok":true,"event":event,"reward":event["reward"]}
 
+func get_interactive_objects() -> Array:
+	return [
+		{
+			"id":"beach_watch_lantern",
+			"name":"Фонарь хранительницы",
+			"icon":"🏮",
+			"zone":0,
+			"map_pos":Vector2(190,160),
+			"unique_required":"lisa_badge",
+			"description":"Знак Лизы открывает старый сигнальный фонарь. Его можно включить только после восстановления пляжа.",
+			"reward":{"stars":1,"booster":"extra_moves","amount":1}
+		},
+		{
+			"id":"pirate_chart_table",
+			"name":"Стол старого маршрута",
+			"icon":"🗺️",
+			"zone":3,
+			"map_pos":Vector2(675,340),
+			"unique_required":"tom_log",
+			"description":"Старый журнал Тома позволяет сверить карту с настоящими отметками пиратов.",
+			"reward":{"stars":2,"booster":"shuffle","amount":1}
+		},
+		{
+			"id":"cave_ancient_lock",
+			"name":"Древний замок",
+			"icon":"🔐",
+			"zone":4,
+			"map_pos":Vector2(620,475),
+			"unique_required":"keeper_key",
+			"description":"Ключ от маяка подходит к механизму внутри пещеры.",
+			"reward":{"stars":3,"booster":"hammer","amount":1}
+		},
+		{
+			"id":"village_trade_scale",
+			"name":"Старая торговая мера",
+			"icon":"⚖️",
+			"zone":5,
+			"map_pos":Vector2(430,475),
+			"unique_required":"merchant_token",
+			"description":"Жетон торговца активирует старую систему учёта товаров в деревне.",
+			"reward":{"stars":4,"booster":"pre_bomb","amount":1}
+		}
+	]
+
+func get_interactive_object(id:String) -> Dictionary:
+	for item in get_interactive_objects():
+		if str(item["id"]) == id:
+			return item
+	return {}
+
+func is_interactive_available(item:Dictionary) -> bool:
+	var required := str(item.get("unique_required",""))
+	if required.is_empty() or not is_unique_reward_unlocked(required):
+		return false
+	if not is_zone_unlocked(int(item.get("zone",0))):
+		return false
+	return not bool(claimed_interactives.get(str(item["id"]),false))
+
+func get_available_interactives() -> Array:
+	var result:Array = []
+	for item in get_interactive_objects():
+		if is_interactive_available(item):
+			result.append(item)
+	return result
+
+func claim_interactive(id:String) -> Dictionary:
+	var item := get_interactive_object(id)
+	if item.is_empty():
+		return {"ok":false,"reason":"unknown"}
+	if not is_interactive_available(item):
+		if bool(claimed_interactives.get(id,false)):
+			return {"ok":false,"reason":"claimed"}
+		return {"ok":false,"reason":"locked"}
+	claimed_interactives[id]=true
+	save()
+	return {"ok":true,"item":item,"reward":item["reward"]}
+
+func get_mini_activities() -> Array:
+	return [
+		{
+			"id":"pirate_navigation",
+			"name":"Навигация контрабандистов",
+			"icon":"🧭",
+			"zone":3,
+			"map_pos":Vector2(585,275),
+			"unique_required":"tom_log",
+			"type":"sequence",
+			"sequence":[0,2,3,1],
+			"labels":["↑","→","←","↓"],
+			"description":"Повтори четыре направления со старой карты, чтобы открыть пиратский маршрут.",
+			"reward":{"stars":3,"booster":"pre_bomb","amount":1}
+		},
+		{
+			"id":"cave_runes",
+			"name":"Руны древнего механизма",
+			"icon":"🔮",
+			"zone":4,
+			"map_pos":Vector2(585,450),
+			"unique_required":"keeper_key",
+			"type":"sequence",
+			"sequence":[2,0,3,1,2],
+			"labels":["☀","🌙","≈","◆"],
+			"description":"Активируй руны в правильном порядке, чтобы открыть древний механизм.",
+			"reward":{"stars":4,"booster":"pre_rainbow","amount":1}
+		},
+		{
+			"id":"village_market",
+			"name":"Первые товары",
+			"icon":"🛒",
+			"zone":5,
+			"map_pos":Vector2(340,470),
+			"unique_required":"merchant_token",
+			"type":"collect_three",
+			"labels":["🐟 Рыба","🪵 Дерево","🌿 Травы"],
+			"description":"Подготовь три товара для открытия лавки. Нажми каждый товар один раз.",
+			"reward":{"stars":5,"booster":"extra_moves","amount":2}
+		}
+	]
+
+func get_mini_activity(id:String) -> Dictionary:
+	for item in get_mini_activities():
+		if str(item["id"]) == id:
+			return item
+	return {}
+
+func is_activity_available(item:Dictionary) -> bool:
+	var required := str(item.get("unique_required",""))
+	if required.is_empty() or not is_unique_reward_unlocked(required):
+		return false
+	if not is_zone_unlocked(int(item.get("zone",0))):
+		return false
+	return not bool(completed_activities.get(str(item["id"]),false))
+
+func get_available_activities() -> Array:
+	var result:Array = []
+	for item in get_mini_activities():
+		if is_activity_available(item):
+			result.append(item)
+	return result
+
+func is_activity_completed(id:String) -> bool:
+	return bool(completed_activities.get(id,false))
+
+func claim_mini_activity(id:String) -> Dictionary:
+	var item := get_mini_activity(id)
+	if item.is_empty():
+		return {"ok":false,"reason":"unknown"}
+	if not is_activity_available(item):
+		if is_activity_completed(id):
+			return {"ok":false,"reason":"completed"}
+		return {"ok":false,"reason":"locked"}
+	completed_activities[id]=true
+	save()
+	return {"ok":true,"activity":item,"reward":item["reward"]}
+
 func get_secrets() -> Array:
 	return [
 		{"id":"bottle","name":"Послание в бутылке","icon":"🍾","zone":0,"map_pos":Vector2(125,175),"description":"Старая бутылка на пляже.","reward":{"stars":2,"booster":"extra_moves","amount":1}},
@@ -628,3 +795,5 @@ func reset_for_tests() -> void:
 	quest_chain_state.clear()
 	unique_rewards.clear()
 	completed_events.clear()
+	claimed_interactives.clear()
+	completed_activities.clear()
