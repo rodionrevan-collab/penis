@@ -65,7 +65,13 @@ func save() -> void:
 	])
 	file.flush()
 
-func _keys_text(data: Dictionary) -> String:\n\tvar values := PackedStringArray()\n\tfor key in data.keys():\n\t\tvalues.append(str(key))\n\treturn ",".join(values)\n\nfunc get_object(id: String) -> Dictionary:
+func _keys_text(data: Dictionary) -> String:
+	var values := PackedStringArray()
+	for key in data.keys():
+		values.append(str(key))
+	return ",".join(values)
+
+func get_object(id: String) -> Dictionary:
 	for item in objects:
 		if str(item["id"]) == id:
 			return item
