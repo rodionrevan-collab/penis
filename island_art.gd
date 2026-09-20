@@ -51,6 +51,7 @@ class IslandObjectArt extends Node2D:
 	var object_id := ""
 	var repaired := false
 	var glow := 0.0
+	var rng:=RandomNumberGenerator.new()
 	func setup(id:String,done:bool)->void:
 		object_id=id
 		repaired=done
@@ -63,6 +64,20 @@ class IslandObjectArt extends Node2D:
 		t.tween_property(self,"scale",Vector2.ONE*1.15,.12)
 		t.tween_property(self,"scale",Vector2.ONE,.28)
 		t.parallel().tween_property(self,"glow",0.0,.42)
+		for i in range(12):
+			var piece:=Polygon2D.new()
+			piece.polygon=PackedVector2Array([Vector2(-3,-3),Vector2(3,-3),Vector2(3,3),Vector2(-3,3)])
+			piece.color=Color("#d8b15f") if i%2==0 else Color("#70dca3")
+			piece.position=Vector2.ZERO
+			add_child(piece)
+			var angle:=TAU*float(i)/12.0
+			var target:=Vector2(cos(angle),sin(angle))*rng.randf_range(28.0,52.0)
+			var pt:=create_tween().set_parallel(true)
+			pt.tween_property(piece,"position",target,.42)
+			pt.tween_property(piece,"rotation",rng.randf_range(-2.5,2.5),.42)
+			pt.tween_property(piece,"scale",Vector2.ZERO,.42)
+			pt.tween_property(piece,"modulate:a",0.0,.42)
+			pt.chain().tween_callback(piece.queue_free)
 	func _process(_delta:float)->void:
 		if glow>0.0: queue_redraw()
 	func _draw()->void:
