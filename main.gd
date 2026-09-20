@@ -701,7 +701,8 @@ func _claim_npc_quest(id:String)->void:
 	if bool(result.get("final",false)):
 		_show_island_npc_dialog(id)
 	else:
-		_show_npc_quest(id)
+		# После промежуточной награды NPC сразу показывает новую реплику следующего этапа.
+		_show_island_npc_dialog(id)
 
 func _claim_secret(id:String)->void:
 	if not is_instance_valid(island_progression): return
@@ -791,7 +792,13 @@ func _show_island_npc_dialog(id:String)->void:
 	var face_art:=island_art_factory.call("create_npc",str(npc["role"])); face_art.position=Vector2(92,90); box.add_child(face_art)
 	var name:=Label.new(); name.text=str(npc["name"]); name.position=Vector2(165,40); name.size=Vector2(390,35); name.add_theme_font_size_override("font_size",24); name.add_theme_color_override("font_color",Color("#f2f7ff")); box.add_child(name)
 	var role:=Label.new(); role.text=str(npc["role"]); role.position=Vector2(165,78); role.size=Vector2(390,25); role.add_theme_font_size_override("font_size",11); role.add_theme_color_override("font_color",Color("#71d7b0")); box.add_child(role)
-	var text_label:=Label.new(); text_label.text="«%s»"%str(npc["text"]); text_label.position=Vector2(45,145); text_label.size=Vector2(510,100); text_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; text_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; text_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; text_label.add_theme_font_size_override("font_size",17); text_label.add_theme_color_override("font_color",Color("#c4d3e2")); box.add_child(text_label)
+	var qstate:Dictionary=island_progression.call("get_quest_status",id,_completed_level_count(),island_progression.get_unlocked_zone_count(),_repaired_object_count())
+	var dialogue:=str(npc["text"])
+	if not qstate.is_empty():
+		dialogue=str(island_progression.call("get_npc_quest_dialogue",id,int(qstate.get("stage",1)),bool(qstate.get("chain_done",false))))
+		if dialogue.is_empty():
+			dialogue=str(npc["text"])
+	var text_label:=Label.new(); text_label.text="«%s»"%dialogue; text_label.position=Vector2(45,145); text_label.size=Vector2(510,100); text_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; text_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; text_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; text_label.add_theme_font_size_override("font_size",17); text_label.add_theme_color_override("font_color",Color("#c4d3e2")); box.add_child(text_label)
 	var qstate:Dictionary=island_progression.call("get_quest_status",id,_completed_level_count(),island_progression.get_unlocked_zone_count(),_repaired_object_count())
 	var quest_text:="📜 ЗАДАНИЕ"
 	if not qstate.is_empty():
