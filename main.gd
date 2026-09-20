@@ -1119,16 +1119,54 @@ func _show_island_collection()->void:
 	var panel:=Panel.new(); panel.position=Vector2(70,70); panel.size=Vector2(760,760); panel.add_theme_stylebox_override("panel",_style(Color("#141e35"),Color("#a77bd2"),24)); modal.add_child(panel)
 	var title:=Label.new(); title.text="🏆 КОЛЛЕКЦИЯ ОСТРОВА"; title.position=Vector2(30,25); title.size=Vector2(700,42); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",26); title.add_theme_color_override("font_color",Color("#f4e5ff")); panel.add_child(title)
 	var count:=Label.new(); count.text=island_progression.call("get_collection_completion_text"); count.position=Vector2(30,67); count.size=Vector2(700,30); count.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; count.add_theme_font_size_override("font_size",14); count.add_theme_color_override("font_color",Color("#d3b9f0")); panel.add_child(count)
+
 	var scroll:=ScrollContainer.new(); scroll.position=Vector2(30,110); scroll.size=Vector2(700,565); scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; panel.add_child(scroll)
-	var grid:=GridContainer.new(); grid.columns=2; grid.add_theme_constant_override("h_separation",12); grid.add_theme_constant_override("v_separation",12); grid.custom_minimum_size=Vector2(680,0); scroll.add_child(grid)
+	var content:=VBoxContainer.new(); content.custom_minimum_size=Vector2(680,0); content.add_theme_constant_override("separation",14); scroll.add_child(content)
+
+	var grid:=GridContainer.new(); grid.columns=2; grid.add_theme_constant_override("h_separation",12); grid.add_theme_constant_override("v_separation",12); grid.custom_minimum_size=Vector2(680,0); content.add_child(grid)
 	for item in island_progression.get_collection_items():
 		var collected:=bool(island_progression.call("is_collection_item_collected",str(item["id"])))
 		var card:=Panel.new(); card.custom_minimum_size=Vector2(330,105); card.add_theme_stylebox_override("panel",_style(Color("#244437") if collected else Color("#1b2637"),Color("#69c7a5") if collected else Color("#38475c"),14)); grid.add_child(card)
 		var icon:=Label.new(); icon.text=str(item["icon"]); icon.position=Vector2(15,18); icon.size=Vector2(55,55); icon.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; icon.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; icon.add_theme_font_size_override("font_size",29); icon.add_theme_color_override("font_color",Color("#e6f8ee") if collected else Color("#718094")); card.add_child(icon)
 		var name:=Label.new(); name.text=str(item["name"]); name.position=Vector2(78,17); name.size=Vector2(225,32); name.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; name.add_theme_font_size_override("font_size",12); name.add_theme_color_override("font_color",Color("#f2f6ff") if collected else Color("#7f8ba0")); card.add_child(name)
 		var state:=Label.new(); state.text="ПОЛУЧЕНО" if collected else "ЕЩЁ НЕ НАЙДЕНО"; state.position=Vector2(78,58); state.size=Vector2(225,24); state.add_theme_font_size_override("font_size",9); state.add_theme_color_override("font_color",Color("#71d7b0") if collected else Color("#657386")); card.add_child(state)
+
+	var milestone_title:=Label.new(); milestone_title.text="🎁 НАГРАДЫ ЗА ЗАПОЛНЕНИЕ"; milestone_title.custom_minimum_size=Vector2(680,32); milestone_title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; milestone_title.add_theme_font_size_override("font_size",16); milestone_title.add_theme_color_override("font_color",Color("#ead7ff")); content.add_child(milestone_title)
+	for milestone in island_progression.get_collection_milestones():
+		var id:=str(milestone["id"])
+		var threshold:=int(milestone["threshold"])
+		var collected_count:=int(island_progression.call("get_collection_count"))
+		var claimed:=bool(island_progression.call("is_collection_milestone_claimed",id))
+		var available:=bool(island_progression.call("is_collection_milestone_available",milestone))
+		var reward:Dictionary=milestone["reward"]
+		var row:=Panel.new(); row.custom_minimum_size=Vector2(680,72); row.add_theme_stylebox_override("panel",_style(Color("#29434a") if claimed else (Color("#4b3b26") if available else Color("#1b2637")),Color("#65b79c") if claimed else (Color("#d9b35c") if available else Color("#39485b")),12)); content.add_child(row)
+		var label:=Label.new(); label.text=str(milestone["title"]); label.position=Vector2(15,9); label.size=Vector2(245,23); label.add_theme_font_size_override("font_size",12); label.add_theme_color_override("font_color",Color("#f1f5ff")); row.add_child(label)
+		var progress:=Label.new(); progress.text="%d / %d предметов"%[mini(collected_count,threshold),threshold]; progress.position=Vector2(15,36); progress.size=Vector2(150,20); progress.add_theme_font_size_override("font_size",10); progress.add_theme_color_override("font_color",Color("#9bb0c1")); row.add_child(progress)
+		var reward_text:="⭐ +%d"%int(reward.get("stars",0))
+		var booster:=str(reward.get("booster",""))
+		var amount:=int(reward.get("amount",0))
+		if not booster.is_empty() and amount>0:
+			reward_text+="  •  %s +%d"%[booster,amount]
+		var reward_label:=Label.new(); reward_label.text=reward_text; reward_label.position=Vector2(270,20); reward_label.size=Vector2(190,28); reward_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; reward_label.add_theme_font_size_override("font_size",10); reward_label.add_theme_color_override("font_color",Color("#ffd86a")); row.add_child(reward_label)
+		var claim:=Button.new(); claim.position=Vector2(500,13); claim.size=Vector2(160,46); claim.add_theme_font_size_override("font_size",10); row.add_child(claim)
+		if claimed:
+			claim.text="✓ ПОЛУЧЕНО"; claim.disabled=true; claim.add_theme_stylebox_override("normal",_style(Color("#28433c"),Color("#4d806e"),10))
+		elif available:
+			claim.text="ПОЛУЧИТЬ"; claim.add_theme_stylebox_override("normal",_style(Color("#604b25"),Color("#d8b354"),10)); claim.pressed.connect(_claim_collection_milestone.bind(id))
+		else:
+			claim.text="ЕЩЁ %d"%maxi(0,threshold-collected_count); claim.disabled=true; claim.add_theme_stylebox_override("normal",_style(Color("#172231"),Color("#33485d"),10))
+
+	var hint:=Label.new(); hint.text="При 100% открывается секретное событие «Сердце острова» на карте."; hint.custom_minimum_size=Vector2(680,30); hint.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; hint.add_theme_font_size_override("font_size",10); hint.add_theme_color_override("font_color",Color("#b7a7c7")); content.add_child(hint)
+
 	var close:=Button.new(); close.text="← НАЗАД НА ОСТРОВ"; close.position=Vector2(170,700); close.size=Vector2(420,42); close.add_theme_stylebox_override("normal",_style(Color("#18334a"),Color("#527a99"),12)); close.pressed.connect(_close_island_visual_map); panel.add_child(close)
 	map_layer.add_child(modal)
+
+func _claim_collection_milestone(id:String)->void:
+	if not is_instance_valid(island_progression): return
+	var result:Dictionary=island_progression.call("claim_collection_milestone",id)
+	if not bool(result.get("ok",false)): return
+	_apply_island_reward(result["reward"])
+	_show_island_collection()
 
 func _show_island_repair()->void:
 	if modal:
