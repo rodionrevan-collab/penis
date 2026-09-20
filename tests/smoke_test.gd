@@ -169,7 +169,8 @@ func _initialize() -> void:
 	for p in g.specials.keys():
 		assert(int(g.specials[p]) == 5)
 	assert(g._is_active_special_type(5) == false)
-	mechanics.collect_map_piece_at(Vector2i(0,0))
+	var map_piece_pos:Vector2i = g.specials.keys()[0]
+	mechanics.collect_map_piece_at(map_piece_pos)
 	assert(mechanics.map_collected == 1)
 	mechanics.clear()
 
