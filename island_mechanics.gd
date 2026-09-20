@@ -85,8 +85,8 @@ func _setup_monkey() -> void:
 	var board = game.get("board")
 	var blockers = game.get("blockers")
 	var candidates: Array[Vector2i] = []
-	for y in range(1, int(game.get("SIZE")) - 1):
-		for x in range(1, int(game.get("SIZE")) - 1):
+	for y in range(1, SIZE - 1):
+		for x in range(1, SIZE - 1):
 			var p := Vector2i(x, y)
 			if board[y][x] >= 0 and (not blockers is Dictionary or not blockers.has(p)):
 				candidates.append(p)
@@ -109,7 +109,7 @@ func _setup_map() -> void:
 	var blockers = game.get("blockers")
 	var candidates: Array[Vector2i] = []
 	for y in range(0, 4):
-		for x in range(int(game.get("SIZE"))):
+		for x in range(SIZE):
 			var p := Vector2i(x, y)
 			if board[y][x] >= 0 and (not blockers is Dictionary or not blockers.has(p)):
 				candidates.append(p)
@@ -124,8 +124,8 @@ func _setup_fog() -> void:
 	var blockers = game.get("blockers")
 	var candidates: Array[Vector2i] = []
 	var center := Vector2i(3 + (level_index % 2), 3)
-	for y in range(1, int(game.get("SIZE")) - 1):
-		for x in range(1, int(game.get("SIZE")) - 1):
+	for y in range(1, SIZE - 1):
+		for x in range(1, SIZE - 1):
 			var p := Vector2i(x, y)
 			if board[y][x] >= 0 and (not blockers is Dictionary or not blockers.has(p)):
 				candidates.append(p)
@@ -140,8 +140,8 @@ func _setup_fire() -> void:
 	var board = game.get("board")
 	var blockers = game.get("blockers")
 	var candidates: Array[Vector2i] = []
-	for y in range(1, int(game.get("SIZE")) - 1):
-		for x in range(int(game.get("SIZE"))):
+	for y in range(1, SIZE - 1):
+		for x in range(SIZE):
 			var p := Vector2i(x, y)
 			if board[y][x] >= 0 and (not blockers is Dictionary or not blockers.has(p)):
 				candidates.append(p)
@@ -279,7 +279,7 @@ func after_player_move() -> void:
 	_refresh_visuals()
 
 func _shift_tide() -> void:
-	var size := int(game.get("SIZE"))
+	var size := SIZE
 	var new_row := size - 1 if tide_row == 0 else 0
 	var old_row := tide_row
 	previous_tide_row = old_row
@@ -326,7 +326,7 @@ func _curse_random_colors() -> void:
 	var gems = game.get("gems")
 	var specials = game.get("specials")
 	var candidates: Array[Vector2i] = []
-	var size := int(game.get("SIZE"))
+	var size := SIZE
 	for y in range(size):
 		for x in range(size):
 			var p := Vector2i(x, y)
@@ -349,7 +349,7 @@ func _curse_random_colors() -> void:
 func _move_monkey() -> void:
 	if monkey_cell.x < 0:
 		return
-	var size := int(game.get("SIZE"))
+	var size := SIZE
 	var blockers = game.get("blockers")
 	var board = game.get("board")
 	var candidates: Array[Vector2i] = []
@@ -374,7 +374,7 @@ func _move_monkey() -> void:
 func _collect_map_pieces() -> void:
 	var specials = game.get("specials")
 	var gems = game.get("gems")
-	var size := int(game.get("SIZE"))
+	var size := SIZE
 	var reached: Array[Vector2i] = []
 	for key in specials.keys():
 		var p: Vector2i = key
