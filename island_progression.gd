@@ -14,6 +14,7 @@ var unique_rewards: Dictionary = {}
 var completed_events: Dictionary = {}
 var claimed_interactives: Dictionary = {}
 var completed_activities: Dictionary = {}
+var completed_secret_activities: Dictionary = {}
 var claimed_collection_rewards: Dictionary = {}
 
 var objects: Array[Dictionary] = [
@@ -91,13 +92,17 @@ func _load() -> void:
 			for id in values:
 				if not id.is_empty():
 					claimed_collection_rewards[id] = true
+		elif key == "secret_activities":
+			for id in values:
+				if not id.is_empty():
+					completed_secret_activities[id] = true
 	_migrate_legacy_quests()
 
 func save() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if not file:
 		return
-	file.store_string("repaired=%s|chests=%s|npcs=%s|quests=%s|secrets=%s|queststate=%s|unique=%s|events=%s|interactives=%s|activities=%s|collection_rewards=%s" % [
+	file.store_string("repaired=%s|chests=%s|npcs=%s|quests=%s|secrets=%s|queststate=%s|unique=%s|events=%s|interactives=%s|activities=%s|collection_rewards=%s|secret_activities=%s" % [
 		_keys_text(repaired),
 		_keys_text(claimed_chests),
 		_keys_text(discovered_npcs),
@@ -108,7 +113,8 @@ func save() -> void:
 		_keys_text(completed_events),
 		_keys_text(claimed_interactives),
 		_keys_text(completed_activities),
-		_keys_text(claimed_collection_rewards)
+		_keys_text(claimed_collection_rewards),
+		_keys_text(completed_secret_activities)
 	])
 	file.flush()
 
@@ -762,11 +768,106 @@ func get_mini_activities() -> Array:
 		}
 	]
 
+func get_secret_mini_activities() -> Array:
+	return [
+		{
+			"id":"pirate_navigation_secret",
+			"name":"Тайный курс контрабандистов",
+			"icon":"💠",
+			"zone":3,
+			"map_pos":Vector2(620,320),
+			"unique_required":"tom_log",
+			"normal_required":"pirate_navigation",
+			"type":"sequence",
+			"variant":"secret_compass",
+			"sequence":[1,3,0,2],
+			"labels":["↗","↖","↓","←"],
+			"description":"Редкая запись в журнале Тома. Повтори скрытый маршрут, который виден только после прохождения основной навигации.",
+			"reward":{"stars":6,"booster":"pre_bomb","amount":2},
+			"secret_reward":{"id":"pirate_compass","name":"Компас тайного курса","icon":"🧭"}
+		},
+		{
+			"id":"cave_runes_secret",
+			"name":"Запечатанная руна",
+			"icon":"💠",
+			"zone":4,
+			"map_pos":Vector2(650,500),
+			"unique_required":"keeper_key",
+			"normal_required":"cave_runes",
+			"type":"odd_one",
+			"variant":"secret_rune",
+			"target_index":4,
+			"labels":["☽","☽","☽","☽","✦"],
+			"description":"За обычной руной скрывается редкий символ. Найди единственную звёздную руну, пока механизм снова не запечатался.",
+			"reward":{"stars":7,"booster":"pre_rainbow","amount":2},
+			"secret_reward":{"id":"sealed_rune","name":"Запечатанная руна","icon":"✦"}
+		},
+		{
+			"id":"village_trade_secret",
+			"name":"Секретная поставка",
+			"icon":"💠",
+			"zone":5,
+			"map_pos":Vector2(520,520),
+			"unique_required":"merchant_token",
+			"normal_required":"village_trade_route",
+			"type":"order_goods",
+			"variant":"secret_trade",
+			"sequence":[3,1,0,2],
+			"labels":["🧺 Припасы","🐟 Рыба","🌿 Травы","🪵 Дерево"],
+			"description":"Торговец открывает скрытый список поставки. Отправь четыре позиции в точном порядке.",
+			"reward":{"stars":8,"booster":"extra_moves","amount":3},
+			"secret_reward":{"id":"merchant_seal","name":"Печать тайной торговли","icon":"🔱"}
+		}
+	]
+
 func get_mini_activity(id:String) -> Dictionary:
 	for item in get_mini_activities():
 		if str(item["id"]) == id:
 			return item
+	for item in get_secret_mini_activities():
+		if str(item["id"]) == id:
+			return item
 	return {}
+
+func is_secret_activity_completed(id:String) -> bool:
+	return bool(completed_secret_activities.get(id,false))
+
+func is_secret_activity_available(item:Dictionary) -> bool:
+	if item.is_empty():
+		return false
+	if not is_zone_unlocked(int(item.get("zone",0))):
+		return false
+	var required := str(item.get("unique_required",""))
+	if required.is_empty() or not is_unique_reward_unlocked(required):
+		return false
+	var normal_id := str(item.get("normal_required",""))
+	if normal_id.is_empty() or not is_activity_completed(normal_id):
+		return false
+	return not is_secret_activity_completed(str(item["id"]))
+
+func get_available_secret_activities() -> Array:
+	var result:Array=[]
+	for item in get_secret_mini_activities():
+		if is_secret_activity_available(item):
+			result.append(item)
+	return result
+
+func claim_secret_activity(id:String) -> Dictionary:
+	var item:Dictionary={}
+	for candidate in get_secret_mini_activities():
+		if str(candidate["id"]) == id:
+			item=candidate
+			break
+	if item.is_empty():
+		return {"ok":false,"reason":"unknown"}
+	if not is_secret_activity_available(item):
+		if is_secret_activity_completed(id):
+			return {"ok":false,"reason":"completed"}
+		return {"ok":false,"reason":"locked"}
+	completed_secret_activities[id]=true
+	save()
+	return {"ok":true,"activity":item,"reward":item["reward"],"secret_reward":item["secret_reward"]}
+
 
 func is_activity_available(item:Dictionary) -> bool:
 	var required := str(item.get("unique_required",""))
@@ -787,6 +888,9 @@ func is_activity_completed(id:String) -> bool:
 	return bool(completed_activities.get(id,false))
 
 func claim_mini_activity(id:String) -> Dictionary:
+	for secret in get_secret_mini_activities():
+		if str(secret["id"]) == id:
+			return claim_secret_activity(id)
 	var item := get_mini_activity(id)
 	if item.is_empty():
 		return {"ok":false,"reason":"unknown"}
@@ -797,6 +901,33 @@ func claim_mini_activity(id:String) -> Dictionary:
 	completed_activities[id]=true
 	save()
 	return {"ok":true,"activity":item,"reward":item["reward"]}
+
+func get_secret_collection_items() -> Array:
+	return [
+		{"id":"pirate_compass","name":"Компас тайного курса","icon":"🧭"},
+		{"id":"sealed_rune","name":"Запечатанная руна","icon":"✦"},
+		{"id":"merchant_seal","name":"Печать тайной торговли","icon":"🔱"}
+	]
+
+func is_secret_collection_item_collected(id:String) -> bool:
+	for activity in get_secret_mini_activities():
+		var reward:Dictionary=activity.get("secret_reward",{})
+		if str(reward.get("id","")) == id:
+			return is_secret_activity_completed(str(activity["id"]))
+	return false
+
+func get_secret_collection_count() -> int:
+	var count:=0
+	for item in get_secret_collection_items():
+		if is_secret_collection_item_collected(str(item["id"])):
+			count += 1
+	return count
+
+func get_secret_collection_total() -> int:
+	return get_secret_collection_items().size()
+
+func get_secret_collection_text() -> String:
+	return "%d / %d секретных наград"%[get_secret_collection_count(),get_secret_collection_total()]
 
 func get_collection_items() -> Array:
 	return [
@@ -950,4 +1081,5 @@ func reset_for_tests() -> void:
 	completed_events.clear()
 	claimed_interactives.clear()
 	completed_activities.clear()
+	completed_secret_activities.clear()
 	claimed_collection_rewards.clear()
