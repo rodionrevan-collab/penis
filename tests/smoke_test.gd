@@ -225,5 +225,32 @@ func _initialize() -> void:
 
 	mechanics.free()
 
+
+	# Система целей и звёзд.
+	g._build_levels()
+	g.current_level=10
+	var blocker_goal:Array = g._goal_defs(10)
+	assert(blocker_goal.size() >= 1)
+	assert(blocker_goal[0]["kind"] == "blockers")
+	g.current_level=60
+	var mechanic_goal:Array = g._goal_defs(60)
+	assert(mechanic_goal[0]["kind"] == "mechanic")
+	g.current_level=0
+	g.initial_moves=20
+	g.moves_left=15
+	g.best_combo_level=6
+	g.destroyed_counts=[0,0,0,0,0,0]
+	g.score=0
+	assert(g._calculate_stars() == 0)
+	var early_type:int=int(g.LEVELS[0]["type"])
+	g.destroyed_counts[early_type]=int(g.LEVELS[0]["count"])
+	g.score=int(g.LEVELS[0]["score"])
+	assert(g._calculate_stars() == 3)
+
+	# Бустерный инвентарь корректно уменьшается.
+	g.booster_inventory["extra_moves"]=1
+	assert(g._consume_booster("extra_moves") == true)
+	assert(int(g.booster_inventory["extra_moves"]) == 0)
+
 	print("SMOKE TEST PASSED: matches + special gems")
 	quit()
