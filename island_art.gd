@@ -221,14 +221,22 @@ class IslandInteractiveArt extends Node2D:
 class IslandActivityArt extends Node2D:
 	var icon := ""
 	var state := 0 # 0 locked, 1 available, 2 completed
-	func setup(activity_icon:String,visual_state:int)->void:
+	var secret := false
+	func setup(activity_icon:String,visual_state:int,is_secret:bool=false)->void:
 		icon=activity_icon
 		state=visual_state
+		secret=is_secret
 		queue_redraw()
 	func _draw()->void:
 		var outer:=Color("#4f4a43")
 		var inner:=Color("#7b7062")
-		if state==1:
+		if secret:
+			outer=Color("#5d4677")
+			inner=Color("#d19aff")
+			if state==2:
+				outer=Color("#365f5a")
+				inner=Color("#8ee0cb")
+		elif state==1:
 			outer=Color("#8b6435")
 			inner=Color("#ffd171")
 		elif state==2:
@@ -237,20 +245,25 @@ class IslandActivityArt extends Node2D:
 		draw_circle(Vector2(2,4),25,Color(0,0,0,.25))
 		draw_circle(Vector2.ZERO,23,outer)
 		draw_circle(Vector2.ZERO,17,inner)
+		if secret:
+			draw_dashed_line(Vector2(0,-28),Vector2(28,0),Color("#e7c5ff"),2.0,3.0)
+			draw_dashed_line(Vector2(28,0),Vector2(0,28),Color("#e7c5ff"),2.0,3.0)
+			draw_dashed_line(Vector2(0,28),Vector2(-28,0),Color("#e7c5ff"),2.0,3.0)
+			draw_dashed_line(Vector2(-28,0),Vector2(0,-28),Color("#e7c5ff"),2.0,3.0)
 		if state==0:
 			draw_line(Vector2(-9,-9),Vector2(9,9),Color("#49545d"),4)
 			draw_line(Vector2(9,-9),Vector2(-9,9),Color("#49545d"),4)
 		else:
 			draw_string(ThemeDB.fallback_font,Vector2(-13,8),icon,HORIZONTAL_ALIGNMENT_CENTER,26,18,Color("#16212b"))
 			if state==2:
-				draw_arc(Vector2.ZERO,25,-PI*0.8,PI*0.8,18,Color("#8ce0ba"),3)
+				draw_arc(Vector2.ZERO,25,-PI*0.8,PI*0.8,18,Color("#8ce0ba") if not secret else Color("#cfa6ff"),3)
 
 func create_interactive(id:String,visual_state:int)->Node2D:
 	var n:=IslandInteractiveArt.new()
 	n.setup(id,visual_state)
 	return n
 
-func create_activity(icon:String,visual_state:int)->Node2D:
+func create_activity(icon:String,visual_state:int,is_secret:bool=false)->Node2D:
 	var n:=IslandActivityArt.new()
-	n.setup(icon,visual_state)
+	n.setup(icon,visual_state,is_secret)
 	return n
