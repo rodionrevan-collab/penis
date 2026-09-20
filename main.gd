@@ -525,7 +525,8 @@ func _show_island_visual_map(focus_id:String="")->void:
 	title.add_theme_color_override("font_color",Color("#f3f8f4"))
 	panel.add_child(title)
 	var bank:=Label.new()
-	bank.text="⭐ %d    •    %s"%[island_stars,island_progression.get_progress_text() if is_instance_valid(island_progression) else "Прогресс недоступен"]
+	var unique_count:=island_progression.get_unique_reward_count() if is_instance_valid(island_progression) else 0
+	bank.text="⭐ %d    •    %s    •    🏆 %d/4"%[island_stars,island_progression.get_progress_text() if is_instance_valid(island_progression) else "Прогресс недоступен",unique_count]
 	bank.position=Vector2(35,58)
 	bank.size=Vector2(770,28)
 	bank.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
@@ -697,7 +698,10 @@ func _claim_npc_quest(id:String)->void:
 	var result:Dictionary=island_progression.call("claim_npc_quest",id,_completed_level_count(),island_progression.get_unlocked_zone_count(),_repaired_object_count())
 	if not bool(result.get("ok",false)): return
 	_apply_island_reward(result["reward"])
-	_show_island_npc_dialog(id)
+	if bool(result.get("final",false)):
+		_show_island_npc_dialog(id)
+	else:
+		_show_npc_quest(id)
 
 func _claim_secret(id:String)->void:
 	if not is_instance_valid(island_progression): return
@@ -718,19 +722,28 @@ func _show_npc_quest(id:String)->void:
 	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	modal.mouse_filter=Control.MOUSE_FILTER_STOP
 	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.02,0.04,0.09,.78); modal.add_child(shade)
-	var box:=Panel.new(); box.position=Vector2(145,235); box.size=Vector2(610,430); box.add_theme_stylebox_override("panel",_style(Color("#10263b"),Color("#5b8eb0"),22)); modal.add_child(box)
-	var head:=Label.new(); head.text=str(npc["name"])+": "+str(state["quest"]["title"]); head.position=Vector2(35,25); head.size=Vector2(540,45); head.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; head.add_theme_font_size_override("font_size",22); head.add_theme_color_override("font_color",Color("#f2f7ff")); box.add_child(head)
-	var desc:=Label.new(); desc.text=str(state["quest"]["description"]); desc.position=Vector2(45,90); desc.size=Vector2(520,75); desc.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; desc.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; desc.add_theme_font_size_override("font_size",14); desc.add_theme_color_override("font_color",Color("#b8cbe0")); box.add_child(desc)
-	var progress:=Label.new(); progress.text="Прогресс: %d / %d"%[int(state["current"]),int(state["target"])]; progress.position=Vector2(50,175); progress.size=Vector2(510,32); progress.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; progress.add_theme_font_size_override("font_size",18); progress.add_theme_color_override("font_color",Color("#72d7b0")); box.add_child(progress)
-	var reward:Dictionary=state["quest"]["reward"]; var reward_label:=Label.new(); reward_label.text="🎁 Награда: ⭐ +%d   •   %s +%d"%[int(reward["stars"]),str(reward["booster"]),int(reward["amount"])]; reward_label.position=Vector2(35,225); reward_label.size=Vector2(540,35); reward_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; reward_label.add_theme_font_size_override("font_size",13); reward_label.add_theme_color_override("font_color",Color("#ffd86a")); box.add_child(reward_label)
-	var claim:=Button.new(); claim.position=Vector2(85,285); claim.size=Vector2(440,52); claim.add_theme_font_size_override("font_size",14); box.add_child(claim)
-	if bool(state["claimed"]):
-		claim.text="ЗАДАНИЕ ВЫПОЛНЕНО"; claim.disabled=true
+	var box:=Panel.new(); box.position=Vector2(145,220); box.size=Vector2(610,455); box.add_theme_stylebox_override("panel",_style(Color("#10263b"),Color("#5b8eb0"),22)); modal.add_child(box)
+	var head:=Label.new(); head.text=str(npc["name"])+": "+str(state["quest"]["title"]); head.position=Vector2(35,22); head.size=Vector2(540,43); head.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; head.add_theme_font_size_override("font_size",22); head.add_theme_color_override("font_color",Color("#f2f7ff")); box.add_child(head)
+	var stage_label:=Label.new(); stage_label.text="Этап %d из %d"%[int(state["stage"]),int(state["stage_count"])]; stage_label.position=Vector2(35,64); stage_label.size=Vector2(540,24); stage_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; stage_label.add_theme_font_size_override("font_size",12); stage_label.add_theme_color_override("font_color",Color("#71d7b0")); box.add_child(stage_label)
+	var desc:=Label.new(); desc.text=str(state["quest"]["description"]); desc.position=Vector2(45,100); desc.size=Vector2(520,74); desc.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; desc.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; desc.add_theme_font_size_override("font_size",14); desc.add_theme_color_override("font_color",Color("#b8cbe0")); box.add_child(desc)
+	var progress:=Label.new(); progress.text="Прогресс: %d / %d"%[int(state["current"]),int(state["target"])]; progress.position=Vector2(50,181); progress.size=Vector2(510,32); progress.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; progress.add_theme_font_size_override("font_size",18); progress.add_theme_color_override("font_color",Color("#72d7b0")); box.add_child(progress)
+	var reward:Dictionary=state["quest"]["reward"]
+	var reward_text:="🎁 Награда: ⭐ +%d"%int(reward.get("stars",0))
+	var booster_name:=str(reward.get("booster",""))
+	var booster_amount:=int(reward.get("amount",0))
+	if not booster_name.is_empty() and booster_amount>0:
+		reward_text+="   •   %s +%d"%[booster_name,booster_amount]
+	var reward_label:=Label.new(); reward_label.text=reward_text; reward_label.position=Vector2(35,225); reward_label.size=Vector2(540,32); reward_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; reward_label.add_theme_font_size_override("font_size",13); reward_label.add_theme_color_override("font_color",Color("#ffd86a")); box.add_child(reward_label)
+	if reward.has("unique"):
+		var unique_label:=Label.new(); unique_label.text="🏆 Финальная награда цепочки: %s %s"%[str(reward.get("unique_icon","🏆")),str(reward.get("unique_name","Уникальный предмет"))]; unique_label.position=Vector2(35,258); unique_label.size=Vector2(540,31); unique_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; unique_label.add_theme_font_size_override("font_size",11); unique_label.add_theme_color_override("font_color",Color("#e7c56c")); box.add_child(unique_label)
+	var claim:=Button.new(); claim.position=Vector2(85,305); claim.size=Vector2(440,52); claim.add_theme_font_size_override("font_size",14); box.add_child(claim)
+	if bool(state.get("chain_done",false)):
+		claim.text="🏆 ЦЕПОЧКА ЗАВЕРШЕНА"; claim.disabled=true; claim.add_theme_stylebox_override("normal",_style(Color("#245c4c"),Color("#4db98b"),12))
 	elif bool(state["done"]):
-		claim.text="ПОЛУЧИТЬ НАГРАДУ"; claim.add_theme_stylebox_override("normal",_style(Color("#5c4a25"),Color("#d8b354"),12)); claim.pressed.connect(_claim_npc_quest.bind(id))
+		claim.text="ПОЛУЧИТЬ НАГРАДУ • ЭТАП %d"%int(state["stage"]); claim.add_theme_stylebox_override("normal",_style(Color("#5c4a25"),Color("#d8b354"),12)); claim.pressed.connect(_claim_npc_quest.bind(id))
 	else:
-		claim.text="ЕЩЁ НЕ ВЫПОЛНЕНО"; claim.disabled=true
-	var close:=Button.new(); close.text="← НАЗАД К NPC"; close.position=Vector2(85,355); close.size=Vector2(440,42); close.add_theme_stylebox_override("normal",_style(Color("#18334a"),Color("#527a99"),12)); close.pressed.connect(_show_island_npc_dialog.bind(id)); box.add_child(close)
+		claim.text="ЕЩЁ НУЖНО ПРОГРЕССА"; claim.disabled=true
+	var close:=Button.new(); close.text="← НАЗАД К NPC"; close.position=Vector2(85,378); close.size=Vector2(440,42); close.add_theme_stylebox_override("normal",_style(Color("#18334a"),Color("#527a99"),12)); close.pressed.connect(_show_island_npc_dialog.bind(id)); box.add_child(close)
 	map_layer.add_child(modal)
 
 func _show_secret_dialog(id:String)->void:
@@ -779,7 +792,11 @@ func _show_island_npc_dialog(id:String)->void:
 	var name:=Label.new(); name.text=str(npc["name"]); name.position=Vector2(165,40); name.size=Vector2(390,35); name.add_theme_font_size_override("font_size",24); name.add_theme_color_override("font_color",Color("#f2f7ff")); box.add_child(name)
 	var role:=Label.new(); role.text=str(npc["role"]); role.position=Vector2(165,78); role.size=Vector2(390,25); role.add_theme_font_size_override("font_size",11); role.add_theme_color_override("font_color",Color("#71d7b0")); box.add_child(role)
 	var text_label:=Label.new(); text_label.text="«%s»"%str(npc["text"]); text_label.position=Vector2(45,145); text_label.size=Vector2(510,100); text_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; text_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; text_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; text_label.add_theme_font_size_override("font_size",17); text_label.add_theme_color_override("font_color",Color("#c4d3e2")); box.add_child(text_label)
-	var quest:=Button.new(); quest.text="📜 ЗАДАНИЕ"; quest.position=Vector2(110,235); quest.size=Vector2(170,44); quest.add_theme_stylebox_override("normal",_style(Color("#5c4a25"),Color("#d8b354"),12)); quest.pressed.connect(_show_npc_quest.bind(id)); box.add_child(quest)
+	var qstate:Dictionary=island_progression.call("get_quest_status",id,_completed_level_count(),island_progression.get_unlocked_zone_count(),_repaired_object_count())
+	var quest_text:="📜 ЗАДАНИЕ"
+	if not qstate.is_empty():
+		quest_text="🏆 ЦЕПОЧКА ЗАВЕРШЕНА" if bool(qstate.get("chain_done",false)) else "📜 ЭТАП %d/%d"%[int(qstate.get("stage",1)),int(qstate.get("stage_count",1))]
+	var quest:=Button.new(); quest.text=quest_text; quest.position=Vector2(85,235); quest.size=Vector2(220,44); quest.add_theme_stylebox_override("normal",_style(Color("#5c4a25"),Color("#d8b354"),12)); quest.pressed.connect(_show_npc_quest.bind(id)); box.add_child(quest)
 	var close:=Button.new(); close.text="ЗАКРЫТЬ"; close.position=Vector2(300,235); close.size=Vector2(170,44); close.add_theme_stylebox_override("normal",_style(Color("#193b52"),Color("#63a6d3"),12)); close.pressed.connect(_close_island_visual_map); box.add_child(close)
 	map_layer.add_child(modal)
 
