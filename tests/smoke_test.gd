@@ -346,7 +346,7 @@ func _initialize() -> void:
 
 	# Интерактивные объекты и мини-активности требуют уникальные предметы и зоны.
 	assert(progression.get_interactive_objects().size() == 4)
-	assert(progression.get_mini_activities().size() == 3)
+	assert(progression.get_mini_activities().size() == 4)
 	assert(progression.get_interactive_object("pirate_chart_table")["unique_required"] == "tom_log")
 	assert(progression.get_mini_activity("pirate_navigation")["unique_required"] == "tom_log")
 	assert(progression.get_mini_activity("pirate_navigation")["type"] == "sequence")
@@ -355,9 +355,9 @@ func _initialize() -> void:
 	assert(progression.get_mini_activity("village_trade_route")["type"] == "order_goods")
 	assert(progression.get_mini_activities().size() == 4)
 	assert(progression.get_collection_total() == 8)
-	assert(progression.get_collection_count() == 1)
-	assert(progression.get_available_interactives().size() == 0)
-	assert(progression.get_available_activities().size() == 0)
+	assert(progression.get_collection_count() == 4)
+	assert(progression.get_available_interactives().size() == 2)
+	assert(progression.get_available_activities().size() == 1)
 	progression.repaired["secret_cave"]=true
 	progression.repaired["old_village"]=true
 	progression.unique_rewards["tom_log"]=true
@@ -365,7 +365,7 @@ func _initialize() -> void:
 	progression.unique_rewards["merchant_token"]=true
 	progression.unique_rewards["lisa_badge"]=true
 	assert(progression.get_available_interactives().size() == 4)
-	assert(progression.get_available_activities().size() == 3)
+	assert(progression.get_available_activities().size() == 4)
 	var interactive_reward:Dictionary=progression.claim_interactive("pirate_chart_table")
 	assert(interactive_reward["ok"] == true)
 	assert(progression.claim_interactive("pirate_chart_table")["ok"] == false)
@@ -373,7 +373,7 @@ func _initialize() -> void:
 	assert(activity_reward["ok"] == true)
 	assert(progression.is_activity_completed("pirate_navigation"))
 	assert(progression.is_collection_item_collected("pirate_chart"))
-	assert(progression.get_collection_count() == 2)
+	assert(progression.get_collection_count() == 5)
 	assert(progression.claim_mini_activity("pirate_navigation")["ok"] == false)
 	assert(progression.get_available_interactives().size() == 3)
 	assert(progression.get_available_activities().size() == 3)
