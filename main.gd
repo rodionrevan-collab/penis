@@ -65,6 +65,8 @@ var sounds: Dictionary = {}
 var touch_start := Vector2.ZERO
 var touch_active := false
 var mechanics: Node
+var island_progression: Node
+var island_stars := 0
 
 class Gem extends Node2D:
 	var kind := 0
@@ -191,6 +193,7 @@ class BoardFrame extends Node2D:
 func _ready() -> void:
 	rng.randomize()
 	mechanics = get_node_or_null("IslandMechanics")
+	island_progression = get_node_or_null("IslandProgression")
 	_build_levels()
 	level_stars.resize(100)
 	for i in range(100): level_stars[i] = 0
@@ -232,6 +235,12 @@ func _load_progress() -> void:
 		var star_parts:=FileAccess.get_file_as_string("user://level_stars.txt").split(",")
 		for i in range(mini(star_parts.size(),100)):
 			level_stars[i]=clampi(int(star_parts[i]),0,3)
+	if FileAccess.file_exists("user://island_stars.txt"):
+		island_stars=maxi(0,int(FileAccess.get_file_as_string("user://island_stars.txt")))
+	else:
+		island_stars=0
+		for value in level_stars:
+			island_stars+=int(value)
 	if FileAccess.file_exists("user://booster_inventory.txt"):
 		var boost_parts:=FileAccess.get_file_as_string("user://booster_inventory.txt").split(",")
 		for part in boost_parts:
@@ -255,6 +264,9 @@ func _save_progress() -> void:
 		for v in level_stars:
 			star_parts.append(str(v))
 		s.store_string(",".join(star_parts))
+	var ib:=FileAccess.open("user://island_stars.txt",FileAccess.WRITE)
+	if ib:
+		ib.store_string(str(island_stars))
 	var b:=FileAccess.open("user://booster_inventory.txt",FileAccess.WRITE)
 	if b:
 		var boost_parts:=PackedStringArray()
@@ -465,6 +477,8 @@ func _show_map()->void:
 	var sub:=Label.new(); sub.text="Остров 1 • 100 уровней • каждые 10 уровней — новая механика"; sub.position=Vector2(50,62); sub.add_theme_font_size_override("font_size",13); sub.add_theme_color_override("font_color",Color("#8eafc9")); map_layer.add_child(sub)
 	var back:=Button.new(); back.text="← МИРЫ"; back.position=Vector2(735,28); back.size=Vector2(115,42); back.add_theme_stylebox_override("normal",_style(Color("#162f49"),Color("#42688b"))); back.pressed.connect(_show_menu); map_layer.add_child(back)
 	var legend:=Label.new(); legend.text="🟢 ПРОЙДЕН   🔵 ДОСТУПЕН   🔴 ЗАБЛОКИРОВАН"; legend.position=Vector2(50,96); legend.add_theme_font_size_override("font_size",11); legend.add_theme_color_override("font_color",Color("#b6c8dc")); map_layer.add_child(legend)
+	var star_bank:=Label.new(); star_bank.text="⭐ ЗВЁЗДЫ: %d"%island_stars; star_bank.position=Vector2(420,92); star_bank.size=Vector2(170,28); star_bank.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; star_bank.add_theme_font_size_override("font_size",14); star_bank.add_theme_color_override("font_color",Color("#ffd86a")); map_layer.add_child(star_bank)
+	var island_btn:=Button.new(); island_btn.text="🏝️ ВОССТАНОВИТЬ ОСТРОВ"; island_btn.position=Vector2(600,88); island_btn.size=Vector2(250,36); island_btn.add_theme_font_size_override("font_size",11); island_btn.add_theme_stylebox_override("normal",_style(Color("#1c594f"),Color("#5fd9aa"))); island_btn.pressed.connect(_show_island_repair); map_layer.add_child(island_btn)
 	var scroll:=ScrollContainer.new(); scroll.position=Vector2(25,140); scroll.size=Vector2(850,735); scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; map_layer.add_child(scroll)
 	var world:=Control.new(); world.custom_minimum_size=Vector2(850,2050); scroll.add_child(world)
 	var path:=Line2D.new(); path.width=18; path.default_color=Color("#315e70"); world.add_child(path)
@@ -475,6 +489,103 @@ func _show_map()->void:
 	for i in range(100): _create_level_node(world,i,points[i])
 	var note:=Label.new(); note.text="ПРОЛИСТАЙ ВНИЗ • ПУТЕШЕСТВИЕ ПРОДОЛЖАЕТСЯ"; note.position=Vector2(190,1990); note.size=Vector2(470,35); note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; note.add_theme_font_size_override("font_size",12); note.add_theme_color_override("font_color",Color("#6f94a5")); world.add_child(note)
 	busy=false
+
+func _show_island_repair()->void:
+	if modal:
+		modal.queue_free()
+		modal=null
+	modal=Control.new()
+	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.02,0.04,0.09,.88); modal.add_child(shade)
+	var panel:=Panel.new(); panel.position=Vector2(55,45); panel.size=Vector2(790,810); panel.add_theme_stylebox_override("panel",_style(Color("#0e2034"),Color("#416b7c"),24)); modal.add_child(panel)
+	var title:=Label.new(); title.text="🏝️ ВОССТАНОВЛЕНИЕ ОСТРОВА"; title.position=Vector2(35,22); title.size=Vector2(720,42); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",26); title.add_theme_color_override("font_color",Color("#f4f7ff")); panel.add_child(title)
+	var bank:=Label.new(); bank.name="IslandStarBank"; bank.text="⭐ Доступно звёзд: %d"%island_stars; bank.position=Vector2(35,66); bank.size=Vector2(720,30); bank.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; bank.add_theme_font_size_override("font_size",16); bank.add_theme_color_override("font_color",Color("#ffd86a")); panel.add_child(bank)
+	var progress:=Label.new(); progress.text=island_progression.get_progress_text() if is_instance_valid(island_progression) else "Прогресс недоступен"; progress.position=Vector2(35,99); progress.size=Vector2(720,28); progress.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; progress.add_theme_font_size_override("font_size",11); progress.add_theme_color_override("font_color",Color("#83a9bd")); panel.add_child(progress)
+	var scroll:=ScrollContainer.new(); scroll.position=Vector2(25,135); scroll.size=Vector2(740,560); scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; panel.add_child(scroll)
+	var list:=VBoxContainer.new(); list.custom_minimum_size=Vector2(700,0); list.add_theme_constant_override("separation",10); scroll.add_child(list)
+	if is_instance_valid(island_progression):
+		for item in island_progression.objects:
+			var id:=str(item["id"])
+			var repaired_now:=bool(island_progression.call("is_repaired",id))
+			var unlocked:=int(item["zone"])==0 or bool(island_progression.call("is_zone_unlocked",int(item["zone"])-1))
+			var row:=Panel.new(); row.custom_minimum_size=Vector2(700,92); row.add_theme_stylebox_override("panel",_style(Color("#17334a") if unlocked else Color("#111e2d"),Color("#3b7080") if repaired_now else (Color("#4f6d85") if unlocked else Color("#293b4d")),14)); list.add_child(row)
+			var icon:=Label.new(); icon.text=str(item["icon"]); icon.position=Vector2(14,16); icon.add_theme_font_size_override("font_size",32); row.add_child(icon)
+			var name:=Label.new(); name.text=str(item["name"])+("  ✓" if repaired_now else ""); name.position=Vector2(62,12); name.size=Vector2(310,27); name.add_theme_font_size_override("font_size",15); name.add_theme_color_override("font_color",Color("#70dfa9") if repaired_now else Color("#f1f6ff")); row.add_child(name)
+			var desc:=Label.new(); desc.text=str(item["description"]); desc.position=Vector2(62,42); desc.size=Vector2(390,36); desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; desc.add_theme_font_size_override("font_size",10); desc.add_theme_color_override("font_color",Color("#8aa5ba")); row.add_child(desc)
+			var btn:=Button.new(); btn.position=Vector2(505,18); btn.size=Vector2(170,52); btn.add_theme_font_size_override("font_size",11); row.add_child(btn)
+			if repaired_now:
+				btn.text="ВОССТАНОВЛЕНО"
+				btn.disabled=true
+				btn.add_theme_stylebox_override("normal",_style(Color("#245c4c"),Color("#4db98b"),12))
+			elif not unlocked:
+				btn.text="ЗОНА ЗАКРЫТА"
+				btn.disabled=true
+				btn.add_theme_stylebox_override("normal",_style(Color("#172231"),Color("#33485d"),12))
+			else:
+				btn.text="🔨 РЕМОНТ • %d ⭐"%int(item["cost"])
+				btn.add_theme_stylebox_override("normal",_style(Color("#225b50"),Color("#61d6a2"),12))
+				btn.pressed.connect(_repair_island_object.bind(id))
+			var reward:=Label.new(); reward.text=str(item["reward_text"]); reward.position=Vector2(505,70); reward.size=Vector2(170,18); reward.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; reward.add_theme_font_size_override("font_size",9); reward.add_theme_color_override("font_color",Color("#7194aa")); row.add_child(reward)
+	var npcs:=Label.new(); npcs.text="👥 NPC: %d   🎁 Сундуки: %d"%[(island_progression.get_npc_list().size() if is_instance_valid(island_progression) else 0),(island_progression.get_chests().size() if is_instance_valid(island_progression) else 0)]; npcs.position=Vector2(35,710); npcs.size=Vector2(720,28); npcs.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; npcs.add_theme_font_size_override("font_size",12); npcs.add_theme_color_override("font_color",Color("#9ab4c8")); panel.add_child(npcs)
+	var close:=Button.new(); close.text="← НАЗАД НА КАРТУ"; close.position=Vector2(35,752); close.size=Vector2(340,42); close.add_theme_stylebox_override("normal",_style(Color("#182c45"),Color("#4a6989"))); close.pressed.connect(_close_island_repair); panel.add_child(close)
+	var chest_btn:=Button.new(); chest_btn.text="🎁 ПРОВЕРИТЬ СУНДУКИ"; chest_btn.position=Vector2(395,752); chest_btn.size=Vector2(340,42); chest_btn.add_theme_stylebox_override("normal",_style(Color("#604b25"),Color("#d3a94f"))); chest_btn.pressed.connect(_show_island_chests); panel.add_child(chest_btn)
+	map_layer.add_child(modal)
+
+func _close_island_repair()->void:
+	if modal:
+		modal.queue_free()
+		modal=null
+
+func _repair_island_object(id:String)->void:
+	if not is_instance_valid(island_progression): return
+	var result:Dictionary=island_progression.call("repair",id,island_stars)
+	if not bool(result.get("ok",false)):
+		if status: status.text="Недостаточно звёзд или зона ещё закрыта"
+		return
+	island_stars-=int(result["cost"])
+	_save_progress()
+	_show_island_repair()
+
+func _apply_island_reward(reward:Dictionary)->void:
+	island_stars+=int(reward.get("stars",0))
+	var booster:=str(reward.get("booster",""))
+	var amount:=int(reward.get("amount",0))
+	if not booster.is_empty() and amount>0:
+		booster_inventory[booster]=int(booster_inventory.get(booster,0))+amount
+	_save_progress()
+
+func _show_island_chests()->void:
+	if not is_instance_valid(island_progression): return
+	if modal:
+		modal.queue_free()
+		modal=null
+	modal=Control.new(); modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.02,0.04,0.09,.88); modal.add_child(shade)
+	var panel:=Panel.new(); panel.position=Vector2(135,190); panel.size=Vector2(630,500); panel.add_theme_stylebox_override("panel",_style(Color("#112238"),Color("#5f7049"),24)); modal.add_child(panel)
+	var title:=Label.new(); title.text="🎁 СУНДУКИ ОСТРОВА"; title.position=Vector2(30,25); title.size=Vector2(570,40); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",25); title.add_theme_color_override("font_color",Color("#f4f7ff")); panel.add_child(title)
+	var bank:=Label.new(); bank.text="⭐ %d"%island_stars; bank.position=Vector2(30,68); bank.size=Vector2(570,25); bank.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; bank.add_theme_font_size_override("font_size",14); bank.add_theme_color_override("font_color",Color("#ffd86a")); panel.add_child(bank)
+	var list:=VBoxContainer.new(); list.position=Vector2(35,110); list.size=Vector2(560,300); list.add_theme_constant_override("separation",12); panel.add_child(list)
+	var chests:=island_progression.get_chests()
+	if chests.is_empty():
+		var empty:=Label.new(); empty.text="Сундуков пока нет.\nВосстанавливайте новые зоны острова."; empty.size=Vector2(560,90); empty.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; empty.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; empty.add_theme_font_size_override("font_size",16); empty.add_theme_color_override("font_color",Color("#8ba3bb")); list.add_child(empty)
+	else:
+		for chest in chests:
+			var id:=str(chest["id"]); var claimed:=bool(island_progression.call("is_chest_claimed",id))
+			var row:=Panel.new(); row.custom_minimum_size=Vector2(560,82); row.add_theme_stylebox_override("panel",_style(Color("#1a3045"),Color("#596b49") if not claimed else Color("#38515a"),14)); list.add_child(row)
+			var label:=Label.new(); label.text=str(chest["icon"])+" "+str(chest["name"]); label.position=Vector2(15,10); label.size=Vector2(270,30); label.add_theme_font_size_override("font_size",14); label.add_theme_color_override("font_color",Color("#f2f6ff")); row.add_child(label)
+			var reward:=chest["reward"]; var reward_label:=Label.new(); reward_label.text="⭐ +%d   •   %s +%d"%[int(reward["stars"]),str(reward["booster"]),int(reward["amount"])]; reward_label.position=Vector2(15,43); reward_label.size=Vector2(300,24); reward_label.add_theme_font_size_override("font_size",10); reward_label.add_theme_color_override("font_color",Color("#c7d39a")); row.add_child(reward_label)
+			var btn:=Button.new(); btn.text="ПОЛУЧЕНО" if claimed else "ОТКРЫТЬ"; btn.position=Vector2(390,15); btn.size=Vector2(145,48); btn.disabled=claimed; btn.add_theme_stylebox_override("normal",_style(Color("#625126") if not claimed else Color("#28433c"),Color("#d6ae4e") if not claimed else Color("#4d806e"),12)); row.add_child(btn)
+			if not claimed: btn.pressed.connect(_claim_island_chest.bind(id))
+	var close:=Button.new(); close.text="← НАЗАД"; close.position=Vector2(35,430); close.size=Vector2(560,42); close.add_theme_stylebox_override("normal",_style(Color("#182c45"),Color("#4a6989"))); close.pressed.connect(_show_island_repair); panel.add_child(close)
+	map_layer.add_child(modal)
+
+func _claim_island_chest(id:String)->void:
+	if not is_instance_valid(island_progression): return
+	var result:Dictionary=island_progression.call("claim_chest",id)
+	if not bool(result.get("ok",false)): return
+	_apply_island_reward(result["reward"])
+	_show_island_chests()
 
 func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 	var unlocked:=index<=unlocked_level
@@ -1466,7 +1577,11 @@ func _win()->void:
 	busy=true
 	completed[current_level]=true
 	var stars:=_calculate_stars()
-	level_stars[current_level]=maxi(level_stars[current_level],stars)
+	var previous_stars:=int(level_stars[current_level])
+	var new_stars:=maxi(previous_stars,stars)
+	var star_delta:=new_stars-previous_stars
+	level_stars[current_level]=new_stars
+	island_stars+=star_delta
 	if current_level<99: unlocked_level=max(unlocked_level,current_level+1)
 	_save_progress()
 	_update_labels()
