@@ -99,5 +99,26 @@ func _initialize() -> void:
 	g.specials[Vector2i(3,3)] = 1
 	assert(polish._has_legal_move(dead_board) == true)
 
+	# Подсказка не должна предлагать обмен с заблокированной клеткой.
+	g.blockers.clear()
+	g.specials.clear()
+	var hint_board:Array = dead_board.duplicate(true)
+	hint_board[0] = [0,1,5,-1,5,5,5,0]
+	g.board = hint_board
+	g.blockers[Vector2i(3,0)] = 1
+	assert(g._swap_creates_match(hint_board,2,0,3,0) == false)
+	g.blockers.clear()
+	g.specials[Vector2i(3,3)] = 1
+	var special_hint:Array = g._find_hint_move()
+	assert(special_hint.size() == 2)
+	assert(special_hint.has(Vector2i(3,3)))
+
+	# Shuffle должен сохранять количество оставшихся пауков.
+	g.blockers.clear()
+	g.spiders.clear()
+	g.board = dead_board.duplicate(true)
+	g._setup_spiders(3)
+	assert(g.spiders.size() == 3)
+
 	print("SMOKE TEST PASSED: matches + special gems")
 	quit()
