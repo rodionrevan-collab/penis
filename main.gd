@@ -1380,7 +1380,7 @@ func _goal_text()->String:
 				progress=" %d осталось"%spiders.size()
 			"mechanic":
 				progress=" выполнено" if _goal_done(goal) else " в процессе"
-			lines.append("%s %s%s"%[prefix,str(goal["label"]),progress])
+		lines.append("%s %s%s"%[prefix,str(goal["label"]),progress])
 	return "\n".join(lines)
 
 func _calculate_stars()->int:
