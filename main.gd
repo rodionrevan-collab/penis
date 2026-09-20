@@ -514,7 +514,7 @@ func _generate_board()->void:
 			row.append(opts[rng.randi_range(0,opts.size()-1)])
 		board.append(row)
 
-func _clear_visuals()->void:
+func _clear_visuals(preserve_mechanics:bool=false)->void:
 	for n in root.get_children(): n.free()
 	for n in fx.get_children(): n.free()
 	for n in blocker_nodes.values():
@@ -526,7 +526,7 @@ func _clear_visuals()->void:
 	for n in spider_nodes.values():
 		if is_instance_valid(n): n.free()
 	spider_nodes.clear()
-	if is_instance_valid(mechanics):
+	if is_instance_valid(mechanics) and not preserve_mechanics:
 		mechanics.call("clear")
 func _is_active_special_type(sp:int)->bool:
 	return sp>=1 and sp<=4
