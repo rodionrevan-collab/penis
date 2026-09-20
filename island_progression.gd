@@ -14,6 +14,7 @@ var unique_rewards: Dictionary = {}
 var completed_events: Dictionary = {}
 var claimed_interactives: Dictionary = {}
 var completed_activities: Dictionary = {}
+var claimed_collection_rewards: Dictionary = {}
 
 var objects: Array[Dictionary] = [
 	{"id":"bridge","name":"Старый мост","icon":"🌉","cost":5,"zone":1,"description":"Разрушенный мост открывает путь в джунгли.","reward_text":"Открывает зону: Джунгли","map_pos":Vector2(170,245)},
@@ -86,13 +87,17 @@ func _load() -> void:
 			for id in values:
 				if not id.is_empty():
 					completed_activities[id] = true
+		elif key == "collection_rewards":
+			for id in values:
+				if not id.is_empty():
+					claimed_collection_rewards[id] = true
 	_migrate_legacy_quests()
 
 func save() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if not file:
 		return
-	file.store_string("repaired=%s|chests=%s|npcs=%s|quests=%s|secrets=%s|queststate=%s|unique=%s|events=%s|interactives=%s|activities=%s" % [
+	file.store_string("repaired=%s|chests=%s|npcs=%s|quests=%s|secrets=%s|queststate=%s|unique=%s|events=%s|interactives=%s|activities=%s|collection_rewards=%s" % [
 		_keys_text(repaired),
 		_keys_text(claimed_chests),
 		_keys_text(discovered_npcs),
@@ -102,7 +107,8 @@ func save() -> void:
 		_keys_text(unique_rewards),
 		_keys_text(completed_events),
 		_keys_text(claimed_interactives),
-		_keys_text(completed_activities)
+		_keys_text(completed_activities),
+		_keys_text(claimed_collection_rewards)
 	])
 	file.flush()
 
@@ -558,6 +564,19 @@ func get_island_events() -> Array:
 			"reward":{"stars":4,"booster":"hammer","amount":1},
 			"unique_required":"merchant_token",
 			"event_text":"Первые товары раскладываются на полках. Торговец объявляет остров официально открытым для торговли."
+		},
+		{
+			"id":"island_heart",
+			"npc_id":"",
+			"name":"Сердце острова",
+			"icon":"🌺",
+			"zone":5,
+			"map_pos":Vector2(455,555),
+			"description":"Полная коллекция острова открывает тайник, который раньше был скрыт от всех путников.",
+			"reward":{"stars":15,"booster":"pre_rainbow","amount":2},
+			"unique_required":"",
+			"collection_required":8,
+			"event_text":"Все найденные предметы складываются в древний механизм. В центре острова раскрывается тайник — знак того, что ни одна тайна острова не осталась нераскрытой."
 		}
 	]
 
@@ -572,6 +591,9 @@ func is_event_available(event:Dictionary) -> bool:
 	if required.is_empty() or not is_unique_reward_unlocked(required):
 		return false
 	if not is_zone_unlocked(int(event.get("zone",0))):
+		return false
+	var collection_required := int(event.get("collection_required",0))
+	if collection_required > 0 and get_collection_count() < collection_required:
 		return false
 	return not bool(completed_events.get(str(event["id"]),false))
 
@@ -809,6 +831,80 @@ func get_collection_total() -> int:
 func get_collection_completion_text() -> String:
 	return "%d / %d коллекционных предметов"%[get_collection_count(),get_collection_total()]
 
+func get_collection_milestones() -> Array:
+	return [
+		{
+			"id":"collection_25",
+			"title":"Первая коллекция",
+			"description":"Соберите 25% предметов острова.",
+			"threshold":2,
+			"reward":{"stars":3,"booster":"shuffle","amount":1}
+		},
+		{
+			"id":"collection_50",
+			"title":"Половина архива",
+			"description":"Соберите 50% предметов острова.",
+			"threshold":4,
+			"reward":{"stars":5,"booster":"hammer","amount":1}
+		},
+		{
+			"id":"collection_75",
+			"title":"Хроника острова",
+			"description":"Соберите 75% предметов острова.",
+			"threshold":6,
+			"reward":{"stars":7,"booster":"pre_rainbow","amount":1}
+		},
+		{
+			"id":"collection_100",
+			"title":"Полная коллекция",
+			"description":"Соберите все предметы острова.",
+			"threshold":8,
+			"reward":{"stars":10,"booster":"extra_moves","amount":2}
+		}
+	]
+
+func is_collection_milestone_claimed(id:String) -> bool:
+	return bool(claimed_collection_rewards.get(id,false))
+
+func is_collection_milestone_available(milestone:Dictionary) -> bool:
+	if milestone.is_empty():
+		return false
+	return get_collection_count() >= int(milestone.get("threshold",999)) and not is_collection_milestone_claimed(str(milestone["id"]))
+
+func get_collection_milestone_status(id:String) -> Dictionary:
+	for milestone in get_collection_milestones():
+		if str(milestone["id"]) == id:
+			var threshold:=int(milestone["threshold"])
+			var count:=get_collection_count()
+			return {
+				"milestone":milestone,
+				"claimed":is_collection_milestone_claimed(id),
+				"available":is_collection_milestone_available(milestone),
+				"progress":min(count,threshold),
+				"threshold":threshold
+			}
+	return {}
+
+func get_available_collection_milestones() -> Array:
+	var result:Array=[]
+	for milestone in get_collection_milestones():
+		if is_collection_milestone_available(milestone):
+			result.append(milestone)
+	return result
+
+func claim_collection_milestone(id:String) -> Dictionary:
+	for milestone in get_collection_milestones():
+		if str(milestone["id"]) != id:
+			continue
+		if is_collection_milestone_claimed(id):
+			return {"ok":false,"reason":"claimed"}
+		if not is_collection_milestone_available(milestone):
+			return {"ok":false,"reason":"locked"}
+		claimed_collection_rewards[id]=true
+		save()
+		return {"ok":true,"milestone":milestone,"reward":milestone["reward"]}
+	return {"ok":false,"reason":"unknown"}
+
 func get_secrets() -> Array:
 	return [
 		{"id":"bottle","name":"Послание в бутылке","icon":"🍾","zone":0,"map_pos":Vector2(125,175),"description":"Старая бутылка на пляже.","reward":{"stars":2,"booster":"extra_moves","amount":1}},
@@ -854,3 +950,4 @@ func reset_for_tests() -> void:
 	completed_events.clear()
 	claimed_interactives.clear()
 	completed_activities.clear()
+	claimed_collection_rewards.clear()
