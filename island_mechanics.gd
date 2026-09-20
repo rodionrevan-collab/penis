@@ -1,5 +1,10 @@
 extends Node
 
+const SIZE := 8
+const TYPES := 6
+const COLORS := [Color("#ff5b67"), Color("#4d9cff"), Color("#43d98b"), Color("#ffd34e"), Color("#b978ff"), Color("#ff9b4a")]
+const SYMBOLS := ["●", "◆", "■", "★", "⬟", "▲"]
+
 # Реальные механики первого острова.
 # Скрипт намеренно работает поверх main.gd, чтобы поле и match-3 ядро
 # оставались совместимыми с уже существующими уровнями.
@@ -68,7 +73,7 @@ func setup_level(data: Dictionary, index: int) -> void:
 
 func _setup_tide() -> void:
 	# Прилив блокирует целый внешний ряд; затем он меняется на другой берег.
-	var size := int(game.get("SIZE"))
+	var size := SIZE
 	tide_row = 0 if level_index % 2 == 0 else size - 1
 	previous_tide_row = tide_row
 	for x in range(size):
@@ -88,6 +93,15 @@ func _setup_monkey() -> void:
 	if candidates.is_empty():
 		return
 	monkey_cell = candidates[rng.randi_range(0, candidates.size() - 1)]
+	var spiders = game.get("spiders")
+	if spiders is Dictionary:
+		spiders.erase(monkey_cell)
+	var spider_nodes = game.get("spider_nodes")
+	if spider_nodes is Dictionary and spider_nodes.has(monkey_cell):
+		var spider = spider_nodes[monkey_cell]
+		spider_nodes.erase(monkey_cell)
+		if is_instance_valid(spider):
+			spider.queue_free()
 	board[monkey_cell.y][monkey_cell.x] = -1
 
 func _setup_map() -> void:
@@ -264,13 +278,13 @@ func _curse_random_colors() -> void:
 	for i in range(amount):
 		var p := candidates[i]
 		var old_kind := int(board[p.y][p.x])
-		var new_kind := (old_kind + 1 + rng.randi_range(0, 4)) % int(game.get("TYPES"))
+		var new_kind := (old_kind + 1 + rng.randi_range(0, 4)) % TYPES
 		board[p.y][p.x] = new_kind
 		if gems is Dictionary and gems.has(p):
 			var gem = gems[p]
 			gem.kind = new_kind
-			gem.color = game.get("COLORS")[new_kind]
-			gem.symbol = game.get("SYMBOLS")[new_kind]
+			gem.color = COLORS[new_kind]
+			gem.symbol = SYMBOLS[new_kind]
 			gem.queue_redraw()
 
 func _move_monkey() -> void:
