@@ -2003,6 +2003,7 @@ func _collapse_and_refill()->void:
 					var new_p:=Vector2i(x,write_y)
 					var old_special:=int(specials.get(old_p,0))
 					var old_spider:=bool(spiders.get(old_p,false))
+					var dur:float=.18+(write_y-read_y)*.055
 					board[write_y][x]=kind
 					board[read_y][x]=-1
 					specials.erase(old_p)
@@ -2013,7 +2014,6 @@ func _collapse_and_refill()->void:
 						var g:Gem=gems[old_p]
 						gems.erase(old_p)
 						gems[new_p]=g
-						var dur:float=.18+(write_y-read_y)*.055
 						max_time=max(max_time,dur)
 						g.create_tween().tween_property(g,"position",_cell_pos(new_p),dur).set_trans(Tween.TRANS_QUAD)
 					if spider_nodes.has(old_p):
