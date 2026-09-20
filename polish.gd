@@ -137,7 +137,7 @@ func _has_legal_move(board: Array) -> bool:
 					continue
 				if is_instance_valid(mechanics) and bool(mechanics.call("is_fogged", b)):
 					continue
-				if (specials is Dictionary and (specials.has(a) or specials.has(b))) or _swap_creates_match(board, x, y, x + 1, y):
+				if (specials is Dictionary and (_is_active_special(a, specials) or _is_active_special(b, specials))) or _swap_creates_match(board, x, y, x + 1, y):
 					return true
 			if y + 1 < 8:
 				var b := Vector2i(x, y + 1)
@@ -145,9 +145,13 @@ func _has_legal_move(board: Array) -> bool:
 					continue
 				if is_instance_valid(mechanics) and bool(mechanics.call("is_fogged", b)):
 					continue
-				if (specials is Dictionary and (specials.has(a) or specials.has(b))) or _swap_creates_match(board, x, y, x, y + 1):
+				if (specials is Dictionary and (_is_active_special(a, specials) or _is_active_special(b, specials))) or _swap_creates_match(board, x, y, x, y + 1):
 					return true
 	return false
+
+func _is_active_special(p: Vector2i, specials: Dictionary) -> bool:
+	var sp := int(specials.get(p, 0))
+	return sp >= 1 and sp <= 4
 
 func _swap_creates_match(board: Array, x1: int, y1: int, x2: int, y2: int) -> bool:
 	var a = board[y1][x1]
