@@ -287,6 +287,20 @@ func _initialize() -> void:
 	var unknown_npc:Dictionary = progression.get_npc_definition("unknown")
 	assert(unknown_npc.is_empty())
 	assert(progression.get_chests()[0].has("map_pos"))
+
+	# Художественный слой острова загружается и создаёт объекты всех типов.
+	var island_art = load("res://island_art.gd").new()
+	var backdrop = island_art.call("create_backdrop",[true,false,false,false,false,false])
+	assert(backdrop != null)
+	var bridge_art = island_art.call("create_object","bridge",false)
+	var hut_art = island_art.call("create_object","hut",true)
+	var npc_art = island_art.call("create_npc","Рыбак")
+	var chest_art = island_art.call("create_chest",false)
+	assert(bridge_art != null)
+	assert(hut_art != null)
+	assert(npc_art != null)
+	assert(chest_art != null)
+	island_art.free()
 	assert(progression.is_zone_unlocked(4) == false)
 	progression.free()
 
