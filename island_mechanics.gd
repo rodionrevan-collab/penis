@@ -190,6 +190,65 @@ func is_complete() -> bool:
 func is_failed() -> bool:
 	return failed
 
+func rebuild_after_shuffle() -> void:
+	# Перемешивание меняет только содержимое поля, но не должно стирать
+	# прогресс механики текущего уровня.
+	if tier == 3:
+		_refresh_visuals()
+		return
+	if tier == 5:
+		if monkey_cell.x >= 0:
+			game.get("board")[monkey_cell.y][monkey_cell.x] = -1
+		_refresh_visuals()
+		return
+	if tier == 6:
+		var specials = game.get("specials")
+		var board = game.get("board")
+		var blockers = game.get("blockers")
+		var remaining := maxi(0, map_total - map_collected)
+		var candidates:Array[Vector2i]=[]
+		for y in range(0, 4):
+			for x in range(SIZE):
+				var p:=Vector2i(x,y)
+				if board[y][x] >= 0 and (not blockers is Dictionary or not blockers.has(p)):
+					candidates.append(p)
+		candidates.shuffle()
+		for i in range(mini(remaining, candidates.size())):
+			specials[candidates[i]]=5
+		_refresh_visuals()
+		return
+	if tier == 7:
+		var board = game.get("board")
+		var blockers = game.get("blockers")
+		var old_amount := fog_cells.size()
+		fog_cells.clear()
+		var candidates:Array[Vector2i]=[]
+		for y in range(1, SIZE-1):
+			for x in range(1, SIZE-1):
+				var p:=Vector2i(x,y)
+				if board[y][x] >= 0 and (not blockers is Dictionary or not blockers.has(p)):
+					candidates.append(p)
+		candidates.shuffle()
+		for i in range(mini(old_amount, candidates.size())):
+			fog_cells[candidates[i]]=true
+		_refresh_visuals()
+		return
+	if tier == 8:
+		var board = game.get("board")
+		var blockers = game.get("blockers")
+		var old_amount := fire_cells.size()
+		fire_cells.clear()
+		var candidates:Array[Vector2i]=[]
+		for y in range(1, SIZE-1):
+			for x in range(SIZE):
+				var p:=Vector2i(x,y)
+				if board[y][x] >= 0 and (not blockers is Dictionary or not blockers.has(p)):
+					candidates.append(p)
+		candidates.shuffle()
+		for i in range(mini(old_amount, candidates.size())):
+			fire_cells[candidates[i]]=true
+		_refresh_visuals()
+
 func after_matches_cleared(cleared: Array[Vector2i]) -> void:
 	if tier == 7:
 		_reveal_fog_near(cleared)
