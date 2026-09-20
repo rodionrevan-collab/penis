@@ -288,6 +288,24 @@ func _initialize() -> void:
 	assert(unknown_npc.is_empty())
 	assert(progression.get_chests()[0].has("map_pos"))
 
+	# NPC-задания: доступность, прогресс и одноразовая награда.
+	var lisa_state:Dictionary = progression.get_quest_status("lisa",3,1,0)
+	assert(lisa_state["done"] == true)
+	assert(lisa_state["claimed"] == false)
+	var lisa_reward:Dictionary = progression.claim_npc_quest("lisa",3,1,0)
+	assert(lisa_reward["ok"] == true)
+	assert(progression.claim_npc_quest("lisa",3,1,0)["ok"] == false)
+
+	# Секреты открываются зоной и забираются только один раз.
+	var secrets:Array = progression.get_secrets()
+	assert(secrets.size() == 3)
+	assert(progression.claim_secret("bottle")["ok"] == true)
+	assert(progression.claim_secret("bottle")["ok"] == false)
+	assert(progression.claim_secret("parrot_nest")["ok"] == true)
+	assert(progression.claim_secret("ancient_statue")["ok"] == false)
+	progression.repaired["secret_cave"]=true
+	assert(progression.claim_secret("ancient_statue")["ok"] == true)
+
 	# Художественный слой острова загружается и создаёт объекты всех типов.
 	var island_art = load("res://island_art.gd").new()
 	var backdrop = island_art.call("create_backdrop",[true,false,false,false,false,false])
