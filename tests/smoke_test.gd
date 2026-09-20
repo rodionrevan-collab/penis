@@ -418,6 +418,21 @@ func _initialize() -> void:
 	assert(secret_trade_reward["ok"] == true)
 	assert(progression.get_secret_collection_count() == 3)
 	assert(progression.get_available_secret_activities().size() == 0)
+	assert(progression.is_secret_collection_reward_available())
+	var secret_final_reward:Dictionary=progression.claim_secret_collection_reward()
+	assert(secret_final_reward["ok"] == true)
+	assert(progression.is_secret_collection_reward_claimed())
+	assert(progression.claim_secret_collection_reward()["ok"] == false)
+	var chests:Array=progression.get_chests()
+	var found_secret_chest:=false
+	for chest in chests:
+		if str(chest["id"]) == "secret_island_chest":
+			found_secret_chest=true
+			break
+	assert(found_secret_chest)
+	var secret_chest_reward:Dictionary=progression.claim_chest("secret_island_chest")
+	assert(secret_chest_reward["ok"] == true)
+	assert(progression.claim_chest("secret_island_chest")["ok"] == false)
 	assert(progression.is_event_available(progression.get_island_event("island_heart")))
 	var final_event:Dictionary=progression.claim_island_event("island_heart")
 	assert(final_event["ok"] == true)
