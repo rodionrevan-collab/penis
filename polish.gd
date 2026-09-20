@@ -60,9 +60,11 @@ func _board_animation_finished() -> bool:
 		return false
 	for y in range(8):
 		for x in range(8):
+			var p := Vector2i(x, y)
+			if game.call("_cell_is_blocked", p):
+				continue
 			if board[y][x] < 0:
 				return false
-			var p := Vector2i(x, y)
 			if not gems.has(p):
 				return false
 			var gem = gems[p]
@@ -124,17 +126,24 @@ func _has_legal_move(board: Array) -> bool:
 	for y in range(8):
 		for x in range(8):
 			var a := Vector2i(x, y)
-			if board[y][x] < 0 or (blockers is Dictionary and blockers.has(a)):
+			if board[y][x] < 0 or game.call("_cell_is_blocked", a):
+				continue
+			var mechanics = game.get("mechanics")
+			if is_instance_valid(mechanics) and bool(mechanics.call("is_fogged", a)):
 				continue
 			if x + 1 < 8:
 				var b := Vector2i(x + 1, y)
-				if board[y][x + 1] < 0 or (blockers is Dictionary and blockers.has(b)):
+				if board[y][x + 1] < 0 or game.call("_cell_is_blocked", b):
+					continue
+				if is_instance_valid(mechanics) and bool(mechanics.call("is_fogged", b)):
 					continue
 				if (specials is Dictionary and (specials.has(a) or specials.has(b))) or _swap_creates_match(board, x, y, x + 1, y):
 					return true
 			if y + 1 < 8:
 				var b := Vector2i(x, y + 1)
-				if board[y + 1][x] < 0 or (blockers is Dictionary and blockers.has(b)):
+				if board[y + 1][x] < 0 or game.call("_cell_is_blocked", b):
+					continue
+				if is_instance_valid(mechanics) and bool(mechanics.call("is_fogged", b)):
 					continue
 				if (specials is Dictionary and (specials.has(a) or specials.has(b))) or _swap_creates_match(board, x, y, x, y + 1):
 					return true
