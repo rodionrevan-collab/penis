@@ -193,10 +193,10 @@ func claim_chest(id: String) -> Dictionary:
 
 func get_npc_quest(id: String) -> Dictionary:
 	var quests := {
-		"lisa":{"id":"lisa_restore","npc_id":"lisa","title":"Вернуть жизнь на пляж","description":"Пройдите 3 любых уровня после встречи с Лизой.","kind":"completed_levels","target":3,"reward":{"stars":3,"booster":"hammer","amount":1}},
-		"tom":{"id":"tom_journey","npc_id":"tom","title":"Проверить остров","description":"Пройдите 10 уровней и помогите Тому проверить старые маршруты.","kind":"completed_levels","target":10,"reward":{"stars":5,"booster":"shuffle","amount":2}},
-		"keeper":{"id":"keeper_light","npc_id":"keeper","title":"Зажечь остров","description":"Откройте 4 зоны острова.","kind":"zones","target":4,"reward":{"stars":6,"booster":"extra_moves","amount":3}},
-		"merchant":{"id":"merchant_restore","npc_id":"merchant","title":"Последний рывок","description":"Восстановите 6 объектов острова.","kind":"repaired_objects","target":6,"reward":{"stars":8,"booster":"pre_bomb","amount":2}}
+		"lisa":{"id":"lisa_restore","npc_id":"lisa","title":"Вернуть жизнь на пляж","description":"Пройдите ещё 5 любых уровней и помогите Лизе оживить пляж.","kind":"completed_levels","target":5,"reward":{"stars":3,"booster":"hammer","amount":1}},
+		"tom":{"id":"tom_journey","npc_id":"tom","title":"Проверить остров","description":"Пройдите ещё 15 уровней и помогите Тому проверить старые маршруты.","kind":"completed_levels","target":15,"reward":{"stars":5,"booster":"shuffle","amount":2}},
+		"keeper":{"id":"keeper_light","npc_id":"keeper","title":"Зажечь остров","description":"Откройте 5 зон острова.","kind":"zones","target":5,"reward":{"stars":6,"booster":"extra_moves","amount":3}},
+		"merchant":{"id":"merchant_restore","npc_id":"merchant","title":"Последний рывок","description":"Пройдите 50 уровней, чтобы завершить большую часть маршрута торговца.","kind":"completed_levels","target":50,"reward":{"stars":8,"booster":"pre_bomb","amount":2}}
 	}
 	return quests.get(id, {})
 
