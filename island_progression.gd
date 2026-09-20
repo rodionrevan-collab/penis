@@ -655,6 +655,9 @@ func is_interactive_available(item:Dictionary) -> bool:
 		return false
 	return not bool(claimed_interactives.get(str(item["id"]),false))
 
+func is_interactive_completed(id:String) -> bool:
+	return bool(claimed_interactives.get(id,false))
+
 func get_available_interactives() -> Array:
 	var result:Array = []
 	for item in get_interactive_objects():
