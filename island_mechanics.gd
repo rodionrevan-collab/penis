@@ -371,6 +371,15 @@ func _move_monkey() -> void:
 	monkey_cell = target
 	await game.call("_collapse_and_refill")
 
+func collect_map_piece_at(p: Vector2i) -> void:
+	if tier != 6:
+		return
+	var specials = game.get("specials")
+	if int(specials.get(p, 0)) != 5:
+		return
+	specials.erase(p)
+	map_collected += 1
+
 func _collect_map_pieces() -> void:
 	var specials = game.get("specials")
 	var gems = game.get("gems")
@@ -381,8 +390,7 @@ func _collect_map_pieces() -> void:
 		if int(specials.get(p, 0)) == 5 and p.y == size - 1:
 			reached.append(p)
 	for p in reached:
-		specials.erase(p)
-		map_collected += 1
+		collect_map_piece_at(p)
 		if gems is Dictionary and gems.has(p):
 			var gem = gems[p]
 			gem.special_type = 0
