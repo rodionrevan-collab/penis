@@ -82,7 +82,7 @@ func save() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if not file:
 		return
-	file.store_string("repaired=%s|chests=%s|npcs=%s|quests=%s|secrets=%s|queststate=%s|unique=%s" % [
+	file.store_string("repaired=%s|chests=%s|npcs=%s|quests=%s|secrets=%s|queststate=%s|unique=%s|events=%s" % [
 		_keys_text(repaired),
 		_keys_text(claimed_chests),
 		_keys_text(discovered_npcs),
