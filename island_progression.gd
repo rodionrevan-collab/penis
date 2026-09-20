@@ -49,7 +49,7 @@ func _load() -> void:
 		if pair.size() != 2:
 			continue
 		var key := pair[0]
-		var values := pair[1].split(",") if not pair[1].is_empty() else []
+		var values: Array = pair[1].split(",") if not pair[1].is_empty() else []
 		if key == "repaired":
 			for id in values:
 				if not id.is_empty():
