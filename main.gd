@@ -865,8 +865,8 @@ func _show_island_npc_dialog(id:String)->void:
 	var face_art:=island_art_factory.call("create_npc",str(npc["role"])); face_art.position=Vector2(92,90); box.add_child(face_art)
 	var name:=Label.new(); name.text=str(npc["name"]); name.position=Vector2(165,40); name.size=Vector2(390,35); name.add_theme_font_size_override("font_size",24); name.add_theme_color_override("font_color",Color("#f2f7ff")); box.add_child(name)
 	var role:=Label.new(); role.text=str(npc["role"]); role.position=Vector2(165,78); role.size=Vector2(390,25); role.add_theme_font_size_override("font_size",11); role.add_theme_color_override("font_color",Color("#71d7b0")); box.add_child(role)
-	var qstate:Dictionary=island_progression.call("get_quest_status",id,_completed_level_count(),island_progression.get_unlocked_zone_count(),_repaired_object_count())
 	var dialogue:=str(npc["text"])
+	var qstate:Dictionary=island_progression.call("get_quest_status",id,_completed_level_count(),island_progression.get_unlocked_zone_count(),_repaired_object_count())
 	if not qstate.is_empty():
 		dialogue=str(island_progression.call("get_npc_quest_dialogue",id,int(qstate.get("stage",1)),bool(qstate.get("chain_done",false))))
 		if dialogue.is_empty():
