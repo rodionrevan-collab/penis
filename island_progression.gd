@@ -59,13 +59,13 @@ func save() -> void:
 	if not file:
 		return
 	file.store_string("repaired=%s|chests=%s|npcs=%s" % [
-		",".join(repaired.keys()),
-		",".join(claimed_chests.keys()),
-		",".join(discovered_npcs.keys())
+		_keys_text(repaired),
+		_keys_text(claimed_chests),
+		_keys_text(discovered_npcs)
 	])
 	file.flush()
 
-func get_object(id: String) -> Dictionary:
+func _keys_text(data: Dictionary) -> String:\n\tvar values := PackedStringArray()\n\tfor key in data.keys():\n\t\tvalues.append(str(key))\n\treturn ",".join(values)\n\nfunc get_object(id: String) -> Dictionary:
 	for item in objects:
 		if str(item["id"]) == id:
 			return item
