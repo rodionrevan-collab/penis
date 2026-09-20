@@ -30,6 +30,15 @@ var best := 0
 var combo := 0
 var current_level := 0
 var moves_left := 0
+var initial_moves := 0
+var best_combo_level := 0
+var level_stars: Array[int] = []
+var pre_selected: Array[String] = []
+var booster_inventory: Dictionary = {"hammer":3, "extra_moves":2, "shuffle":2, "pre_bomb":2, "pre_rainbow":1}
+var active_booster := ""
+var hammer_button: Button
+var extra_moves_button: Button
+var shuffle_button: Button
 var destroyed_counts: Array = [0, 0, 0, 0, 0, 0]
 var specials: Dictionary = {} # 1 horizontal, 2 vertical, 3 bomb, 4 rainbow
 var blockers: Dictionary = {} # cell -> remaining hits
@@ -183,6 +192,8 @@ func _ready() -> void:
 	rng.randomize()
 	mechanics = get_node_or_null("IslandMechanics")
 	_build_levels()
+	level_stars.resize(100)
+	for i in range(100): level_stars[i] = 0
 	_load_progress()
 	_build_sounds()
 	_build_game_layer()
@@ -217,6 +228,16 @@ func _load_progress() -> void:
 			completed[i]=parts[i]=="1"
 	if FileAccess.file_exists("user://best_score.txt"):
 		best=int(FileAccess.get_file_as_string("user://best_score.txt"))
+	if FileAccess.file_exists("user://level_stars.txt"):
+		var star_parts:=FileAccess.get_file_as_string("user://level_stars.txt").split(",")
+		for i in range(mini(star_parts.size(),100)):
+			level_stars[i]=clampi(int(star_parts[i]),0,3)
+	if FileAccess.file_exists("user://booster_inventory.txt"):
+		var boost_parts:=FileAccess.get_file_as_string("user://booster_inventory.txt").split(",")
+		for part in boost_parts:
+			var pair:=part.split(":")
+			if pair.size()==2 and booster_inventory.has(pair[0]):
+				booster_inventory[pair[0]]=maxi(0,int(pair[1]))
 
 func _save_progress() -> void:
 	var u:=FileAccess.open("user://island_unlocked.txt",FileAccess.WRITE)
@@ -228,6 +249,18 @@ func _save_progress() -> void:
 		for v in completed:
 			parts.append("1" if v else "0")
 		f.store_string(",".join(parts))
+	var s:=FileAccess.open("user://level_stars.txt",FileAccess.WRITE)
+	if s:
+		var star_parts:=PackedStringArray()
+		for v in level_stars:
+			star_parts.append(str(v))
+		s.store_string(",".join(star_parts))
+	var b:=FileAccess.open("user://booster_inventory.txt",FileAccess.WRITE)
+	if b:
+		var boost_parts:=PackedStringArray()
+		for key in booster_inventory.keys():
+			boost_parts.append("%s:%d"%[key,int(booster_inventory[key])])
+		b.store_string(",".join(boost_parts))
 
 func _style(fill:Color,border:Color,r:=12)->StyleBoxFlat:
 	var s:=StyleBoxFlat.new()
@@ -447,10 +480,170 @@ func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 	var unlocked:=index<=unlocked_level
 	var done:=completed[index]
 	var c:=Color("#39cf78") if done else (Color("#328dff") if unlocked else Color("#c94253"))
-	var b:=Button.new(); b.position=pos-Vector2(28,28); b.size=Vector2(56,56); b.text=("✓" if done else (str(index+1) if unlocked else "🔒")); b.disabled=not unlocked; b.add_theme_font_size_override("font_size",18); b.add_theme_color_override("font_color",Color.WHITE); b.add_theme_stylebox_override("normal",_style(c,c.lightened(.25),28)); b.add_theme_stylebox_override("hover",_style(c.lightened(.12),Color.WHITE,28)); b.add_theme_stylebox_override("pressed",_style(c.darkened(.08),Color.WHITE,28)); b.tooltip_text="Уровень %d"%(index+1); b.pressed.connect(_start_level.bind(index)); parent.add_child(b)
+	var b:=Button.new(); b.position=pos-Vector2(28,28); b.size=Vector2(56,56); b.text=("✓" if done else (str(index+1) if unlocked else "🔒")); b.disabled=not unlocked; b.add_theme_font_size_override("font_size",18); b.add_theme_color_override("font_color",Color.WHITE); b.add_theme_stylebox_override("normal",_style(c,c.lightened(.25),28)); b.add_theme_stylebox_override("hover",_style(c.lightened(.12),Color.WHITE,28)); b.add_theme_stylebox_override("pressed",_style(c.darkened(.08),Color.WHITE,28)); b.tooltip_text="Уровень %d"%(index+1); b.pressed.connect(_show_level_intro.bind(index)); parent.add_child(b)
+	if unlocked:
+		var stars:=Label.new()
+		stars.text=_stars_string(level_stars[index])
+		stars.position=pos+Vector2(-30,52)
+		stars.size=Vector2(60,20)
+		stars.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+		stars.add_theme_font_size_override("font_size",10)
+		stars.add_theme_color_override("font_color",Color("#ffd86a"))
+		parent.add_child(stars)
 	var l:=Label.new(); l.text=str(index+1); l.position=pos+Vector2(-30,31); l.size=Vector2(60,22); l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; l.add_theme_font_size_override("font_size",10); l.add_theme_color_override("font_color",Color("#b8d2d9")); parent.add_child(l)
 	if index%10==0:
 		var chapter:=Label.new(); chapter.text="ГЛАВА %d"%(int(index/10)+1); chapter.position=pos+Vector2(-65,-55); chapter.size=Vector2(130,24); chapter.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; chapter.add_theme_font_size_override("font_size",11); chapter.add_theme_color_override("font_color",c.lightened(.25)); parent.add_child(chapter)
+
+func _stars_string(value:int)->String:
+	return ("★" if value>=1 else "☆")+" "+("★" if value>=2 else "☆")+" "+("★" if value>=3 else "☆")
+
+func _goal_defs(index:int)->Array:
+	var d:Dictionary=LEVELS[index]
+	var tier:=int(d["mechanic"])
+	var goals:Array=[]
+	if tier in [1,2,9]:
+		goals.append({"kind":"blockers","target":int(d.get("blockers",0)),"label":"разрушить все препятствия"})
+	elif tier==5 and int(d.get("spiders",0))>0:
+		goals.append({"kind":"spiders","target":int(d.get("spiders",0)),"label":"убрать всех пауков"})
+	elif tier in [6,7,8]:
+		goals.append({"kind":"mechanic","target":1,"label":"выполнить механику острова"})
+	else:
+		var pattern:=index%4
+		if pattern==0:
+			goals.append({"kind":"collect","target":int(d["count"]),"type":int(d["type"]),"label":"собрать %d %s"%[int(d["count"]),TYPE_NAMES[int(d["type"]])]})
+		elif pattern==1:
+			goals.append({"kind":"score","target":int(d["score"]),"label":"набрать %d очков"%int(d["score"])})
+		elif pattern==2:
+			goals.append({"kind":"collect","target":int(d["count"]),"type":int(d["type"]),"label":"собрать %d %s"%[int(d["count"]),TYPE_NAMES[int(d["type"]])]})
+			goals.append({"kind":"score","target":int(d["score"]),"label":"набрать %d очков"%int(d["score"])})
+		else:
+			var target_score:=int(d["score"])+maxi(200,index*10)
+			goals.append({"kind":"score","target":target_score,"label":"набрать %d очков"%target_score})
+	if goals.size()<2 and tier>=1:
+		if index%2==0:
+			goals.append({"kind":"collect","target":int(d["count"]),"type":int(d["type"]),"label":"собрать %d %s"%[int(d["count"]),TYPE_NAMES[int(d["type"]])]})
+		else:
+			goals.append({"kind":"score","target":int(d["score"]),"label":"набрать %d очков"%int(d["score"])})
+	return goals
+
+func _goal_done(goal:Dictionary)->bool:
+	match str(goal["kind"]):
+		"score":
+			return score>=int(goal["target"])
+		"collect":
+			return destroyed_counts[int(goal["type"])]>=int(goal["target"])
+		"blockers":
+			return blockers.is_empty()
+		"spiders":
+			return spiders.is_empty()
+		"mechanic":
+			return not is_instance_valid(mechanics) or bool(mechanics.call("is_complete"))
+	return false
+
+func _goals_complete()->bool:
+	for goal in _goal_defs(current_level):
+		if not _goal_done(goal): return false
+	return true
+
+func _goal_text_for_level(index:int)->String:
+	var lines:Array[String]=[]
+	for goal in _goal_defs(index):
+		lines.append("• "+str(goal["label"]))
+	return "\n".join(lines)
+
+func _goal_text()->String:
+	var lines:Array[String]=[]
+	for goal in _goal_defs(current_level):
+		var prefix:="✓" if _goal_done(goal) else "•"
+		var progress:=""
+		match str(goal["kind"]):
+			"score":
+				progress=" %d / %d"%[score,int(goal["target"])]
+			"collect":
+				progress=" %d / %d"%[destroyed_counts[int(goal["type"])],int(goal["target"])]
+			"blockers":
+				progress=" %d осталось"%blockers.size()
+			"spiders":
+				progress=" %d осталось"%spiders.size()
+			"mechanic":
+				progress=" выполнено" if _goal_done(goal) else " в процессе"
+			lines.append("%s %s%s"%[prefix,str(goal["label"]),progress])
+	return "\n".join(lines)
+
+func _calculate_stars()->int:
+	if not _goals_complete(): return 0
+	var ratio:=float(moves_left)/maxf(1.0,float(initial_moves))
+	if ratio>=0.55 or best_combo_level>=5: return 3
+	if ratio>=0.28 or best_combo_level>=3: return 2
+	return 1
+
+func _consume_booster(key:String)->bool:
+	var amount:=int(booster_inventory.get(key,0))
+	if amount<=0: return false
+	booster_inventory[key]=amount-1
+	_save_progress()
+	return true
+
+func _apply_preboosters()->void:
+	var selected:=pre_selected.duplicate()
+	pre_selected.clear()
+	for key in selected:
+		if key=="moves":
+			if _consume_booster("extra_moves"): moves_left+=3
+		elif key=="bomb":
+			if _consume_booster("pre_bomb"): _place_start_special(3)
+		elif key=="rainbow":
+			if _consume_booster("pre_rainbow"): _place_start_special(4)
+
+func _place_start_special(sp:int)->void:
+	var candidates:Array[Vector2i]=[]
+	for y in range(SIZE):
+		for x in range(SIZE):
+			var p:=Vector2i(x,y)
+			if board[y][x]>=0 and not specials.has(p):
+				candidates.append(p)
+	if candidates.is_empty(): return
+	var p:Vector2i=candidates[rng.randi_range(0,candidates.size()-1)]
+	specials[p]=sp
+
+func _toggle_prebooster(key:String, button:Button)->void:
+	var inventory_key:="extra_moves" if key=="moves" else "pre_"+key
+	if int(booster_inventory.get(inventory_key,0))<=0: return
+	if pre_selected.has(key):
+		pre_selected.erase(key)
+	else:
+		if pre_selected.size()>=2: return
+		pre_selected.append(key)
+	button.add_theme_stylebox_override("normal",_style(Color("#256e62") if pre_selected.has(key) else Color("#182d49"),Color("#63dfa5") if pre_selected.has(key) else Color("#466c94"),14))
+
+func _close_level_intro()->void:
+	if modal:
+		modal.queue_free()
+		modal=null
+
+func _show_level_intro(index:int)->void:
+	if index>unlocked_level: return
+	if modal:
+		modal.queue_free()
+		modal=null
+	pre_selected.clear()
+	modal=Control.new()
+	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.02,0.04,0.09,.82); modal.add_child(shade)
+	var panel:=Panel.new(); panel.position=Vector2(120,150); panel.size=Vector2(660,610); panel.add_theme_stylebox_override("panel",_style(Color("#102039"),Color("#3f638d"),24)); modal.add_child(panel)
+	var title:=Label.new(); title.text="УРОВЕНЬ %d"%(index+1); title.position=Vector2(40,25); title.size=Vector2(580,50); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",31); title.add_theme_color_override("font_color",Color("#f4f7ff")); panel.add_child(title)
+	var chapter:=Label.new(); chapter.text=MECHANICS[int(LEVELS[index]["mechanic"])]; chapter.position=Vector2(45,75); chapter.size=Vector2(570,30); chapter.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; chapter.add_theme_font_size_override("font_size",12); chapter.add_theme_color_override("font_color",Color("#72d7b0")); panel.add_child(chapter)
+	var goals_title:=Label.new(); goals_title.text="ЦЕЛИ УРОВНЯ"; goals_title.position=Vector2(55,125); goals_title.add_theme_font_size_override("font_size",15); goals_title.add_theme_color_override("font_color",Color("#dce8ff")); panel.add_child(goals_title)
+	var goals:=Label.new(); goals.position=Vector2(65,155); goals.size=Vector2(530,100); goals.text=_goal_text_for_level(index); goals.add_theme_font_size_override("font_size",16); goals.add_theme_color_override("font_color",Color("#b8cae5")); panel.add_child(goals)
+	var booster_title:=Label.new(); booster_title.text="БОНУСЫ НА СТАРТЕ — выберите до 2"; booster_title.position=Vector2(55,270); booster_title.add_theme_font_size_override("font_size",15); booster_title.add_theme_color_override("font_color",Color("#dce8ff")); panel.add_child(booster_title)
+	var b1:=Button.new(); b1.text="💣 БОМБА • %d"%int(booster_inventory["pre_bomb"]); b1.position=Vector2(55,305); b1.size=Vector2(170,55); b1.pressed.connect(_toggle_prebooster.bind("bomb",b1)); b1.add_theme_stylebox_override("normal",_style(Color("#182d49"),Color("#466c94"),14)); panel.add_child(b1)
+	var b2:=Button.new(); b2.text="🌈 РАДУГА • %d"%int(booster_inventory["pre_rainbow"]); b2.position=Vector2(245,305); b2.size=Vector2(170,55); b2.pressed.connect(_toggle_prebooster.bind("rainbow",b2)); b2.add_theme_stylebox_override("normal",_style(Color("#182d49"),Color("#466c94"),14)); panel.add_child(b2)
+	var b3:=Button.new(); b3.text="+3 ХОДА • %d"%int(booster_inventory["extra_moves"]); b3.position=Vector2(435,305); b3.size=Vector2(170,55); b3.pressed.connect(_toggle_prebooster.bind("moves",b3)); b3.add_theme_stylebox_override("normal",_style(Color("#182d49"),Color("#466c94"),14)); panel.add_child(b3)
+	var info:=Label.new(); info.text="Оставшиеся бустеры сохраняются между уровнями."; info.position=Vector2(55,375); info.size=Vector2(550,30); info.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; info.add_theme_font_size_override("font_size",11); info.add_theme_color_override("font_color",Color("#7891ae")); panel.add_child(info)
+	var start:=Button.new(); start.text="ИГРАТЬ"; start.position=Vector2(55,495); start.size=Vector2(250,62); start.add_theme_font_size_override("font_size",16); start.add_theme_stylebox_override("normal",_style(Color("#237f57"),Color("#63dfa5"),16)); start.pressed.connect(_start_level.bind(index)); panel.add_child(start)
+	var back:=Button.new(); back.text="← НАЗАД"; back.position=Vector2(325,495); back.size=Vector2(250,62); back.add_theme_stylebox_override("normal",_style(Color("#1a2a43"),Color("#4a6386"),16)); back.pressed.connect(_close_level_intro); panel.add_child(back)
+	map_layer.add_child(modal)
 
 func _start_level(index:int)->void:
 	if index>unlocked_level: return
@@ -459,10 +652,13 @@ func _start_level(index:int)->void:
 		modal=null
 	current_level=index
 	var data:Dictionary=LEVELS[index]
-	moves_left=int(data["moves"])
+	initial_moves=int(data["moves"])
+	moves_left=initial_moves
 	score=0
 	combo=0
+	best_combo_level=0
 	destroyed_counts=[0,0,0,0,0,0]
+	active_booster=""
 	selected=Vector2i(-1,-1)
 	busy=true
 	if map_layer: map_layer.visible=false
@@ -475,6 +671,7 @@ func _start_level(index:int)->void:
 	_setup_spiders(int(data.get("spiders",0)))
 	if is_instance_valid(mechanics):
 		mechanics.call("setup_level", data, index)
+	_apply_preboosters()
 	_create_visuals()
 	_update_labels()
 	status.text="Уровень %d • %s"%[index+1,MECHANICS[int(data["mechanic"])]]
