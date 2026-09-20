@@ -55,6 +55,7 @@ var status: Label
 var sounds: Dictionary = {}
 var touch_start := Vector2.ZERO
 var touch_active := false
+var mechanics: Node
 
 class Gem extends Node2D:
 	var kind := 0
@@ -111,6 +112,13 @@ class Gem extends Node2D:
 				for i in range(6):
 					draw_arc(Vector2.ZERO,s*.58,-PI/2.0+i*TAU/6.0,-PI/2.0+(i+1)*TAU/6.0,8,rainbow_colors[i],7.0)
 				draw_circle(Vector2.ZERO,s*.20,Color("#f5f7ff"))
+			elif special_type == 5:
+				draw_circle(Vector2(2,4),s*.84,Color(0,0,0,.30))
+				draw_style_box(_map_box(),Rect2(-s*.74,-s*.74,s*1.48,s*1.48))
+				draw_line(Vector2(-s*.30,-s*.15),Vector2(s*.25,-s*.15),Color("#6b4d2e"),3.0)
+				draw_line(Vector2(-s*.30,s*.12),Vector2(s*.10,s*.12),Color("#6b4d2e"),3.0)
+				var map_x:=PackedVector2Array([Vector2(-s*.52,s*.36),Vector2(-s*.10,s*.02),Vector2(s*.24,s*.34),Vector2(s*.52,-s*.30)])
+				draw_polyline(map_x,Color("#c47f3d"),3.0)
 			return
 		match kind:
 			0:
@@ -140,6 +148,14 @@ class Gem extends Node2D:
 				draw_colored_polygon(PackedVector2Array([Vector2(0,-s),Vector2(s,s),Vector2(-s,s)]), color)
 		draw_circle(Vector2(-s*.32,-s*.34), s*.19, Color(1,1,1,.5))
 		draw_circle(Vector2(-s*.23,-s*.22), s*.08, Color.WHITE)
+
+func _map_box()->StyleBoxFlat:
+	var b:=StyleBoxFlat.new()
+	b.bg_color=Color("#e6c792")
+	b.border_color=Color("#b9864d")
+	b.set_border_width_all(2)
+	b.set_corner_radius_all(4)
+	return b
 
 class SpiderMark extends Node2D:
 	func _draw() -> void:
@@ -172,6 +188,7 @@ class BoardFrame extends Node2D:
 
 func _ready() -> void:
 	rng.randomize()
+	mechanics = get_node_or_null("IslandMechanics")
 	_build_levels()
 	_load_progress()
 	_build_sounds()
@@ -463,6 +480,8 @@ func _start_level(index:int)->void:
 	_setup_blockers(int(data.get("blockers",0)))
 	_generate_board()
 	_setup_spiders(int(data.get("spiders",0)))
+	if is_instance_valid(mechanics):
+		mechanics.call("setup_level", data, index)
 	_create_visuals()
 	_update_labels()
 	status.text="Уровень %d • %s"%[index+1,MECHANICS[int(data["mechanic"])]]
@@ -491,7 +510,7 @@ func _generate_board()->void:
 	for y in range(SIZE):
 		var row:Array=[]
 		for x in range(SIZE):
-			if blockers.has(Vector2i(x,y)):
+			if _cell_is_blocked(Vector2i(x,y)):
 				row.append(-1)
 				continue
 			var opts:Array[int]=[]
@@ -514,6 +533,18 @@ func _clear_visuals()->void:
 	for n in spider_nodes.values():
 		if is_instance_valid(n): n.free()
 	spider_nodes.clear()
+	if is_instance_valid(mechanics):
+		mechanics.call("clear")
+func _is_active_special_type(sp:int)->bool:
+	return sp>=1 and sp<=4
+
+func _cell_is_blocked(p:Vector2i)->bool:
+	if blockers.has(p):
+		return true
+	if is_instance_valid(mechanics):
+		return bool(mechanics.call("is_cell_blocked", p))
+	return false
+
 func _cell_pos(p:Vector2i)->Vector2: return ORIGIN+Vector2(p.x*CELL+CELL/2,p.y*CELL+CELL/2)
 func _make_gem(k:int, sp:int = 0)->Gem:
 	var g:=Gem.new()
@@ -525,6 +556,38 @@ func _setup_blockers(count:int)->void:
 	blockers.clear()
 	if count <= 0:
 		return
+	var tier:=int(LEVELS[current_level]["mechanic"])
+	var hits:=1 if current_level < 20 else (2 if current_level < 60 else 3)
+	if tier==1:
+		# Лианы образуют компактные узоры, а не случайный разброс.
+		var center:=Vector2i(3 if current_level%2==0 else 4,3 if current_level%3 else 4)
+		var pattern:Array[Vector2i]=[
+			center, center+Vector2i(1,0), center+Vector2i(-1,0),
+			center+Vector2i(0,1), center+Vector2i(0,-1),
+			center+Vector2i(1,1), center+Vector2i(-1,-1)
+		]
+		for p in pattern:
+			if p.x>=1 and p.x<SIZE-1 and p.y>=1 and p.y<SIZE-1 and blockers.size()<count:
+				blockers[p]=1
+		return
+	if tier==2:
+		# Кокосы идут плотными группами и требуют несколько ударов.
+		var start:=Vector2i(2+(current_level%3),2+(current_level%2))
+		var pattern2:Array[Vector2i]=[
+			start,start+Vector2i(1,0),start+Vector2i(0,1),start+Vector2i(1,1),
+			start+Vector2i(2,0),start+Vector2i(0,2)
+		]
+		var coconut_hits:=2 if current_level<50 else 3
+		for p in pattern2:
+			if p.x>=1 and p.x<SIZE-1 and p.y>=1 and p.y<SIZE-1 and blockers.size()<count:
+				blockers[p]=coconut_hits
+		return
+	if tier==9:
+		# Финальный тотем занимает центральный блок.
+		var boss_center:=Vector2i(3,3)
+		for p in [boss_center,boss_center+Vector2i(1,0),boss_center+Vector2i(0,1),boss_center+Vector2i(1,1)]:
+			blockers[p]=mini(5,3+int(current_level/20))
+		return
 	var center:=Vector2i(rng.randi_range(2,5),rng.randi_range(2,5))
 	var candidates:Array[Vector2i]=[]
 	for y in range(1,SIZE-1):
@@ -533,7 +596,6 @@ func _setup_blockers(count:int)->void:
 	candidates.sort_custom(func(a:Vector2i,b:Vector2i)->bool:
 		return abs(a.x-center.x)+abs(a.y-center.y) < abs(b.x-center.x)+abs(b.y-center.y)
 	)
-	var hits:=1 if current_level < 20 else (2 if current_level < 60 else 3)
 	for p in candidates:
 		if blockers.size() >= mini(count,candidates.size()): break
 		blockers[p]=hits
@@ -545,7 +607,7 @@ func _setup_spiders(count:int)->void:
 	for y in range(SIZE):
 		for x in range(SIZE):
 			var p:=Vector2i(x,y)
-			if not blockers.has(p) and board[y][x]>=0:
+			if not _cell_is_blocked(p) and board[y][x]>=0:
 				candidates.append(p)
 	candidates.shuffle()
 	for i in range(mini(count,candidates.size())):
@@ -572,7 +634,7 @@ func _blocker_symbol(hits:int)->String:
 	if tier==2: return "●" if hits>=2 else "◌"
 	if tier==3: return "~"
 	if tier==4: return "◆"
-	if tier==5: return "M"
+	if tier==5: return "☻"
 	if tier==6: return "▣"
 	if tier==7: return "?"
 	if tier==8: return "!"
@@ -622,7 +684,7 @@ func _create_visuals()->void:
 	for y in range(SIZE):
 		for x in range(SIZE):
 			var p:=Vector2i(x,y)
-			if blockers.has(p) or board[y][x] < 0:
+			if _cell_is_blocked(p) or board[y][x] < 0:
 				continue
 			var sp:int=int(specials.get(p,0))
 			var g:=_make_gem(board[y][x],sp)
@@ -668,7 +730,7 @@ func _board_cell_from_position(pos:Vector2)->Vector2i:
 	return Vector2i(floor(local.x/CELL),floor(local.y/CELL))
 
 func _valid_cell(p:Vector2i)->bool:
-	return p.x>=0 and p.y>=0 and p.x<SIZE and p.y<SIZE and not blockers.has(p) and board[p.y][p.x]>=0
+	return p.x>=0 and p.y>=0 and p.x<SIZE and p.y<SIZE and not _cell_is_blocked(p) and not (is_instance_valid(mechanics) and mechanics.call("is_fogged", p)) and board[p.y][p.x]>=0
 
 func _swipe_move(a:Vector2i,b:Vector2i)->void:
 	if selected.x>=0:
@@ -713,8 +775,10 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 	await _swap_anim(a,b)
 	var special_a := int(specials.get(a,0))
 	var special_b := int(specials.get(b,0))
-	var special_triggered := special_a != 0 or special_b != 0
-	var special_combo := special_a != 0 and special_b != 0
+	var special_a_active := _is_active_special_type(special_a)
+	var special_b_active := _is_active_special_type(special_b)
+	var special_triggered := special_a_active or special_b_active
+	var special_combo := special_a_active and special_b_active
 	var matches:Array[Vector2i]=_find_matches()
 	if matches.is_empty() and not special_triggered:
 		_swap_data(a,b)
@@ -737,7 +801,7 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 			special_triggered=false
 		var matched_specials:Array[Vector2i]=[]
 		for p in wave:
-			if specials.has(p):
+			if specials.has(p) and _is_active_special_type(int(specials.get(p,0))):
 				matched_specials.append(p)
 		for p in matched_specials:
 			wave.append_array(_special_effect_cells(p,p))
@@ -755,6 +819,9 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 		matches=_find_matches()
 		if matches.is_empty():
 			break
+	if is_instance_valid(mechanics):
+		mechanics.call("after_matches_cleared", matches)
+		await mechanics.call("after_player_move")
 	_update_best()
 	_update_labels()
 	_check_level_state()
@@ -847,11 +914,11 @@ func _collapse_and_refill()->void:
 	for x in range(SIZE):
 		var segment_bottom:=SIZE-1
 		while segment_bottom>=0:
-			while segment_bottom>=0 and blockers.has(Vector2i(x,segment_bottom)):
+			while segment_bottom>=0 and _cell_is_blocked(Vector2i(x,segment_bottom)):
 				segment_bottom-=1
 			if segment_bottom<0: break
 			var segment_top:=segment_bottom
-			while segment_top>=0 and not blockers.has(Vector2i(x,segment_top)):
+			while segment_top>=0 and not _cell_is_blocked(Vector2i(x,segment_top)):
 				segment_top-=1
 			var write_y:=segment_bottom
 			for read_y in range(segment_bottom,segment_top,-1):
@@ -944,10 +1011,14 @@ func _create_special_from_match(cells:Array[Vector2i])->void:
 			if cells.has(p): overlap+=1
 		if overlap < 3: continue
 		var chosen:Vector2i=gc[mini(2,gc.size()-1)]
+		var found_free:=false
 		for candidate in gc:
 			if not specials.has(candidate) and cells.has(candidate):
 				chosen=candidate
+				found_free=true
 				break
+		if not found_free:
+			continue
 		var special_type:=0
 		if gc.size() >= 5:
 			special_type=4
@@ -1128,7 +1199,15 @@ func _check_level_state()->void:
 	var pieces_done:bool=destroyed_counts[type]>=int(data["count"])
 	var blockers_done:bool=blockers.is_empty()
 	var spiders_done:bool=spiders.is_empty()
-	if score_done and pieces_done and blockers_done and spiders_done:
+	var mechanic_done:bool=true
+	var mechanic_failed:bool=false
+	if is_instance_valid(mechanics):
+		mechanic_done=bool(mechanics.call("is_complete"))
+		mechanic_failed=bool(mechanics.call("is_failed"))
+	if mechanic_failed:
+		_lose()
+		return
+	if score_done and pieces_done and blockers_done and spiders_done and mechanic_done:
 		_win()
 		return
 	if moves_left<=0:
@@ -1189,7 +1268,12 @@ func _update_labels()->void:
 	combo_label.text="КОМБО\n%s"%("x%d"%combo if combo>0 else "—")
 	var obstacle_text:=("" if blockers.is_empty() else "   •   %s: %d клеток"%[_blocker_name(),blockers.size()])
 	var spider_text:=("" if spiders.is_empty() else "   •   ПАУКИ: %d"%spiders.size())
-	goal_label.text="ЦЕЛИ: %d / %d очков   •   %d / %d %s%s%s"%[score,int(d["score"]),destroyed_counts[type],int(d["count"]),TYPE_NAMES[type],obstacle_text,spider_text]
+	var mechanic_text:=""
+	if is_instance_valid(mechanics):
+		mechanic_text="\n"+str(mechanics.call("get_goal_text"))
+	goal_label.text="ЦЕЛИ: %d / %d очков   •   %d / %d %s%s%s%s"%[score,int(d["score"]),destroyed_counts[type],int(d["count"]),TYPE_NAMES[type],obstacle_text,spider_text,mechanic_text]
+	goal_label.size=Vector2(624,48)
+	goal_label.add_theme_font_size_override("font_size",11)
 
 func _spawn_fx(p:Vector2,c:Color)->void:
 	for i in range(14):
