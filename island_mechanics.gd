@@ -68,9 +68,13 @@ func setup_level(data: Dictionary, index: int) -> void:
 
 func _setup_tide() -> void:
 	# Прилив блокирует целый внешний ряд; затем он меняется на другой берег.
-	tide_row = 0 if level_index % 2 == 0 else game.get("SIZE") - 1
+	var size := int(game.get("SIZE"))
+	tide_row = 0 if level_index % 2 == 0 else size - 1
 	previous_tide_row = tide_row
-	_set_tide_row(tide_row)
+	for x in range(size):
+		var p := Vector2i(x, tide_row)
+		tide_cells[p] = true
+		_remove_cell_content(p)
 
 func _setup_monkey() -> void:
 	var board = game.get("board")
@@ -214,8 +218,7 @@ func _shift_tide() -> void:
 	var board = game.get("board")
 	for x in range(size):
 		var old_p := Vector2i(x, old_row)
-		if board[old_row][x] < 0 and game.call("_cell_is_blocked", old_p):
-			board[old_row][x] = -1
+		board[old_row][x] = -1
 
 	# Новый ряд становится водой. Удаляем находившиеся там фишки/спецфишки/пауков.
 	for x in range(size):
