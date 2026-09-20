@@ -105,7 +105,7 @@ class IslandObjectArt extends Node2D:
 
 class IslandNPCArt extends Node2D:
 	var tint:=Color("#6db8d7")
-	var role:=""
+	var role := ""
 	func setup(npc_role:String)->void:
 		role=npc_role
 		match role:
