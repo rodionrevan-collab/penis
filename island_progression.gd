@@ -371,9 +371,11 @@ func claim_npc_quest(id: String, completed_levels: int, unlocked_zones: int, rep
 	var raw_state:Dictionary = quest_chain_state[id]
 	if final_stage:
 		raw_state["stage"] = int(state["stage_count"])
+		raw_state["active"] = false
 	else:
+		# Новый этап начинается прямо в момент выдачи предыдущей награды.
 		raw_state["stage"] = int(state["stage"])
-	raw_state["active"] = false
+		raw_state["active"] = true
 	raw_state["base_levels"] = completed_levels
 	raw_state["base_zones"] = unlocked_zones
 	raw_state["base_objects"] = repaired_objects
