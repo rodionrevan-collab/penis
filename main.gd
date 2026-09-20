@@ -114,7 +114,8 @@ class Gem extends Node2D:
 				draw_circle(Vector2.ZERO,s*.20,Color("#f5f7ff"))
 			elif special_type == 5:
 				draw_circle(Vector2(2,4),s*.84,Color(0,0,0,.30))
-				draw_style_box(_map_box(),Rect2(-s*.74,-s*.74,s*1.48,s*1.48))
+				draw_rect(Rect2(-s*.74,-s*.74,s*1.48,s*1.48),Color("#e6c792"))
+				draw_rect(Rect2(-s*.74,-s*.74,s*1.48,s*1.48),Color("#b9864d"),false,2.0)
 				draw_line(Vector2(-s*.30,-s*.15),Vector2(s*.25,-s*.15),Color("#6b4d2e"),3.0)
 				draw_line(Vector2(-s*.30,s*.12),Vector2(s*.10,s*.12),Color("#6b4d2e"),3.0)
 				var map_x:=PackedVector2Array([Vector2(-s*.52,s*.36),Vector2(-s*.10,s*.02),Vector2(s*.24,s*.34),Vector2(s*.52,-s*.30)])
@@ -148,14 +149,6 @@ class Gem extends Node2D:
 				draw_colored_polygon(PackedVector2Array([Vector2(0,-s),Vector2(s,s),Vector2(-s,s)]), color)
 		draw_circle(Vector2(-s*.32,-s*.34), s*.19, Color(1,1,1,.5))
 		draw_circle(Vector2(-s*.23,-s*.22), s*.08, Color.WHITE)
-
-func _map_box()->StyleBoxFlat:
-	var b:=StyleBoxFlat.new()
-	b.bg_color=Color("#e6c792")
-	b.border_color=Color("#b9864d")
-	b.set_border_width_all(2)
-	b.set_corner_radius_all(4)
-	return b
 
 class SpiderMark extends Node2D:
 	func _draw() -> void:
@@ -789,9 +782,13 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 		return
 	moves_left-=1
 	combo=0
+	var turn_cleared:Array[Vector2i]=[]
 	while true:
 		combo+=1
 		var wave:Array[Vector2i]=matches.duplicate()
+		for cleared_cell in wave:
+			if not turn_cleared.has(cleared_cell):
+				turn_cleared.append(cleared_cell)
 		if special_combo:
 			wave.append_array(_special_combo_cells(a,b))
 			special_combo=false
@@ -820,7 +817,7 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 		if matches.is_empty():
 			break
 	if is_instance_valid(mechanics):
-		mechanics.call("after_matches_cleared", matches)
+		mechanics.call("after_matches_cleared", turn_cleared)
 		await mechanics.call("after_player_move")
 	_update_best()
 	_update_labels()
@@ -1089,6 +1086,8 @@ func _special_effect_cells(a:Vector2i,b:Vector2i)->Array[Vector2i]:
 	var result:Array[Vector2i]=[]
 	for p in [a,b]:
 		var sp:=int(specials.get(p,0))
+		if not _is_active_special_type(sp):
+			continue
 		if sp==1:
 			for x in range(SIZE): result.append(Vector2i(x,p.y))
 		elif sp==2:
