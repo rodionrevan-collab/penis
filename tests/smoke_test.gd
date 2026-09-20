@@ -446,6 +446,8 @@ func _initialize() -> void:
 	assert(hut_art != null)
 	assert(npc_art != null)
 	assert(chest_art != null)
+	var secret_activity_art = island_art.call("create_activity","💠",1,true)
+	assert(secret_activity_art != null)
 	island_art.free()
 	assert(progression.is_zone_unlocked(4) == false)
 	progression.free()
