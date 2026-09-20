@@ -316,6 +316,34 @@ func _initialize() -> void:
 	assert(progression.get_npc_quest_dialogue("lisa",3,true) != "")
 	assert(progression.claim_npc_quest("lisa",10,5,7)["ok"] == false)
 
+	# Финальная цепочка открывает мини-событие и постоянный бонус.
+	var lisa_event:Dictionary=progression.get_island_event("lisa_festival")
+	assert(lisa_event["name"] == "Праздник пляжа")
+	assert(progression.is_event_available(lisa_event))
+	var event_reward:Dictionary=progression.claim_island_event("lisa_festival")
+	assert(event_reward["ok"] == true)
+	assert(progression.is_event_completed("lisa_festival"))
+	assert(progression.claim_island_event("lisa_festival")["ok"] == false)
+	var bonuses:Dictionary=progression.get_permanent_bonuses()
+	assert(int(bonuses["start_moves"]) == 1)
+	assert(progression.get_start_move_bonus(0) == 1)
+	assert(progression.get_score_multiplier() == 1.0)
+	progression.unique_rewards["tom_log"]=true
+	progression.unique_rewards["keeper_key"]=true
+	progression.unique_rewards["merchant_token"]=true
+	assert(progression.get_start_move_bonus(0) == 2)
+	assert(progression.get_start_move_bonus(69) == 2)
+	assert(progression.get_start_move_bonus(70) == 2)
+	assert(progression.get_score_multiplier() == 1.05)
+	assert(progression.get_three_star_bonus() == 1)
+	assert(progression.get_permanent_bonus_text() != "Постоянные преимущества ещё не открыты.")
+
+	# Все четыре события существуют; события новых зон ждут открытия нужной зоны.
+	assert(progression.get_island_events().size() == 4)
+	assert(progression.get_island_event("tom_route")["npc_id"] == "tom")
+	assert(progression.get_island_event("keeper_night")["npc_id"] == "keeper")
+	assert(progression.get_island_event("merchant_market")["npc_id"] == "merchant")
+
 	# Секреты открываются зоной и забираются только один раз.
 	var secrets:Array = progression.get_secrets()
 	assert(secrets.size() == 3)
