@@ -1311,6 +1311,9 @@ func _goal_defs(index:int)->Array:
 	var d:Dictionary=LEVELS[index]
 	var tier:=int(d["mechanic"])
 	var goals:Array=[]
+	var type_name:String=str(TYPE_NAMES[int(d["type"])])
+	var type_count:=int(d["count"])
+	var score_target:=int(d["score"])
 	if tier in [1,2,9]:
 		goals.append({"kind":"blockers","target":int(d.get("blockers",0)),"label":"разрушить все препятствия"})
 	elif tier==5 and int(d.get("spiders",0))>0:
@@ -1320,20 +1323,20 @@ func _goal_defs(index:int)->Array:
 	else:
 		var pattern:=index%4
 		if pattern==0:
-			goals.append({"kind":"collect","target":int(d["count"]),"type":int(d["type"]),"label":"собрать %d %s"%[int(d["count"]),TYPE_NAMES[int(d["type"]])]})
+			goals.append({"kind":"collect","target":type_count,"type":int(d["type"]),"label":"собрать %d %s"%[type_count,type_name]})
 		elif pattern==1:
-			goals.append({"kind":"score","target":int(d["score"]),"label":"набрать %d очков"%int(d["score"])})
+			goals.append({"kind":"score","target":score_target,"label":"набрать %d очков"%score_target})
 		elif pattern==2:
-			goals.append({"kind":"collect","target":int(d["count"]),"type":int(d["type"]),"label":"собрать %d %s"%[int(d["count"]),TYPE_NAMES[int(d["type"]])]})
-			goals.append({"kind":"score","target":int(d["score"]),"label":"набрать %d очков"%int(d["score"])})
+			goals.append({"kind":"collect","target":type_count,"type":int(d["type"]),"label":"собрать %d %s"%[type_count,type_name]})
+			goals.append({"kind":"score","target":score_target,"label":"набрать %d очков"%score_target})
 		else:
-			var target_score:=int(d["score"])+maxi(200,index*10)
+			var target_score:=score_target+maxi(200,index*10)
 			goals.append({"kind":"score","target":target_score,"label":"набрать %d очков"%target_score})
 	if goals.size()<2 and tier>=1:
 		if index%2==0:
-			goals.append({"kind":"collect","target":int(d["count"]),"type":int(d["type"]),"label":"собрать %d %s"%[int(d["count"]),TYPE_NAMES[int(d["type"]])]})
+			goals.append({"kind":"collect","target":type_count,"type":int(d["type"]),"label":"собрать %d %s"%[type_count,type_name]})
 		else:
-			goals.append({"kind":"score","target":int(d["score"]),"label":"набрать %d очков"%int(d["score"])})
+			goals.append({"kind":"score","target":score_target,"label":"набрать %d очков"%score_target})
 	return goals
 
 func _goal_done(goal:Dictionary)->bool:
