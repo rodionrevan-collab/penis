@@ -12,7 +12,7 @@ class IslandBackdrop extends Node2D:
 		draw_rect(Rect2(0,0,770,655),Color("#0d4b63"))
 		# волны
 		for y in range(15,650,34):
-			for x in range((y/34 as int)%2*22,770,44):
+			for x in range((int(y/34)%2)*22,770,44):
 				draw_arc(Vector2(x,y),9,PI,TAU,12,Color(1,1,1,.09),2.0)
 		var zone_polys := [
 			PackedVector2Array([Vector2(45,95),Vector2(145,55),Vector2(235,95),Vector2(215,220),Vector2(85,250)]),
