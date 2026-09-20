@@ -339,10 +339,12 @@ func _initialize() -> void:
 	assert(progression.get_permanent_bonus_text() != "Постоянные преимущества ещё не открыты.")
 
 	# Все четыре события существуют; события новых зон ждут открытия нужной зоны.
-	assert(progression.get_island_events().size() == 4)
+	assert(progression.get_island_events().size() == 5)
 	assert(progression.get_island_event("tom_route")["npc_id"] == "tom")
 	assert(progression.get_island_event("keeper_night")["npc_id"] == "keeper")
 	assert(progression.get_island_event("merchant_market")["npc_id"] == "merchant")
+	assert(progression.get_island_event("island_heart")["collection_required"] == 8)
+	assert(progression.is_event_completed("island_heart") == false)
 
 	# Интерактивные объекты и мини-активности требуют уникальные предметы и зоны.
 	assert(progression.get_interactive_objects().size() == 4)
@@ -356,6 +358,9 @@ func _initialize() -> void:
 	assert(progression.get_mini_activities().size() == 4)
 	assert(progression.get_collection_total() == 8)
 	assert(progression.get_collection_count() == 4)
+	assert(progression.get_collection_milestones().size() == 4)
+	assert(progression.get_collection_milestone_status("collection_25")["available"] == true)
+	assert(progression.get_collection_milestone_status("collection_75")["available"] == false)
 	assert(progression.get_available_interactives().size() == 2)
 	assert(progression.get_available_activities().size() == 1)
 	progression.repaired["secret_cave"]=true
@@ -377,6 +382,31 @@ func _initialize() -> void:
 	assert(progression.claim_mini_activity("pirate_navigation")["ok"] == false)
 	assert(progression.get_available_interactives().size() == 3)
 	assert(progression.get_available_activities().size() == 3)
+
+	var milestone_25:Dictionary=progression.claim_collection_milestone("collection_25")
+	assert(milestone_25["ok"] == true)
+	assert(progression.is_collection_milestone_claimed("collection_25"))
+	assert(progression.claim_collection_milestone("collection_25")["ok"] == false)
+	assert(progression.claim_collection_milestone("collection_50")["ok"] == true)
+	assert(progression.claim_collection_milestone("collection_50")["ok"] == false)
+	assert(progression.claim_collection_milestone("collection_75")["ok"] == false)
+	assert(progression.is_event_completed("island_heart") == false)
+
+	progression.completed_activities["cave_runes"]=true
+	progression.completed_activities["village_market"]=true
+	progression.completed_activities["village_trade_route"]=true
+	assert(progression.get_collection_count() == 8)
+	assert(progression.get_collection_milestone_status("collection_75")["available"] == true)
+	assert(progression.get_collection_milestone_status("collection_100")["available"] == true)
+	assert(progression.claim_collection_milestone("collection_75")["ok"] == true)
+	assert(progression.claim_collection_milestone("collection_100")["ok"] == true)
+	assert(progression.claim_collection_milestone("collection_100")["ok"] == false)
+	assert(progression.get_collection_completion_text() == "8 / 8 коллекционных предметов")
+	assert(progression.is_event_available(progression.get_island_event("island_heart")))
+	var final_event:Dictionary=progression.claim_island_event("island_heart")
+	assert(final_event["ok"] == true)
+	assert(progression.is_event_completed("island_heart"))
+	assert(progression.claim_island_event("island_heart")["ok"] == false)
 
 	# Секреты открываются зоной и забираются только один раз.
 	var secrets:Array = progression.get_secrets()
