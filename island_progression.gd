@@ -7,6 +7,8 @@ const SAVE_PATH := "user://island_restoration.txt"
 var repaired: Dictionary = {}
 var claimed_chests: Dictionary = {}
 var discovered_npcs: Dictionary = {}
+var claimed_quests: Dictionary = {}
+var claimed_secrets: Dictionary = {}
 
 var objects: Array[Dictionary] = [
 	{"id":"bridge","name":"Старый мост","icon":"🌉","cost":5,"zone":1,"description":"Разрушенный мост открывает путь в джунгли.","reward_text":"Открывает зону: Джунгли","map_pos":Vector2(170,245)},
@@ -53,15 +55,25 @@ func _load() -> void:
 			for id in values:
 				if not id.is_empty():
 					discovered_npcs[id] = true
+		elif key == "quests":
+			for id in values:
+				if not id.is_empty():
+					claimed_quests[id] = true
+		elif key == "secrets":
+			for id in values:
+				if not id.is_empty():
+					claimed_secrets[id] = true
 
 func save() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if not file:
 		return
-	file.store_string("repaired=%s|chests=%s|npcs=%s" % [
+	file.store_string("repaired=%s|chests=%s|npcs=%s|quests=%s|secrets=%s" % [
 		_keys_text(repaired),
 		_keys_text(claimed_chests),
-		_keys_text(discovered_npcs)
+		_keys_text(discovered_npcs),
+		_keys_text(claimed_quests),
+		_keys_text(claimed_secrets)
 	])
 	file.flush()
 
@@ -178,6 +190,79 @@ func claim_chest(id: String) -> Dictionary:
 			return {"ok":true,"reward":chest["reward"],"chest":chest}
 	return {"ok":false,"reason":"locked"}
 
+
+func get_npc_quest(id: String) -> Dictionary:
+	var quests := {
+		"lisa":{"id":"lisa_restore","npc_id":"lisa","title":"Вернуть жизнь на пляж","description":"Пройдите 3 любых уровня после встречи с Лизой.","kind":"completed_levels","target":3,"reward":{"stars":3,"booster":"hammer","amount":1}},
+		"tom":{"id":"tom_journey","npc_id":"tom","title":"Проверить остров","description":"Пройдите 10 уровней и помогите Тому проверить старые маршруты.","kind":"completed_levels","target":10,"reward":{"stars":5,"booster":"shuffle","amount":2}},
+		"keeper":{"id":"keeper_light","npc_id":"keeper","title":"Зажечь остров","description":"Откройте 4 зоны острова.","kind":"zones","target":4,"reward":{"stars":6,"booster":"extra_moves","amount":3}},
+		"merchant":{"id":"merchant_restore","npc_id":"merchant","title":"Последний рывок","description":"Восстановите 6 объектов острова.","kind":"repaired_objects","target":6,"reward":{"stars":8,"booster":"pre_bomb","amount":2}}
+	}
+	return quests.get(id, {})
+
+func get_quest_status(id: String, completed_levels: int, unlocked_zones: int, repaired_objects: int) -> Dictionary:
+	var q:=get_npc_quest(id)
+	if q.is_empty():
+		return {}
+	var current:=0
+	match str(q["kind"]):
+		"completed_levels": current=completed_levels
+		"zones": current=unlocked_zones
+		"repaired_objects": current=repaired_objects
+	var target:=int(q["target"])
+	return {
+		"quest":q,
+		"current":mini(current,target),
+		"target":target,
+		"done":current>=target,
+		"claimed":bool(claimed_quests.get(str(q["id"]),false))
+	}
+
+func claim_npc_quest(id: String, completed_levels: int, unlocked_zones: int, repaired_objects: int) -> Dictionary:
+	var state:=get_quest_status(id,completed_levels,unlocked_zones,repaired_objects)
+	if state.is_empty():
+		return {"ok":false,"reason":"unknown"}
+	var quest:Dictionary=state["quest"]
+	var quest_id:=str(quest["id"])
+	if bool(state["claimed"]):
+		return {"ok":false,"reason":"claimed"}
+	if not bool(state["done"]):
+		return {"ok":false,"reason":"not_done","current":int(state["current"]),"target":int(state["target"])}
+	claimed_quests[quest_id]=true
+	save()
+	return {"ok":true,"reward":quest["reward"],"quest":quest}
+
+func get_secrets() -> Array:
+	return [
+		{"id":"bottle","name":"Послание в бутылке","icon":"🍾","zone":0,"map_pos":Vector2(125,175),"description":"Старая бутылка на пляже.","reward":{"stars":2,"booster":"extra_moves","amount":1}},
+		{"id":"parrot_nest","name":"Гнездо попугая","icon":"🥚","zone":1,"map_pos":Vector2(320,135),"description":"Попугай спрятал здесь блестящую вещь.","reward":{"stars":2,"booster":"shuffle","amount":1}},
+		{"id":"ancient_statue","name":"Древняя статуя","icon":"🗿","zone":4,"map_pos":Vector2(610,430),"description":"На статуе видны старые символы острова.","reward":{"stars":4,"booster":"pre_rainbow","amount":1}}
+	]
+
+func get_secret(id: String) -> Dictionary:
+	for secret in get_secrets():
+		if str(secret["id"])==id:
+			return secret
+	return {}
+
+func is_secret_available(secret: Dictionary) -> bool:
+	return is_zone_unlocked(int(secret.get("zone",0)))
+
+func is_secret_claimed(id: String) -> bool:
+	return bool(claimed_secrets.get(id,false))
+
+func claim_secret(id: String) -> Dictionary:
+	if is_secret_claimed(id):
+		return {"ok":false,"reason":"claimed"}
+	var secret:=get_secret(id)
+	if secret.is_empty():
+		return {"ok":false,"reason":"unknown"}
+	if not is_secret_available(secret):
+		return {"ok":false,"reason":"locked"}
+	claimed_secrets[id]=true
+	save()
+	return {"ok":true,"secret":secret,"reward":secret["reward"]}
+
 func get_progress_text() -> String:
 	return "%d / %d объектов восстановлено • %d / %d зон открыто" % [repaired.size(),objects.size(),get_unlocked_zone_count(),zones.size()]
 
@@ -185,3 +270,5 @@ func reset_for_tests() -> void:
 	repaired.clear()
 	claimed_chests.clear()
 	discovered_npcs.clear()
+	claimed_quests.clear()
+	claimed_secrets.clear()
