@@ -237,7 +237,7 @@ func _quest_state_text() -> String:
 	var values := PackedStringArray()
 	for id in quest_chain_state.keys():
 		var state:Dictionary = quest_chain_state[id]
-		values.append("%s:%d:%d:%d:%d" % [
+		values.append("%s:%d:%d:%d:%d:%d" % [
 			str(id),
 			int(state.get("stage",0)),
 			1 if bool(state.get("active",false)) else 0,
@@ -367,7 +367,7 @@ func claim_npc_quest(id: String, completed_levels: int, unlocked_zones: int, rep
 	var final_stage := int(state["stage"]) >= int(state["stage_count"])
 	if final_stage and reward.has("unique"):
 		unique_rewards[str(reward["unique"])] = true
-	var next_stage := int(state["stage"]) # 1-based; final remains at stage_count.
+	var next_stage := int(state["stage"]) + (0 if final_stage else 1) # 1-based; final remains at stage_count.
 	var raw_state:Dictionary = quest_chain_state[id]
 	if final_stage:
 		raw_state["stage"] = int(state["stage_count"])
