@@ -16,6 +16,7 @@ var claimed_interactives: Dictionary = {}
 var completed_activities: Dictionary = {}
 var completed_secret_activities: Dictionary = {}
 var claimed_collection_rewards: Dictionary = {}
+var claimed_secret_collection_reward: bool = false
 
 var objects: Array[Dictionary] = [
 	{"id":"bridge","name":"Старый мост","icon":"🌉","cost":5,"zone":1,"description":"Разрушенный мост открывает путь в джунгли.","reward_text":"Открывает зону: Джунгли","map_pos":Vector2(170,245)},
@@ -96,13 +97,15 @@ func _load() -> void:
 			for id in values:
 				if not id.is_empty():
 					completed_secret_activities[id] = true
+		elif key == "secret_collection_reward":
+			claimed_secret_collection_reward = pair[1] == "true"
 	_migrate_legacy_quests()
 
 func save() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if not file:
 		return
-	file.store_string("repaired=%s|chests=%s|npcs=%s|quests=%s|secrets=%s|queststate=%s|unique=%s|events=%s|interactives=%s|activities=%s|collection_rewards=%s|secret_activities=%s" % [
+	file.store_string("repaired=%s|chests=%s|npcs=%s|quests=%s|secrets=%s|queststate=%s|unique=%s|events=%s|interactives=%s|activities=%s|collection_rewards=%s|secret_activities=%s|secret_collection_reward=%s" % [
 		_keys_text(repaired),
 		_keys_text(claimed_chests),
 		_keys_text(discovered_npcs),
@@ -114,7 +117,8 @@ func save() -> void:
 		_keys_text(claimed_interactives),
 		_keys_text(completed_activities),
 		_keys_text(claimed_collection_rewards),
-		_keys_text(completed_secret_activities)
+		_keys_text(completed_secret_activities),
+		str(claimed_secret_collection_reward)
 	])
 	file.flush()
 
@@ -216,6 +220,8 @@ func get_chests() -> Array:
 		result.append({"id":"cave_chest","name":"Сундук тайной пещеры","icon":"💎","map_pos":Vector2(500,330),"reward":{"stars":5,"booster":"hammer","amount":2}})
 	if is_repaired("old_village"):
 		result.append({"id":"village_chest","name":"Сундук деревни","icon":"🧰","map_pos":Vector2(330,330),"reward":{"stars":7,"booster":"extra_moves","amount":3}})
+	if get_secret_collection_count() >= get_secret_collection_total() and is_secret_collection_reward_claimed():
+		result.append({"id":"secret_island_chest","name":"Тайный сундук острова","icon":"💠","map_pos":Vector2(455,575),"reward":{"stars":12,"booster":"pre_rainbow","amount":2}})
 	return result
 
 func is_chest_claimed(id: String) -> bool:
@@ -929,6 +935,26 @@ func get_secret_collection_total() -> int:
 func get_secret_collection_text() -> String:
 	return "%d / %d секретных наград"%[get_secret_collection_count(),get_secret_collection_total()]
 
+func is_secret_collection_reward_claimed() -> bool:
+	return claimed_secret_collection_reward
+
+func is_secret_collection_reward_available() -> bool:
+	return get_secret_collection_count() >= get_secret_collection_total() and not claimed_secret_collection_reward
+
+func claim_secret_collection_reward() -> Dictionary:
+	if claimed_secret_collection_reward:
+		return {"ok":false,"reason":"claimed"}
+	if get_secret_collection_count() < get_secret_collection_total():
+		return {"ok":false,"reason":"locked"}
+	claimed_secret_collection_reward = true
+	save()
+	return {
+		"ok":true,
+		"reward":{"stars":10,"booster":"pre_bomb","amount":1},
+		"title":"Секретная коллекция завершена",
+		"description":"Все три редких трофея найдены. Тайник острова теперь открыт."
+	}
+
 func get_collection_items() -> Array:
 	return [
 		{"id":"lisa_badge","name":"Знак хранительницы","icon":"🏵️","kind":"unique"},
@@ -1083,3 +1109,4 @@ func reset_for_tests() -> void:
 	completed_activities.clear()
 	completed_secret_activities.clear()
 	claimed_collection_rewards.clear()
+	claimed_secret_collection_reward=false
