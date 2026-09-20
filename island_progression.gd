@@ -11,6 +11,7 @@ var claimed_quests: Dictionary = {}
 var claimed_secrets: Dictionary = {}
 var quest_chain_state: Dictionary = {}
 var unique_rewards: Dictionary = {}
+var completed_events: Dictionary = {}
 
 var objects: Array[Dictionary] = [
 	{"id":"bridge","name":"Старый мост","icon":"🌉","cost":5,"zone":1,"description":"Разрушенный мост открывает путь в джунгли.","reward_text":"Открывает зону: Джунгли","map_pos":Vector2(170,245)},
@@ -71,6 +72,10 @@ func _load() -> void:
 			for id in values:
 				if not id.is_empty():
 					unique_rewards[id] = true
+		elif key == "events":
+			for id in values:
+				if not id.is_empty():
+					completed_events[id] = true
 	_migrate_legacy_quests()
 
 func save() -> void:
@@ -84,7 +89,8 @@ func save() -> void:
 		_keys_text(claimed_quests),
 		_keys_text(claimed_secrets),
 		_quest_state_text(),
-		_keys_text(unique_rewards)
+		_keys_text(unique_rewards),
+		_keys_text(completed_events)
 	])
 	file.flush()
 
@@ -445,6 +451,140 @@ func get_unique_reward_count() -> int:
 func is_unique_reward_unlocked(id:String) -> bool:
 	return bool(unique_rewards.get(id,false))
 
+func get_permanent_bonuses() -> Dictionary:
+	var result := {
+		"start_moves":0,
+		"late_start_moves":0,
+		"score_percent":0,
+		"three_star_bonus":0
+	}
+	if is_unique_reward_unlocked("lisa_badge"):
+		result["start_moves"] += 1
+	if is_unique_reward_unlocked("tom_log"):
+		result["score_percent"] += 5
+	if is_unique_reward_unlocked("keeper_key"):
+		result["late_start_moves"] += 1
+	if is_unique_reward_unlocked("merchant_token"):
+		result["three_star_bonus"] += 1
+	return result
+
+func get_start_move_bonus(level_index:int) -> int:
+	var bonuses := get_permanent_bonuses()
+	var result := int(bonuses["start_moves"])
+	if level_index >= 70:
+		result += int(bonuses["late_start_moves"])
+	return result
+
+func get_score_multiplier() -> float:
+	var bonuses := get_permanent_bonuses()
+	return 1.0 + float(bonuses["score_percent"]) / 100.0
+
+func get_three_star_bonus() -> int:
+	return int(get_permanent_bonuses()["three_star_bonus"])
+
+func get_permanent_bonus_text() -> String:
+	var parts := PackedStringArray()
+	var bonuses := get_permanent_bonuses()
+	if int(bonuses["start_moves"]) > 0:
+		parts.append("+%d ход в начале каждого уровня" % int(bonuses["start_moves"]))
+	if int(bonuses["late_start_moves"]) > 0:
+		parts.append("+%d дополнительный ход на уровнях 71–100" % int(bonuses["late_start_moves"]))
+	if int(bonuses["score_percent"]) > 0:
+		parts.append("+%d%% к очкам" % int(bonuses["score_percent"]))
+	if int(bonuses["three_star_bonus"]) > 0:
+		parts.append("+%d ⭐ за первое получение 3★ на уровне" % int(bonuses["three_star_bonus"]))
+	if parts.is_empty():
+		return "Постоянные преимущества ещё не открыты."
+	return " • ".join(parts)
+
+func get_island_events() -> Array:
+	return [
+		{
+			"id":"lisa_festival",
+			"npc_id":"lisa",
+			"name":"Праздник пляжа",
+			"icon":"🎊",
+			"zone":0,
+			"map_pos":Vector2(145,205),
+			"description":"Лиза устраивает небольшой праздник после полного восстановления своей цепочки.",
+			"reward":{"stars":2,"booster":"extra_moves","amount":1},
+			"unique_required":"lisa_badge",
+			"event_text":"На пляже снова звучит музыка. Лиза благодарит тебя и обещает следить за островом."
+		},
+		{
+			"id":"tom_route",
+			"npc_id":"tom",
+			"name":"Старый морской маршрут",
+			"icon":"🧭",
+			"zone":3,
+			"map_pos":Vector2(700,300),
+			"description":"Том ведёт тебя к старому пиратскому маршруту у бухты.",
+			"reward":{"stars":3,"booster":"shuffle","amount":1},
+			"unique_required":"tom_log",
+			"event_text":"В старом журнале находится отметка. Том показывает путь к месту, где когда-то прятали груз."
+		},
+		{
+			"id":"keeper_night",
+			"npc_id":"keeper",
+			"name":"Ночной маяк",
+			"icon":"🌙",
+			"zone":3,
+			"map_pos":Vector2(730,430),
+			"description":"После полного ремонта маяка смотритель проводит первый ночной запуск.",
+			"reward":{"stars":2,"booster":"pre_rainbow","amount":1},
+			"unique_required":"keeper_key",
+			"event_text":"Маяк вспыхивает над морем. Теперь остров снова виден кораблям даже в тумане."
+		},
+		{
+			"id":"merchant_market",
+			"npc_id":"merchant",
+			"name":"Открытие лавки",
+			"icon":"🛍️",
+			"zone":5,
+			"map_pos":Vector2(315,450),
+			"description":"Торговец открывает восстановленную лавку и приглашает первых покупателей.",
+			"reward":{"stars":4,"booster":"hammer","amount":1},
+			"unique_required":"merchant_token",
+			"event_text":"Первые товары раскладываются на полках. Торговец объявляет остров официально открытым для торговли."
+		}
+	]
+
+func get_island_event(id:String) -> Dictionary:
+	for event in get_island_events():
+		if str(event["id"]) == id:
+			return event
+	return {}
+
+func is_event_available(event:Dictionary) -> bool:
+	var required := str(event.get("unique_required",""))
+	if required.is_empty() or not is_unique_reward_unlocked(required):
+		return false
+	if not is_zone_unlocked(int(event.get("zone",0))):
+		return false
+	return not bool(completed_events.get(str(event["id"]),false))
+
+func get_available_events() -> Array:
+	var result:Array = []
+	for event in get_island_events():
+		if is_event_available(event):
+			result.append(event)
+	return result
+
+func is_event_completed(id:String) -> bool:
+	return bool(completed_events.get(id,false))
+
+func claim_island_event(id:String) -> Dictionary:
+	var event := get_island_event(id)
+	if event.is_empty():
+		return {"ok":false,"reason":"unknown"}
+	if not is_event_available(event):
+		if is_event_completed(id):
+			return {"ok":false,"reason":"completed"}
+		return {"ok":false,"reason":"locked"}
+	completed_events[id] = true
+	save()
+	return {"ok":true,"event":event,"reward":event["reward"]}
+
 func get_secrets() -> Array:
 	return [
 		{"id":"bottle","name":"Послание в бутылке","icon":"🍾","zone":0,"map_pos":Vector2(125,175),"description":"Старая бутылка на пляже.","reward":{"stars":2,"booster":"extra_moves","amount":1}},
@@ -487,3 +627,4 @@ func reset_for_tests() -> void:
 	claimed_secrets.clear()
 	quest_chain_state.clear()
 	unique_rewards.clear()
+	completed_events.clear()
