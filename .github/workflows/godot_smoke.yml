@@ -1,0 +1,20 @@
+name: Godot smoke test
+
+on:
+  push:
+    paths:
+      - '**.gd'
+      - '**.tscn'
+      - 'project.godot'
+      - '.github/workflows/godot_smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.5.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run headless smoke test
+        run: godot --headless --path . --script tests/smoke_test.gd
