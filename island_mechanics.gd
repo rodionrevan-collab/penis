@@ -354,7 +354,7 @@ func _move_monkey() -> void:
 	var board = game.get("board")
 	var candidates: Array[Vector2i] = []
 	for delta in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-		var p := monkey_cell + delta
+		var p:Vector2i = monkey_cell + delta
 		if p.x < 0 or p.y < 0 or p.x >= size or p.y >= size:
 			continue
 		if (blockers is Dictionary and blockers.has(p)) or tide_cells.has(p):
