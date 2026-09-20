@@ -561,9 +561,12 @@ func _show_island_visual_map(focus_id:String="")->void:
 		for secret in island_progression.get_secrets():
 			if island_progression.is_secret_available(secret):
 				_add_island_secret_marker(island,secret)
+		for event in island_progression.get_island_events():
+			if island_progression.is_event_available(event):
+				_add_island_event_marker(island,event)
 
 	var legend:=Label.new()
-	legend.text="🟢 восстановлено   🟠 нужно ремонтировать   🔵 NPC   🎁 сундук"
+	legend.text="🟢 восстановлено   🟠 ремонт   🔵 NPC   🎁 сундук   ✨ событие"
 	legend.position=Vector2(45,770)
 	legend.size=Vector2(750,25)
 	legend.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
@@ -704,6 +707,45 @@ func _claim_npc_quest(id:String)->void:
 		# После промежуточной награды NPC сразу показывает новую реплику следующего этапа.
 		_show_island_npc_dialog(id)
 
+func _show_island_event(id:String)->void:
+	if not is_instance_valid(island_progression): return
+	var event:Dictionary=island_progression.call("get_island_event",id)
+	if event.is_empty(): return
+	var completed_event:=bool(island_progression.call("is_event_completed",id))
+	if modal:
+		modal.queue_free()
+		modal=null
+	modal=Control.new()
+	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.03,0.02,0.08,.84); modal.add_child(shade)
+	var box:=Panel.new(); box.position=Vector2(145,215); box.size=Vector2(610,455); box.add_theme_stylebox_override("panel",_style(Color("#18233b"),Color("#a77bd2"),24)); modal.add_child(box)
+	var title:=Label.new(); title.text="%s %s"%[str(event["icon"]),str(event["name"])]; title.position=Vector2(35,24); title.size=Vector2(540,45); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",24); title.add_theme_color_override("font_color",Color("#f1ddff")); box.add_child(title)
+	var desc:=Label.new(); desc.text=str(event["description"]); desc.position=Vector2(45,82); desc.size=Vector2(520,64); desc.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; desc.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; desc.add_theme_font_size_override("font_size",14); desc.add_theme_color_override("font_color",Color("#c9c5d9")); box.add_child(desc)
+	var story:=Label.new(); story.text="«%s»"%str(event["event_text"]); story.position=Vector2(45,150); story.size=Vector2(520,72); story.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; story.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; story.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; story.add_theme_font_size_override("font_size",13); story.add_theme_color_override("font_color",Color("#e5d9ea")); box.add_child(story)
+	var reward:Dictionary=event["reward"]
+	var reward_text:="🎁 Награда: ⭐ +%d"%int(reward.get("stars",0))
+	var booster:=str(reward.get("booster",""))
+	var amount:=int(reward.get("amount",0))
+	if not booster.is_empty() and amount>0:
+		reward_text+="   •   %s +%d"%[booster,amount]
+	var reward_label:=Label.new(); reward_label.text=reward_text; reward_label.position=Vector2(35,231); reward_label.size=Vector2(540,30); reward_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; reward_label.add_theme_font_size_override("font_size",13); reward_label.add_theme_color_override("font_color",Color("#ffd86a")); box.add_child(reward_label)
+	var bonus:=Label.new(); bonus.text="✨ Постоянные преимущества: %s"%str(island_progression.call("get_permanent_bonus_text")); bonus.position=Vector2(35,267); bonus.size=Vector2(540,58); bonus.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; bonus.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; bonus.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; bonus.add_theme_font_size_override("font_size",10); bonus.add_theme_color_override("font_color",Color("#d7c8ed")); box.add_child(bonus)
+	var claim:=Button.new(); claim.position=Vector2(85,345); claim.size=Vector2(440,50); claim.add_theme_font_size_override("font_size",14); box.add_child(claim)
+	if completed_event:
+		claim.text="СОБЫТИЕ ЗАВЕРШЕНО"; claim.disabled=true; claim.add_theme_stylebox_override("normal",_style(Color("#28434b"),Color("#67ae9d"),12))
+	else:
+		claim.text="ПРОВЕСТИ СОБЫТИЕ"; claim.add_theme_stylebox_override("normal",_style(Color("#51376a"),Color("#d9b2ff"),12)); claim.pressed.connect(_claim_island_event.bind(id))
+	var close:=Button.new(); close.text="← КАРТА ОСТРОВА"; close.position=Vector2(85,402); close.size=Vector2(440,34); close.add_theme_stylebox_override("normal",_style(Color("#18334a"),Color("#527a99"),10)); close.pressed.connect(_close_island_visual_map); box.add_child(close)
+	map_layer.add_child(modal)
+
+func _claim_island_event(id:String)->void:
+	if not is_instance_valid(island_progression): return
+	var result:Dictionary=island_progression.call("claim_island_event",id)
+	if not bool(result.get("ok",false)): return
+	_apply_island_reward(result["reward"])
+	_show_island_visual_map()
+
 func _claim_secret(id:String)->void:
 	if not is_instance_valid(island_progression): return
 	var result:Dictionary=island_progression.call("claim_secret",id)
@@ -769,6 +811,37 @@ func _show_secret_dialog(id:String)->void:
 	var close:=Button.new(); close.text="← КАРТА ОСТРОВА"; close.position=Vector2(90,285); close.size=Vector2(400,34); close.add_theme_stylebox_override("normal",_style(Color("#18334a"),Color("#527a99"),10)); close.pressed.connect(_close_island_visual_map); box.add_child(close)
 	map_layer.add_child(modal)
 
+func _add_island_event_marker(parent:Control,event:Dictionary)->void:
+	var p:Vector2=event.get("map_pos",Vector2(100,100))
+	var b:=Button.new()
+	b.position=p-Vector2(29,29)
+	b.size=Vector2(58,58)
+	b.flat=true
+	b.tooltip_text=str(event["name"])
+	b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),30))
+	b.add_theme_stylebox_override("hover",_style(Color(0.35,0.24,0.55,.18),Color("#d9b9ff"),30))
+	var icon:=Label.new()
+	icon.text=str(event["icon"])
+	icon.position=Vector2.ZERO
+	icon.size=Vector2(58,58)
+	icon.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	icon.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+	icon.add_theme_font_size_override("font_size",23)
+	icon.add_theme_color_override("font_color",Color("#d9b9ff"))
+	b.add_child(icon)
+	b.pressed.connect(_show_island_event.bind(str(event["id"])))
+	parent.add_child(b)
+	var l:=Label.new()
+	l.text=str(event["name"])
+	l.position=p+Vector2(-62,28)
+	l.size=Vector2(124,26)
+	l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	l.add_theme_font_size_override("font_size",8)
+	l.add_theme_color_override("font_color",Color("#e2c8ff"))
+	parent.add_child(l)
+
 func _add_island_secret_marker(parent:Control,secret:Dictionary)->void:
 	var p:Vector2=secret.get("map_pos",Vector2(100,100))
 	var claimed:=bool(island_progression.call("is_secret_claimed",str(secret["id"])))
@@ -804,7 +877,14 @@ func _show_island_npc_dialog(id:String)->void:
 	if not qstate.is_empty():
 		quest_text="🏆 ЦЕПОЧКА ЗАВЕРШЕНА" if bool(qstate.get("chain_done",false)) else "📜 ЭТАП %d/%d"%[int(qstate.get("stage",1)),int(qstate.get("stage_count",1))]
 	var quest:=Button.new(); quest.text=quest_text; quest.position=Vector2(85,235); quest.size=Vector2(220,44); quest.add_theme_stylebox_override("normal",_style(Color("#5c4a25"),Color("#d8b354"),12)); quest.pressed.connect(_show_npc_quest.bind(id)); box.add_child(quest)
-	var close:=Button.new(); close.text="ЗАКРЫТЬ"; close.position=Vector2(300,235); close.size=Vector2(170,44); close.add_theme_stylebox_override("normal",_style(Color("#193b52"),Color("#63a6d3"),12)); close.pressed.connect(_close_island_visual_map); box.add_child(close)
+	var event_to_show:Dictionary={}
+	for event in island_progression.get_available_events():
+		if str(event.get("npc_id",""))==id:
+			event_to_show=event
+			break
+	if not event_to_show.is_empty():
+		var event_button:=Button.new(); event_button.text="✨ СОБЫТИЕ"; event_button.position=Vector2(85,286); event_button.size=Vector2(220,40); event_button.add_theme_stylebox_override("normal",_style(Color("#47335f"),Color("#d6adff"),12)); event_button.pressed.connect(_show_island_event.bind(str(event_to_show["id"]))); box.add_child(event_button)
+	var close:=Button.new(); close.text="ЗАКРЫТЬ"; close.position=Vector2(315,235); close.size=Vector2(155,44); close.add_theme_stylebox_override("normal",_style(Color("#193b52"),Color("#63a6d3"),12)); close.pressed.connect(_close_island_visual_map); box.add_child(close)
 	map_layer.add_child(modal)
 
 func _close_island_visual_map()->void:
@@ -1085,7 +1165,10 @@ func _start_level(index:int)->void:
 		modal=null
 	current_level=index
 	var data:Dictionary=LEVELS[index]
-	initial_moves=int(data["moves"])
+	var passive_moves:=0
+	if is_instance_valid(island_progression):
+		passive_moves=int(island_progression.call("get_start_move_bonus",index))
+	initial_moves=int(data["moves"])+passive_moves
 	moves_left=initial_moves
 	score=0
 	combo=0
@@ -1498,6 +1581,8 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 		if not matches.is_empty():
 			_create_special_from_match(wave)
 		var gained:int=wave.size()*10*combo
+		if is_instance_valid(island_progression):
+			gained=int(round(float(gained)*float(island_progression.call("get_score_multiplier"))))
 		score+=gained
 		_play("combo" if combo>1 else "match")
 		_popup(_cell_pos(wave[0]),gained)
@@ -1904,6 +1989,10 @@ func _win()->void:
 	var star_delta:=new_stars-previous_stars
 	level_stars[current_level]=new_stars
 	island_stars+=star_delta
+	var passive_star_bonus:=0
+	if star_delta>0 and new_stars>=3 and is_instance_valid(island_progression):
+		passive_star_bonus=int(island_progression.call("get_three_star_bonus"))
+		island_stars+=passive_star_bonus
 	if current_level<99: unlocked_level=max(unlocked_level,current_level+1)
 	_save_progress()
 	_update_labels()
@@ -1921,7 +2010,10 @@ func _result_modal(won:bool)->void:
 	var p:=Panel.new(); p.position=Vector2(145,215); p.size=Vector2(610,410); p.add_theme_stylebox_override("panel",_style(Color("#111c31"),Color("#38527d"),22)); modal.add_child(p)
 	var t:=Label.new(); t.text="УРОВЕНЬ ПРОЙДЕН! 🎉" if won else "ХОДЫ ЗАКОНЧИЛИСЬ"; t.position=Vector2(40,25); t.size=Vector2(530,55); t.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; t.add_theme_font_size_override("font_size",29); t.add_theme_color_override("font_color",Color("#63e6a0") if won else Color("#ff8794")); p.add_child(t)
 	var stars:=Label.new(); stars.text=_stars_string(_calculate_stars()) if won else "☆ ☆ ☆"; stars.position=Vector2(55,78); stars.size=Vector2(500,48); stars.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; stars.add_theme_font_size_override("font_size",30); stars.add_theme_color_override("font_color",Color("#ffd86a")); p.add_child(stars)
-	var tx:=Label.new(); tx.text=("Все цели выполнены!\nОчки: %d\nХодов осталось: %d\nЛучшее комбо: x%d"%[score,moves_left,best_combo_level]) if won else ("Цели не выполнены.\nОчки: %d\nЛучшее комбо: x%d"%[score,best_combo_level]); tx.position=Vector2(55,135); tx.size=Vector2(500,110); tx.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; tx.add_theme_font_size_override("font_size",16); tx.add_theme_color_override("font_color",Color("#c5d1e8")); p.add_child(tx)
+	var passive_info:=""
+	if won and passive_star_bonus>0:
+		passive_info="\n\n✨ Бонус события: +%d ⭐"%passive_star_bonus
+	var tx:=Label.new(); tx.text=(("Все цели выполнены!\nОчки: %d\nХодов осталось: %d\nЛучшее комбо: x%d"%[score,moves_left,best_combo_level])+passive_info) if won else ("Цели не выполнены.\nОчки: %d\nЛучшее комбо: x%d"%[score,best_combo_level]); tx.position=Vector2(55,135); tx.size=Vector2(500,110); tx.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; tx.add_theme_font_size_override("font_size",16); tx.add_theme_color_override("font_color",Color("#c5d1e8")); p.add_child(tx)
 	var primary:=Button.new(); primary.position=Vector2(65,320); primary.size=Vector2(230,52); primary.add_theme_font_size_override("font_size",13); primary.add_theme_stylebox_override("normal",_style(Color("#237b50") if won else Color("#334d78"),Color("#62dfa1") if won else Color("#6484b8"))); primary.text=("СЛЕДУЮЩИЙ УРОВЕНЬ →" if current_level<99 else "ВЕРНУТЬСЯ НА КАРТУ") if won else "ПОПРОБОВАТЬ СНОВА"; primary.pressed.connect(_modal_primary.bind(won)); p.add_child(primary)
 	var secondary:=Button.new(); secondary.position=Vector2(315,320); secondary.size=Vector2(230,52); secondary.text="ВЕРНУТЬСЯ В ЛОББИ"; secondary.add_theme_stylebox_override("normal",_style(Color("#182943"),Color("#466187"))); secondary.pressed.connect(_show_map); p.add_child(secondary); game_layer.add_child(modal)
 
