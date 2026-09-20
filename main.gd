@@ -531,7 +531,8 @@ func _show_island_visual_map(focus_id:String="")->void:
 	panel.add_child(title)
 	var bank:=Label.new()
 	var unique_count:=island_progression.get_unique_reward_count() if is_instance_valid(island_progression) else 0
-	bank.text="⭐ %d    •    %s    •    🏆 %d/4"%[island_stars,island_progression.get_progress_text() if is_instance_valid(island_progression) else "Прогресс недоступен",unique_count]
+	var collection_text:=island_progression.get_collection_completion_text() if is_instance_valid(island_progression) else "Коллекция недоступна"
+	bank.text="⭐ %d    •    %s    •    🏆 %d/4    •    %s"%[island_stars,island_progression.get_progress_text() if is_instance_valid(island_progression) else "Прогресс недоступен",unique_count,collection_text]
 	bank.position=Vector2(35,58)
 	bank.size=Vector2(770,28)
 	bank.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
@@ -570,11 +571,17 @@ func _show_island_visual_map(focus_id:String="")->void:
 			if island_progression.is_event_available(event):
 				_add_island_event_marker(island,event)
 		for item in island_progression.get_interactive_objects():
-			if island_progression.is_interactive_available(item):
-				_add_island_interactive_marker(island,item)
+			var item_zone_open:=bool(island_progression.call("is_zone_unlocked",int(item.get("zone",0))))
+			var item_available:=bool(island_progression.call("is_interactive_available",item))
+			var item_done:=not item_available and item_zone_open
+			if item_zone_open or item_done:
+				_add_island_interactive_marker(island,item,1 if item_available else 2)
 		for activity in island_progression.get_mini_activities():
-			if island_progression.is_activity_available(activity):
-				_add_island_activity_marker(island,activity)
+			var activity_zone_open:=bool(island_progression.call("is_zone_unlocked",int(activity.get("zone",0))))
+			var activity_available:=bool(island_progression.call("is_activity_available",activity))
+			var activity_done:=bool(island_progression.call("is_activity_completed",str(activity["id"])))
+			if activity_zone_open or activity_done:
+				_add_island_activity_marker(island,activity,1 if activity_available else 2)
 
 	var legend:=Label.new()
 	legend.text="🟢 восстановлено   🟠 ремонт   🔵 NPC   🎁 сундук   ✨ событие   🔑 интерактив   🎮 активность"
@@ -586,25 +593,33 @@ func _show_island_visual_map(focus_id:String="")->void:
 	panel.add_child(legend)
 
 	var repair:=Button.new()
-	repair.text="🔨 СПИСОК РЕМОНТА"
-	repair.position=Vector2(45,797)
-	repair.size=Vector2(250,32)
+	repair.text="🔨 РЕМОНТ"
+	repair.position=Vector2(35,797)
+	repair.size=Vector2(175,32)
 	repair.add_theme_font_size_override("font_size",10)
 	repair.add_theme_stylebox_override("normal",_style(Color("#225b50"),Color("#61d6a2"),10))
 	repair.pressed.connect(_show_island_repair)
 	panel.add_child(repair)
+	var collection:=Button.new()
+	collection.text="🏆 КОЛЛЕКЦИЯ"
+	collection.position=Vector2(220,797)
+	collection.size=Vector2(175,32)
+	collection.add_theme_font_size_override("font_size",10)
+	collection.add_theme_stylebox_override("normal",_style(Color("#47335f"),Color("#d6adff"),10))
+	collection.pressed.connect(_show_island_collection)
+	panel.add_child(collection)
 	var close:=Button.new()
-	close.text="← НАЗАД НА КАРТУ УРОВНЕЙ"
-	close.position=Vector2(305,797)
-	close.size=Vector2(250,32)
+	close.text="← УРОВНИ"
+	close.position=Vector2(405,797)
+	close.size=Vector2(175,32)
 	close.add_theme_font_size_override("font_size",10)
 	close.add_theme_stylebox_override("normal",_style(Color("#182c45"),Color("#4a6989"),10))
 	close.pressed.connect(_close_island_visual_map)
 	panel.add_child(close)
 	var main_map:=Button.new()
 	main_map.text="🎁 СУНДУКИ"
-	main_map.position=Vector2(565,797)
-	main_map.size=Vector2(240,32)
+	main_map.position=Vector2(590,797)
+	main_map.size=Vector2(175,32)
 	main_map.add_theme_font_size_override("font_size",10)
 	main_map.add_theme_stylebox_override("normal",_style(Color("#604b25"),Color("#d3a94f"),10))
 	main_map.pressed.connect(_show_island_chests)
@@ -853,7 +868,7 @@ func _add_island_event_marker(parent:Control,event:Dictionary)->void:
 	l.add_theme_color_override("font_color",Color("#e2c8ff"))
 	parent.add_child(l)
 
-func _add_island_interactive_marker(parent:Control,item:Dictionary)->void:
+func _add_island_interactive_marker(parent:Control,item:Dictionary,visual_state:int)->void:
 	var p:Vector2=item.get("map_pos",Vector2(100,100))
 	var b:=Button.new()
 	b.position=p-Vector2(29,29)
@@ -863,19 +878,13 @@ func _add_island_interactive_marker(parent:Control,item:Dictionary)->void:
 	b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),30))
 	b.add_theme_stylebox_override("hover",_style(Color(.25,.55,.72,.18),Color("#83ddff"),30))
-	var icon:=Label.new()
-	icon.text=str(item["icon"])
-	icon.position=Vector2.ZERO
-	icon.size=Vector2(58,58)
-	icon.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-	icon.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
-	icon.add_theme_font_size_override("font_size",22)
-	icon.add_theme_color_override("font_color",Color("#83ddff"))
-	b.add_child(icon)
+	var art:=island_art_factory.call("create_interactive",str(item["id"]),visual_state)
+	art.position=Vector2(29,29)
+	b.add_child(art)
 	b.pressed.connect(_show_interactive_object.bind(str(item["id"])))
 	parent.add_child(b)
 	var l:=Label.new()
-	l.text=str(item["name"])
+	l.text=str(item["name"])+(" ✓" if visual_state==2 else "")
 	l.position=p+Vector2(-65,28)
 	l.size=Vector2(130,28)
 	l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
@@ -884,7 +893,7 @@ func _add_island_interactive_marker(parent:Control,item:Dictionary)->void:
 	l.add_theme_color_override("font_color",Color("#bfeaff"))
 	parent.add_child(l)
 
-func _add_island_activity_marker(parent:Control,activity:Dictionary)->void:
+func _add_island_activity_marker(parent:Control,activity:Dictionary,visual_state:int)->void:
 	var p:Vector2=activity.get("map_pos",Vector2(100,100))
 	var b:=Button.new()
 	b.position=p-Vector2(29,29)
@@ -894,19 +903,13 @@ func _add_island_activity_marker(parent:Control,activity:Dictionary)->void:
 	b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),30))
 	b.add_theme_stylebox_override("hover",_style(Color(.55,.34,.18,.18),Color("#ffc56e"),30))
-	var icon:=Label.new()
-	icon.text=str(activity["icon"])
-	icon.position=Vector2.ZERO
-	icon.size=Vector2(58,58)
-	icon.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-	icon.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
-	icon.add_theme_font_size_override("font_size",22)
-	icon.add_theme_color_override("font_color",Color("#ffc56e"))
-	b.add_child(icon)
+	var art:=island_art_factory.call("create_activity",str(activity["icon"]),visual_state)
+	art.position=Vector2(29,29)
+	b.add_child(art)
 	b.pressed.connect(_show_mini_activity.bind(str(activity["id"])))
 	parent.add_child(b)
 	var l:=Label.new()
-	l.text=str(activity["name"])
+	l.text=str(activity["name"])+(" ✓" if visual_state==2 else "")
 	l.position=p+Vector2(-65,28)
 	l.size=Vector2(130,28)
 	l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
@@ -962,23 +965,30 @@ func _show_mini_activity(id:String)->void:
 	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	modal.mouse_filter=Control.MOUSE_FILTER_STOP
 	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.06,0.035,0.015,.90); modal.add_child(shade)
-	var box:=Panel.new(); box.position=Vector2(105,160); box.size=Vector2(690,580); box.add_theme_stylebox_override("panel",_style(Color("#332514"),Color("#c78b47"),24)); modal.add_child(box)
-	var title:=Label.new(); title.text="%s %s"%[str(activity["icon"]),str(activity["name"])]; title.position=Vector2(40,25); title.size=Vector2(610,46); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",25); title.add_theme_color_override("font_color",Color("#ffe6bd")); box.add_child(title)
-	var desc:=Label.new(); desc.text=str(activity["description"]); desc.position=Vector2(55,82); desc.size=Vector2(580,62); desc.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; desc.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; desc.add_theme_font_size_override("font_size",14); desc.add_theme_color_override("font_color",Color("#e3cfb5")); box.add_child(desc)
-	mini_status_label=Label.new(); mini_status_label.text="Начинаем..."
-	mini_status_label.position=Vector2(50,150); mini_status_label.size=Vector2(590,38); mini_status_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; mini_status_label.add_theme_font_size_override("font_size",15); mini_status_label.add_theme_color_override("font_color",Color("#ffd36d")); box.add_child(mini_status_label)
+	var box:=Panel.new(); box.position=Vector2(75,145); box.size=Vector2(750,610); box.add_theme_stylebox_override("panel",_style(Color("#332514"),Color("#c78b47"),24)); modal.add_child(box)
+	var title:=Label.new(); title.text="%s %s"%[str(activity["icon"]),str(activity["name"])]; title.position=Vector2(40,25); title.size=Vector2(670,46); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",25); title.add_theme_color_override("font_color",Color("#ffe6bd")); box.add_child(title)
+	var desc:=Label.new(); desc.text=str(activity["description"]); desc.position=Vector2(55,82); desc.size=Vector2(640,62); desc.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; desc.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; desc.add_theme_font_size_override("font_size",14); desc.add_theme_color_override("font_color",Color("#e3cfb5")); box.add_child(desc)
+	mini_status_label=Label.new(); mini_status_label.text=""; mini_status_label.position=Vector2(50,150); mini_status_label.size=Vector2(650,38); mini_status_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; mini_status_label.add_theme_font_size_override("font_size",15); mini_status_label.add_theme_color_override("font_color",Color("#ffd36d")); box.add_child(mini_status_label)
 	var type:=str(activity.get("type",""))
-	if type=="sequence":
-		var labels:Array=activity.get("labels",[])
-		for i in range(labels.size()):
-			var b:=Button.new(); b.text=str(labels[i]); b.position=Vector2(80+i*130,235); b.size=Vector2(100,100); b.add_theme_font_size_override("font_size",28); b.add_theme_stylebox_override("normal",_style(Color("#4a351f"),Color("#c8904d"),16)); b.pressed.connect(_mini_sequence_press.bind(i)); box.add_child(b); mini_activity_buttons.append(b)
-		mini_status_label.text="Повтори последовательность"
-	elif type=="collect_three":
-		var labels:Array=activity.get("labels",[])
-		for i in range(labels.size()):
-			var b:=Button.new(); b.text=str(labels[i]); b.position=Vector2(80+i*190,235); b.size=Vector2(170,100); b.add_theme_font_size_override("font_size",13); b.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; b.add_theme_stylebox_override("normal",_style(Color("#4a351f"),Color("#c8904d"),16)); b.pressed.connect(_mini_collect_press.bind(i)); box.add_child(b); mini_activity_buttons.append(b)
-		mini_status_label.text="Подготовь все три товара"
-	var close:=Button.new(); close.text="← НАЗАД"; close.position=Vector2(140,470); close.size=Vector2(410,45); close.add_theme_stylebox_override("normal",_style(Color("#3a2d25"),Color("#826a54"),12)); close.pressed.connect(_close_mini_activity); box.add_child(close)
+	var labels:Array=activity.get("labels",[])
+	match type:
+		"sequence":
+			for i in range(labels.size()):
+				var seq_button:=Button.new(); seq_button.text=str(labels[i]); seq_button.position=Vector2(75+i*150,235); seq_button.size=Vector2(115,100); seq_button.add_theme_font_size_override("font_size",28); seq_button.add_theme_stylebox_override("normal",_style(Color("#4a351f"),Color("#c8904d"),16)); seq_button.pressed.connect(_mini_sequence_press.bind(i)); box.add_child(seq_button); mini_activity_buttons.append(seq_button)
+			mini_status_label.text="Повтори последовательность"
+		"odd_one":
+			for i in range(labels.size()):
+				var rune_button:=Button.new(); rune_button.text=str(labels[i]); rune_button.position=Vector2(55+(i%5)*132,235+int(i/5)*120); rune_button.size=Vector2(105,95); rune_button.add_theme_font_size_override("font_size",25); rune_button.add_theme_stylebox_override("normal",_style(Color("#403123"),Color("#b0844e"),16)); rune_button.pressed.connect(_mini_odd_press.bind(i)); box.add_child(rune_button); mini_activity_buttons.append(rune_button)
+			mini_status_label.text="Найди единственную отличающуюся руну"
+		"collect_three":
+			for i in range(labels.size()):
+				var good_button:=Button.new(); good_button.text=str(labels[i]); good_button.position=Vector2(90+i*210,255); good_button.size=Vector2(185,105); good_button.add_theme_font_size_override("font_size",13); good_button.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; good_button.add_theme_stylebox_override("normal",_style(Color("#4a351f"),Color("#c8904d"),16)); good_button.pressed.connect(_mini_collect_press.bind(i)); box.add_child(good_button); mini_activity_buttons.append(good_button)
+			mini_status_label.text="Подготовь все три товара"
+		"order_goods":
+			for i in range(labels.size()):
+				var order_button:=Button.new(); order_button.text=str(labels[i]); order_button.position=Vector2(90+i*210,255); order_button.size=Vector2(185,105); order_button.add_theme_font_size_override("font_size",13); order_button.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; order_button.add_theme_stylebox_override("normal",_style(Color("#4a351f"),Color("#c8904d"),16)); order_button.pressed.connect(_mini_sequence_press.bind(i)); box.add_child(order_button); mini_activity_buttons.append(order_button)
+			mini_status_label.text="Отправь товары в нужном порядке"
+	var close:=Button.new(); close.text="← НАЗАД"; close.position=Vector2(170,520); close.size=Vector2(410,45); close.add_theme_stylebox_override("normal",_style(Color("#3a2d25"),Color("#826a54"),12)); close.pressed.connect(_close_mini_activity); box.add_child(close)
 	map_layer.add_child(modal)
 
 func _mini_sequence_press(index:int)->void:
@@ -1000,6 +1010,16 @@ func _mini_sequence_press(index:int)->void:
 			b.disabled=false
 		mini_status_label.text="Ошибка! Последовательность сброшена."
 
+func _mini_odd_press(index:int)->void:
+	if mini_activity_id.is_empty() or not is_instance_valid(mini_status_label): return
+	var activity:Dictionary=island_progression.call("get_mini_activity",mini_activity_id)
+	var target_index:=int(activity.get("target_index",-1))
+	if index==target_index:
+		_finish_mini_activity()
+		return
+	mini_status_label.text="Это не та руна. Попробуй ещё раз."
+	if index<mini_activity_buttons.size():
+		mini_activity_buttons[index].disabled=true
 func _mini_collect_press(index:int)->void:
 	if mini_activity_id.is_empty(): return
 	if mini_goods_collected.has(index): return
@@ -1081,6 +1101,29 @@ func _close_island_visual_map()->void:
 	if modal:
 		modal.queue_free()
 		modal=null
+
+func _show_island_collection()->void:
+	if not is_instance_valid(island_progression): return
+	if modal:
+		modal.queue_free()
+		modal=null
+	modal=Control.new()
+	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.03,0.02,0.08,.90); modal.add_child(shade)
+	var panel:=Panel.new(); panel.position=Vector2(70,70); panel.size=Vector2(760,760); panel.add_theme_stylebox_override("panel",_style(Color("#141e35"),Color("#a77bd2"),24)); modal.add_child(panel)
+	var title:=Label.new(); title.text="🏆 КОЛЛЕКЦИЯ ОСТРОВА"; title.position=Vector2(30,25); title.size=Vector2(700,42); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",26); title.add_theme_color_override("font_color",Color("#f4e5ff")); panel.add_child(title)
+	var count:=Label.new(); count.text=island_progression.call("get_collection_completion_text"); count.position=Vector2(30,67); count.size=Vector2(700,30); count.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; count.add_theme_font_size_override("font_size",14); count.add_theme_color_override("font_color",Color("#d3b9f0")); panel.add_child(count)
+	var scroll:=ScrollContainer.new(); scroll.position=Vector2(30,110); scroll.size=Vector2(700,565); scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; panel.add_child(scroll)
+	var grid:=GridContainer.new(); grid.columns=2; grid.add_theme_constant_override("h_separation",12); grid.add_theme_constant_override("v_separation",12); grid.custom_minimum_size=Vector2(680,0); scroll.add_child(grid)
+	for item in island_progression.get_collection_items():
+		var collected:=bool(island_progression.call("is_collection_item_collected",str(item["id"])))
+		var card:=Panel.new(); card.custom_minimum_size=Vector2(330,105); card.add_theme_stylebox_override("panel",_style(Color("#244437") if collected else Color("#1b2637"),Color("#69c7a5") if collected else Color("#38475c"),14)); grid.add_child(card)
+		var icon:=Label.new(); icon.text=str(item["icon"]); icon.position=Vector2(15,18); icon.size=Vector2(55,55); icon.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; icon.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; icon.add_theme_font_size_override("font_size",29); icon.add_theme_color_override("font_color",Color("#e6f8ee") if collected else Color("#718094")); card.add_child(icon)
+		var name:=Label.new(); name.text=str(item["name"]); name.position=Vector2(78,17); name.size=Vector2(225,32); name.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; name.add_theme_font_size_override("font_size",12); name.add_theme_color_override("font_color",Color("#f2f6ff") if collected else Color("#7f8ba0")); card.add_child(name)
+		var state:=Label.new(); state.text="ПОЛУЧЕНО" if collected else "ЕЩЁ НЕ НАЙДЕНО"; state.position=Vector2(78,58); state.size=Vector2(225,24); state.add_theme_font_size_override("font_size",9); state.add_theme_color_override("font_color",Color("#71d7b0") if collected else Color("#657386")); card.add_child(state)
+	var close:=Button.new(); close.text="← НАЗАД НА ОСТРОВ"; close.position=Vector2(170,700); close.size=Vector2(420,42); close.add_theme_stylebox_override("normal",_style(Color("#18334a"),Color("#527a99"),12)); close.pressed.connect(_close_island_visual_map); panel.add_child(close)
+	map_layer.add_child(modal)
 
 func _show_island_repair()->void:
 	if modal:
