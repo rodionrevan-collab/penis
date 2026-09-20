@@ -982,6 +982,7 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 	var turn_cleared:Array[Vector2i]=[]
 	while true:
 		combo+=1
+		best_combo_level=maxi(best_combo_level,combo)
 		var wave:Array[Vector2i]=matches.duplicate()
 		if special_combo:
 			wave.append_array(_special_combo_cells(a,b))
@@ -1391,31 +1392,22 @@ func _cell_has_match(b:Array,x:int,y:int)->bool:
 	return n>=3
 
 func _check_level_state()->void:
-	var data:Dictionary=LEVELS[current_level]
-	var type:int=int(data["type"])
-	var score_done:bool=score>=int(data["score"])
-	var pieces_done:bool=destroyed_counts[type]>=int(data["count"])
-	var blockers_done:bool=blockers.is_empty()
-	var spiders_done:bool=spiders.is_empty()
-	var mechanic_done:bool=true
-	var mechanic_failed:bool=false
-	if is_instance_valid(mechanics):
-		mechanic_done=bool(mechanics.call("is_complete"))
-		mechanic_failed=bool(mechanics.call("is_failed"))
-	if mechanic_failed:
+	if is_instance_valid(mechanics) and bool(mechanics.call("is_failed")):
 		_lose()
 		return
-	if score_done and pieces_done and blockers_done and spiders_done and mechanic_done:
+	if _goals_complete():
 		_win()
 		return
 	if moves_left<=0:
 		_lose()
 		return
-	status.text="Продолжайте! %s"%MECHANICS[int(data["mechanic"])]
+	status.text="Продолжайте! %s"%MECHANICS[int(LEVELS[current_level]["mechanic"])]
 
 func _win()->void:
 	busy=true
 	completed[current_level]=true
+	var stars:=_calculate_stars()
+	level_stars[current_level]=maxi(level_stars[current_level],stars)
 	if current_level<99: unlocked_level=max(unlocked_level,current_level+1)
 	_save_progress()
 	_update_labels()
@@ -1457,21 +1449,18 @@ func _update_best()->void:
 		if f: f.store_string(str(best))
 
 func _update_labels()->void:
-	var d:Dictionary=LEVELS[current_level]
-	var type:int=int(d["type"])
 	level_label.text="УРОВЕНЬ\n%d"%(current_level+1)
 	moves_label.text="ХОДЫ\n%d"%moves_left
 	score_label.text="ОЧКИ\n%d"%score
 	best_label.text="РЕКОРД\n%d"%best
 	combo_label.text="КОМБО\n%s"%("x%d"%combo if combo>0 else "—")
-	var obstacle_text:=("" if blockers.is_empty() else "   •   %s: %d клеток"%[_blocker_name(),blockers.size()])
-	var spider_text:=("" if spiders.is_empty() else "   •   ПАУКИ: %d"%spiders.size())
-	var mechanic_text:=""
-	if is_instance_valid(mechanics):
-		mechanic_text="\n"+str(mechanics.call("get_goal_text"))
-	goal_label.text="ЦЕЛИ: %d / %d очков   •   %d / %d %s%s%s%s"%[score,int(d["score"]),destroyed_counts[type],int(d["count"]),TYPE_NAMES[type],obstacle_text,spider_text,mechanic_text]
-	goal_label.size=Vector2(624,48)
+	goal_label.text=_goal_text()
+	goal_label.size=Vector2(624,54)
 	goal_label.add_theme_font_size_override("font_size",11)
+	if is_instance_valid(hammer_button):
+		hammer_button.text="🔨 %d"%int(booster_inventory["hammer"])
+		extra_moves_button.text="+3 %d"%int(booster_inventory["extra_moves"])
+		shuffle_button.text="↻ %d"%int(booster_inventory["shuffle"])
 
 func _spawn_fx(p:Vector2,c:Color)->void:
 	for i in range(14):
