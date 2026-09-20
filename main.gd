@@ -473,7 +473,7 @@ func _build_game_layer()->void:
 	var bg:=ColorRect.new(); bg.size=Vector2(900,900); bg.color=Color("#080e1c"); game_layer.add_child(bg)
 	var head:=ColorRect.new(); head.size=Vector2(900,176); head.color=Color("#111b33"); game_layer.add_child(head)
 	var title:=Label.new(); title.text="ТРИ В РЯД"; title.position=Vector2(138,12); title.add_theme_font_size_override("font_size",36); title.add_theme_color_override("font_color",Color("#f2f5ff")); game_layer.add_child(title)
-	var hint_desc:=Label.new(); hint_desc.text="Выполни две цели уровня до окончания ходов"; hint_desc.position=Vector2(140,53); hint_desc.add_theme_font_size_override("font_size",13); hint_desc.add_theme_color_override("font_color",Color("#8495bb")); game_layer.add_child(hint_desc)
+	var hint_desc:=Label.new(); hint_desc.text="Выполни все цели уровня до окончания ходов"; hint_desc.position=Vector2(140,53); hint_desc.add_theme_font_size_override("font_size",13); hint_desc.add_theme_color_override("font_color",Color("#8495bb")); game_layer.add_child(hint_desc)
 	level_label=_stat("УРОВЕНЬ",Vector2(138,88)); moves_label=_stat("ХОДЫ",Vector2(255,88)); score_label=_stat("ОЧКИ",Vector2(372,88)); best_label=_stat("РЕКОРД",Vector2(489,88)); combo_label=_stat("КОМБО",Vector2(606,88))
 	goal_label=Label.new(); goal_label.position=Vector2(138,138); goal_label.size=Vector2(620,28); goal_label.add_theme_font_size_override("font_size",13); goal_label.add_theme_color_override("font_color",Color("#dce5ff")); game_layer.add_child(goal_label)
 	var restart:=Button.new(); restart.text="↻"; restart.position=Vector2(780,24); restart.size=Vector2(48,42); restart.add_theme_font_size_override("font_size",20); restart.add_theme_stylebox_override("normal",_style(Color("#1a2a4b"),Color("#3b5787"))); restart.pressed.connect(_restart_level); game_layer.add_child(restart)
@@ -744,7 +744,8 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 		wave=_unique_cells(wave)
 		if wave.is_empty():
 			break
-		_create_special_from_match(wave)
+		if not matches.is_empty():
+			_create_special_from_match(wave)
 		var gained:int=wave.size()*10*combo
 		score+=gained
 		_play("combo" if combo>1 else "match")
@@ -1078,14 +1079,25 @@ func _show_hint()->void:
 func _find_hint_move()->Array:
 	for y in range(SIZE):
 		for x in range(SIZE):
-			if x+1<SIZE and _swap_creates_match(board,x,y,x+1,y): return [Vector2i(x,y),Vector2i(x+1,y)]
-			if y+1<SIZE and _swap_creates_match(board,x,y,x,y+1): return [Vector2i(x,y),Vector2i(x,y+1)]
+			var a:=Vector2i(x,y)
+			if not _valid_cell(a):
+				continue
+			if x+1<SIZE:
+				var b1:=Vector2i(x+1,y)
+				if _valid_cell(b1) and (specials.has(a) or specials.has(b1) or _swap_creates_match(board,x,y,x+1,y)):
+					return [a,b1]
+			if y+1<SIZE:
+				var b2:=Vector2i(x,y+1)
+				if _valid_cell(b2) and (specials.has(a) or specials.has(b2) or _swap_creates_match(board,x,y,x,y+1)):
+					return [a,b2]
 	return []
 
 func _swap_creates_match(b:Array,x1:int,y1:int,x2:int,y2:int)->bool:
+	if x1<0 or y1<0 or x1>=SIZE or y1>=SIZE or x2<0 or y2<0 or x2>=SIZE or y2>=SIZE:
+		return false
 	var a=b[y1][x1]
 	var c=b[y2][x2]
-	if a==c: return false
+	if a<0 or c<0 or a==c: return false
 	b[y1][x1]=c
 	b[y2][x2]=a
 	var ok:=_cell_has_match(b,x1,y1) or _cell_has_match(b,x2,y2)
@@ -1115,7 +1127,8 @@ func _check_level_state()->void:
 	var score_done:bool=score>=int(data["score"])
 	var pieces_done:bool=destroyed_counts[type]>=int(data["count"])
 	var blockers_done:bool=blockers.is_empty()
-	if score_done and pieces_done and blockers_done:
+	var spiders_done:bool=spiders.is_empty()
+	if score_done and pieces_done and blockers_done and spiders_done:
 		_win()
 		return
 	if moves_left<=0:
@@ -1175,7 +1188,8 @@ func _update_labels()->void:
 	best_label.text="РЕКОРД\n%d"%best
 	combo_label.text="КОМБО\n%s"%("x%d"%combo if combo>0 else "—")
 	var obstacle_text:=("" if blockers.is_empty() else "   •   %s: %d клеток"%[_blocker_name(),blockers.size()])
-	goal_label.text="ЦЕЛЬ: %d / %d очков   •   %d / %d %s%s"%[score,int(d["score"]),destroyed_counts[type],int(d["count"]),TYPE_NAMES[type],obstacle_text]
+	var spider_text:=("" if spiders.is_empty() else "   •   ПАУКИ: %d"%spiders.size())
+	goal_label.text="ЦЕЛИ: %d / %d очков   •   %d / %d %s%s%s"%[score,int(d["score"]),destroyed_counts[type],int(d["count"]),TYPE_NAMES[type],obstacle_text,spider_text]
 
 func _spawn_fx(p:Vector2,c:Color)->void:
 	for i in range(14):
