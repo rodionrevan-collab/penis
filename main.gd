@@ -591,7 +591,7 @@ func _show_island_visual_map(focus_id:String="")->void:
 				_add_island_activity_marker(island,secret_activity,1 if secret_available else 2,true)
 
 	var legend:=Label.new()
-	legend.text="🟢 восстановлено   🟠 ремонт   🔵 NPC   🎁 сундук   ✨ событие   🔑 интерактив   🎮 активность"
+	legend.text="🟢 восстановлено   🟠 ремонт   🔵 NPC   🎁 сундук   ✨ событие   🔑 интерактив   🎮 активность   💠 секрет"
 	legend.position=Vector2(45,770)
 	legend.size=Vector2(750,25)
 	legend.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
@@ -1170,7 +1170,14 @@ func _show_island_collection()->void:
 		else:
 			claim.text="ЕЩЁ %d"%maxi(0,threshold-collected_count); claim.disabled=true; claim.add_theme_stylebox_override("normal",_style(Color("#172231"),Color("#33485d"),10))
 
-	var hint:=Label.new(); hint.text="При 100% открывается секретное событие «Сердце острова» на карте."; hint.custom_minimum_size=Vector2(680,30); hint.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; hint.add_theme_font_size_override("font_size",10); hint.add_theme_color_override("font_color",Color("#b7a7c7")); content.add_child(hint)
+	var secret_count:=int(island_progression.call("get_secret_collection_count"))
+	var secret_hint:=Label.new(); secret_hint.text="💠 Секретная коллекция: %d / %d"%[secret_count,int(island_progression.call("get_secret_collection_total"))]; secret_hint.custom_minimum_size=Vector2(680,28); secret_hint.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; secret_hint.add_theme_font_size_override("font_size",12); secret_hint.add_theme_color_override("font_color",Color("#d5b5ff")); content.add_child(secret_hint)
+	var secret_items:=Label.new(); var secret_lines:Array[String]=[]
+	for secret_item in island_progression.call("get_secret_collection_items"):
+		var collected:=bool(island_progression.call("is_secret_collection_item_collected",str(secret_item["id"])))
+		secret_lines.append(("%s %s" if collected else "○ %s")%[str(secret_item["icon"]),str(secret_item["name"])])
+	secret_items.text=" • ".join(secret_lines); secret_items.custom_minimum_size=Vector2(680,30); secret_items.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; secret_items.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; secret_items.add_theme_font_size_override("font_size",10); secret_items.add_theme_color_override("font_color",Color("#b7a7c7")); content.add_child(secret_items)
+	var hint:=Label.new(); hint.text="При 100% основной коллекции открывается секретное событие «Сердце острова» на карте. Редкие мини-версии открываются после обычных."; hint.custom_minimum_size=Vector2(680,40); hint.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; hint.add_theme_font_size_override("font_size",10); hint.add_theme_color_override("font_color",Color("#b7a7c7")); content.add_child(hint)
 
 	var close:=Button.new(); close.text="← НАЗАД НА ОСТРОВ"; close.position=Vector2(170,700); close.size=Vector2(420,42); close.add_theme_stylebox_override("normal",_style(Color("#18334a"),Color("#527a99"),12)); close.pressed.connect(_close_island_visual_map); panel.add_child(close)
 	map_layer.add_child(modal)
