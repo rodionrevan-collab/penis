@@ -532,7 +532,8 @@ func _show_island_visual_map(focus_id:String="")->void:
 	var bank:=Label.new()
 	var unique_count:=island_progression.get_unique_reward_count() if is_instance_valid(island_progression) else 0
 	var collection_text:=island_progression.get_collection_completion_text() if is_instance_valid(island_progression) else "Коллекция недоступна"
-	bank.text="⭐ %d    •    %s    •    🏆 %d/4    •    %s"%[island_stars,island_progression.get_progress_text() if is_instance_valid(island_progression) else "Прогресс недоступен",unique_count,collection_text]
+	var secret_collection_text:=island_progression.get_secret_collection_text() if is_instance_valid(island_progression) else "Секреты недоступны"
+	bank.text="⭐ %d    •    %s    •    🏆 %d/4    •    %s    •    💠 %s"%[island_stars,island_progression.get_progress_text() if is_instance_valid(island_progression) else "Прогресс недоступен",unique_count,collection_text,secret_collection_text]
 	bank.position=Vector2(35,58)
 	bank.size=Vector2(770,28)
 	bank.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
@@ -581,7 +582,13 @@ func _show_island_visual_map(focus_id:String="")->void:
 			var activity_available:=bool(island_progression.call("is_activity_available",activity))
 			var activity_done:=bool(island_progression.call("is_activity_completed",str(activity["id"])))
 			if activity_zone_open:
-				_add_island_activity_marker(island,activity,1 if activity_available else (2 if activity_done else 0))
+				_add_island_activity_marker(island,activity,1 if activity_available else (2 if activity_done else 0),false)
+		for secret_activity in island_progression.get_secret_mini_activities():
+			var secret_zone_open:=bool(island_progression.call("is_zone_unlocked",int(secret_activity.get("zone",0))))
+			var secret_available:=bool(island_progression.call("is_secret_activity_available",secret_activity))
+			var secret_done:=bool(island_progression.call("is_secret_activity_completed",str(secret_activity["id"])))
+			if secret_zone_open and (secret_available or secret_done):
+				_add_island_activity_marker(island,secret_activity,1 if secret_available else 2,true)
 
 	var legend:=Label.new()
 	legend.text="🟢 восстановлено   🟠 ремонт   🔵 NPC   🎁 сундук   ✨ событие   🔑 интерактив   🎮 активность"
@@ -894,30 +901,30 @@ func _add_island_interactive_marker(parent:Control,item:Dictionary,visual_state:
 	l.add_theme_color_override("font_color",Color("#bfeaff"))
 	parent.add_child(l)
 
-func _add_island_activity_marker(parent:Control,activity:Dictionary,visual_state:int)->void:
+func _add_island_activity_marker(parent:Control,activity:Dictionary,visual_state:int,is_secret:bool=false)->void:
 	var p:Vector2=activity.get("map_pos",Vector2(100,100))
 	var b:=Button.new()
 	b.position=p-Vector2(29,29)
 	b.size=Vector2(58,58)
 	b.flat=true
-	b.tooltip_text=str(activity["name"])
+	b.tooltip_text=("🌟 " if is_secret else "")+str(activity["name"])
 	b.disabled=visual_state==0
 	b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),30))
 	b.add_theme_stylebox_override("hover",_style(Color(.55,.34,.18,.18),Color("#ffc56e"),30))
-	var art:=island_art_factory.call("create_activity",str(activity["icon"]),visual_state)
+	var art:=island_art_factory.call("create_activity",str(activity["icon"]),visual_state,is_secret)
 	art.position=Vector2(29,29)
 	b.add_child(art)
 	b.pressed.connect(_show_mini_activity.bind(str(activity["id"])))
 	parent.add_child(b)
 	var l:=Label.new()
-	l.text=str(activity["name"])+(" ✓" if visual_state==2 else "")
+	l.text=("🌟 " if is_secret else "")+str(activity["name"])+(" ✓" if visual_state==2 else "")
 	l.position=p+Vector2(-65,28)
 	l.size=Vector2(130,28)
 	l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	l.add_theme_font_size_override("font_size",8)
-	l.add_theme_color_override("font_color",Color("#ffe0a8"))
+	l.add_theme_color_override("font_color",Color("#ffe0a8") if not is_secret else Color("#e7c5ff"))
 	parent.add_child(l)
 
 func _show_interactive_object(id:String)->void:
@@ -971,9 +978,12 @@ func _show_mini_activity(id:String)->void:
 	modal.mouse_filter=Control.MOUSE_FILTER_STOP
 	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.06,0.035,0.015,.90); modal.add_child(shade)
 	var box:=Panel.new(); box.position=Vector2(75,145); box.size=Vector2(750,610); box.add_theme_stylebox_override("panel",_style(Color("#332514"),Color("#c78b47"),24)); modal.add_child(box)
-	var title:=Label.new(); title.text="%s %s"%[str(activity["icon"]),str(activity["name"])]; title.position=Vector2(40,25); title.size=Vector2(670,46); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",25); title.add_theme_color_override("font_color",Color("#ffe6bd")); box.add_child(title)
+	var title:=Label.new(); title.text=("%s %s • РЕДКАЯ ВЕРСИЯ"%[str(activity["icon"]),str(activity["name"])]) if bool(activity.get("secret_reward",{}).size()>0) else "%s %s"%[str(activity["icon"]),str(activity["name"])]; title.position=Vector2(40,25); title.size=Vector2(670,46); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",25); title.add_theme_color_override("font_color",Color("#ffe6bd")); box.add_child(title)
 	var desc:=Label.new(); desc.text=str(activity["description"]); desc.position=Vector2(55,82); desc.size=Vector2(640,62); desc.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; desc.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; desc.add_theme_font_size_override("font_size",14); desc.add_theme_color_override("font_color",Color("#e3cfb5")); box.add_child(desc)
 	mini_status_label=Label.new(); mini_status_label.text=""; mini_status_label.position=Vector2(50,150); mini_status_label.size=Vector2(650,38); mini_status_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; mini_status_label.add_theme_font_size_override("font_size",15); mini_status_label.add_theme_color_override("font_color",Color("#ffd36d")); box.add_child(mini_status_label)
+	var secret_reward:Dictionary=activity.get("secret_reward",{})
+	if not secret_reward.is_empty():
+		var secret_label:=Label.new(); secret_label.text="💠 Уникальная награда: %s %s"%[str(secret_reward.get("icon","💠")),str(secret_reward.get("name","Секретный трофей"))]; secret_label.position=Vector2(45,195); secret_label.size=Vector2(660,28); secret_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; secret_label.add_theme_font_size_override("font_size",12); secret_label.add_theme_color_override("font_color",Color("#e0b8ff")); box.add_child(secret_label)
 	var type:=str(activity.get("type",""))
 	var labels:Array=activity.get("labels",[])
 	match type:
@@ -991,7 +1001,11 @@ func _show_mini_activity(id:String)->void:
 			mini_status_label.text="Подготовь все три товара"
 		"order_goods":
 			for i in range(labels.size()):
-				var order_button:=Button.new(); order_button.text=str(labels[i]); order_button.position=Vector2(90+i*210,255); order_button.size=Vector2(185,105); order_button.add_theme_font_size_override("font_size",13); order_button.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; order_button.add_theme_stylebox_override("normal",_style(Color("#4a351f"),Color("#c8904d"),16)); order_button.pressed.connect(_mini_sequence_press.bind(i)); box.add_child(order_button); mini_activity_buttons.append(order_button)
+				var columns:=2 if labels.size()>3 else labels.size()
+				var gap_x:=25 if columns==2 else 25
+				var row_index:=int(i/columns)
+				var col_index:=i%columns
+				var order_button:=Button.new(); order_button.text=str(labels[i]); order_button.position=Vector2(80+col_index*310,235+row_index*125); order_button.size=Vector2(280,105); order_button.add_theme_font_size_override("font_size",13); order_button.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; order_button.add_theme_stylebox_override("normal",_style(Color("#4a351f"),Color("#c8904d"),16)); order_button.pressed.connect(_mini_sequence_press.bind(i)); box.add_child(order_button); mini_activity_buttons.append(order_button)
 			mini_status_label.text="Отправь товары в нужном порядке"
 	var close:=Button.new(); close.text="← НАЗАД"; close.position=Vector2(170,520); close.size=Vector2(410,45); close.add_theme_stylebox_override("normal",_style(Color("#3a2d25"),Color("#826a54"),12)); close.pressed.connect(_close_mini_activity); box.add_child(close)
 	map_layer.add_child(modal)
