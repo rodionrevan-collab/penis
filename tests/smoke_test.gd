@@ -344,6 +344,31 @@ func _initialize() -> void:
 	assert(progression.get_island_event("keeper_night")["npc_id"] == "keeper")
 	assert(progression.get_island_event("merchant_market")["npc_id"] == "merchant")
 
+	# Интерактивные объекты и мини-активности требуют уникальные предметы и зоны.
+	assert(progression.get_interactive_objects().size() == 4)
+	assert(progression.get_mini_activities().size() == 3)
+	assert(progression.get_interactive_object("pirate_chart_table")["unique_required"] == "tom_log")
+	assert(progression.get_mini_activity("pirate_navigation")["unique_required"] == "tom_log")
+	assert(progression.get_available_interactives().size() == 0)
+	assert(progression.get_available_activities().size() == 0)
+	progression.repaired["secret_cave"]=true
+	progression.repaired["old_village"]=true
+	progression.unique_rewards["tom_log"]=true
+	progression.unique_rewards["keeper_key"]=true
+	progression.unique_rewards["merchant_token"]=true
+	progression.unique_rewards["lisa_badge"]=true
+	assert(progression.get_available_interactives().size() == 4)
+	assert(progression.get_available_activities().size() == 3)
+	var interactive_reward:Dictionary=progression.claim_interactive("pirate_chart_table")
+	assert(interactive_reward["ok"] == true)
+	assert(progression.claim_interactive("pirate_chart_table")["ok"] == false)
+	var activity_reward:Dictionary=progression.claim_mini_activity("pirate_navigation")
+	assert(activity_reward["ok"] == true)
+	assert(progression.is_activity_completed("pirate_navigation"))
+	assert(progression.claim_mini_activity("pirate_navigation")["ok"] == false)
+	assert(progression.get_available_interactives().size() == 3)
+	assert(progression.get_available_activities().size() == 2)
+
 	# Секреты открываются зоной и забираются только один раз.
 	var secrets:Array = progression.get_secrets()
 	assert(secrets.size() == 3)
