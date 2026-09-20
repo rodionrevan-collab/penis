@@ -120,5 +120,96 @@ func _initialize() -> void:
 	g._setup_spiders(3)
 	assert(g.spiders.size() == 3)
 
+
+	# Механики первого острова: прилив, тотем, обезьяна, карта, туман, огонь и финальный тотем.
+	var mechanics = load("res://island_mechanics.gd").new()
+	mechanics.game = g
+	g.mechanics = mechanics
+	g._build_levels()
+
+	g.current_level = 30
+	g.board = dead_board.duplicate(true)
+	g.blockers.clear()
+	g.gems.clear()
+	g.specials.clear()
+	g.spiders.clear()
+	mechanics.setup_level(g.LEVELS[30], 30)
+	assert(mechanics.tide_cells.size() == 8)
+	assert(mechanics.is_cell_blocked(Vector2i(0, 0)) or mechanics.is_cell_blocked(Vector2i(0, 7)))
+	mechanics.clear()
+
+	g.current_level = 40
+	g.board = dead_board.duplicate(true)
+	g.blockers.clear()
+	g.gems.clear()
+	g.specials.clear()
+	mechanics.setup_level(g.LEVELS[40], 40)
+	assert(mechanics.is_complete())
+	mechanics.clear()
+
+	g.current_level = 50
+	g.board = dead_board.duplicate(true)
+	g.blockers.clear()
+	g.gems.clear()
+	g.specials.clear()
+	g.spiders.clear()
+	mechanics.setup_level(g.LEVELS[50], 50)
+	assert(mechanics.monkey_cell.x >= 0)
+	assert(g.board[mechanics.monkey_cell.y][mechanics.monkey_cell.x] == -1)
+	mechanics.clear()
+
+	g.current_level = 60
+	g.board = dead_board.duplicate(true)
+	g.blockers.clear()
+	g.gems.clear()
+	g.specials.clear()
+	mechanics.setup_level(g.LEVELS[60], 60)
+	assert(mechanics.map_total == 3)
+	assert(g.specials.size() == 3)
+	for p in g.specials.keys():
+		assert(int(g.specials[p]) == 5)
+	assert(g._is_active_special_type(5) == false)
+	mechanics.clear()
+
+	g.current_level = 70
+	g.board = dead_board.duplicate(true)
+	g.blockers.clear()
+	g.gems.clear()
+	g.specials.clear()
+	mechanics.setup_level(g.LEVELS[70], 70)
+	assert(mechanics.fog_cells.size() > 0)
+	assert(mechanics.is_complete() == false)
+	mechanics.clear()
+
+	g.current_level = 80
+	g.board = dead_board.duplicate(true)
+	g.blockers.clear()
+	g.gems.clear()
+	g.specials.clear()
+	mechanics.setup_level(g.LEVELS[80], 80)
+	assert(mechanics.fire_cells.size() == 2)
+	assert(mechanics.fire_timer == mechanics.fire_max)
+	mechanics.fire_cells.clear()
+	assert(mechanics.is_complete())
+	mechanics.clear()
+
+	g.current_level = 10
+	g.blockers.clear()
+	g._setup_blockers(6)
+	assert(g.blockers.size() == 6)
+	var liana_cells:Array = g.blockers.keys()
+	for p in liana_cells:
+		assert(int(g.blockers[p]) == 1)
+
+	g.current_level = 90
+	g.blockers.clear()
+	g._setup_blockers(4)
+	assert(g.blockers.size() == 4)
+	for p in g.blockers.keys():
+		assert(p.x >= 3 and p.x <= 4)
+		assert(p.y >= 3 and p.y <= 4)
+
+	mechanics.free()
+
 	print("SMOKE TEST PASSED: matches + special gems")
 	quit()
