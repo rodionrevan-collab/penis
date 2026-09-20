@@ -691,7 +691,7 @@ func _show_island_npc_dialog(id:String)->void:
 	modal.mouse_filter=Control.MOUSE_FILTER_STOP
 	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.02,0.04,0.09,.72); modal.add_child(shade)
 	var box:=Panel.new(); box.position=Vector2(150,265); box.size=Vector2(600,350); box.add_theme_stylebox_override("panel",_style(Color("#10263b"),Color("#5b8eb0"),22)); modal.add_child(box)
-	var face:=Label.new(); face.text=str(npc["icon"]); face.position=Vector2(30,30); face.size=Vector2(120,100); face.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; face.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; face.add_theme_font_size_override("font_size",54); box.add_child(face)
+	var face_art:=island_art_factory.call("create_npc",str(npc["role"])); face_art.position=Vector2(92,90); box.add_child(face_art)
 	var name:=Label.new(); name.text=str(npc["name"]); name.position=Vector2(165,40); name.size=Vector2(390,35); name.add_theme_font_size_override("font_size",24); name.add_theme_color_override("font_color",Color("#f2f7ff")); box.add_child(name)
 	var role:=Label.new(); role.text=str(npc["role"]); role.position=Vector2(165,78); role.size=Vector2(390,25); role.add_theme_font_size_override("font_size",11); role.add_theme_color_override("font_color",Color("#71d7b0")); box.add_child(role)
 	var text_label:=Label.new(); text_label.text="«%s»"%str(npc["text"]); text_label.position=Vector2(45,145); text_label.size=Vector2(510,100); text_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; text_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; text_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; text_label.add_theme_font_size_override("font_size",17); text_label.add_theme_color_override("font_color",Color("#c4d3e2")); box.add_child(text_label)
