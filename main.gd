@@ -1156,11 +1156,11 @@ func _find_hint_move()->Array:
 				continue
 			if x+1<SIZE:
 				var b1:=Vector2i(x+1,y)
-				if _valid_cell(b1) and (specials.has(a) or specials.has(b1) or _swap_creates_match(board,x,y,x+1,y)):
+				if _valid_cell(b1) and (_is_active_special_type(int(specials.get(a,0))) or _is_active_special_type(int(specials.get(b1,0))) or _swap_creates_match(board,x,y,x+1,y)):
 					return [a,b1]
 			if y+1<SIZE:
 				var b2:=Vector2i(x,y+1)
-				if _valid_cell(b2) and (specials.has(a) or specials.has(b2) or _swap_creates_match(board,x,y,x,y+1)):
+				if _valid_cell(b2) and (_is_active_special_type(int(specials.get(a,0))) or _is_active_special_type(int(specials.get(b2,0))) or _swap_creates_match(board,x,y,x,y+1)):
 					return [a,b2]
 	return []
 
