@@ -117,18 +117,25 @@ func _patch_menu() -> void:
 	patched_menu = menu
 
 func _has_legal_move(board: Array) -> bool:
-	# Любая соседняя специальная фишка уже является допустимым ходом:
-	# её можно передвинуть для активации даже без обычной тройки.
+	# Заблокированные/пустые клетки нельзя использовать для обмена.
+	# Любая соседняя специальная фишка при этом остаётся допустимым ходом.
 	var specials = game.get("specials")
+	var blockers = game.get("blockers")
 	for y in range(8):
 		for x in range(8):
 			var a := Vector2i(x, y)
+			if board[y][x] < 0 or (blockers is Dictionary and blockers.has(a)):
+				continue
 			if x + 1 < 8:
 				var b := Vector2i(x + 1, y)
+				if board[y][x + 1] < 0 or (blockers is Dictionary and blockers.has(b)):
+					continue
 				if (specials is Dictionary and (specials.has(a) or specials.has(b))) or _swap_creates_match(board, x, y, x + 1, y):
 					return true
 			if y + 1 < 8:
 				var b := Vector2i(x, y + 1)
+				if board[y + 1][x] < 0 or (blockers is Dictionary and blockers.has(b)):
+					continue
 				if (specials is Dictionary and (specials.has(a) or specials.has(b))) or _swap_creates_match(board, x, y, x, y + 1):
 					return true
 	return false
@@ -136,7 +143,7 @@ func _has_legal_move(board: Array) -> bool:
 func _swap_creates_match(board: Array, x1: int, y1: int, x2: int, y2: int) -> bool:
 	var a = board[y1][x1]
 	var b = board[y2][x2]
-	if a == b:
+	if a < 0 or b < 0 or a == b:
 		return false
 	board[y1][x1] = b
 	board[y2][x2] = a
@@ -174,6 +181,10 @@ func _cell_has_match(board: Array, x: int, y: int) -> bool:
 func _shuffle_board() -> void:
 	shuffle_cooldown = 0.8
 	game.set("busy", true)
+	var spider_count := 0
+	var current_spiders = game.get("spiders")
+	if current_spiders is Dictionary:
+		spider_count = current_spiders.size()
 	game.call("_generate_board")
 	var board = game.get("board")
 	var attempts := 0
@@ -182,6 +193,8 @@ func _shuffle_board() -> void:
 		board = game.get("board")
 		attempts += 1
 	game.call("_clear_visuals")
+	if spider_count > 0:
+		game.call("_setup_spiders", spider_count)
 	game.call("_create_visuals")
 	var status = game.get("status")
 	if is_instance_valid(status):
