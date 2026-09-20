@@ -201,7 +201,10 @@ func _shuffle_board() -> void:
 		game.call("_generate_board")
 		board = game.get("board")
 		attempts += 1
-	game.call("_clear_visuals")
+	game.call("_clear_visuals", true)
+	var mechanics = game.get("mechanics")
+	if is_instance_valid(mechanics):
+		mechanics.call("rebuild_after_shuffle")
 	if spider_count > 0:
 		game.call("_setup_spiders", spider_count)
 	game.call("_create_visuals")
