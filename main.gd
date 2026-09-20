@@ -580,8 +580,8 @@ func _show_island_visual_map(focus_id:String="")->void:
 			var activity_zone_open:=bool(island_progression.call("is_zone_unlocked",int(activity.get("zone",0))))
 			var activity_available:=bool(island_progression.call("is_activity_available",activity))
 			var activity_done:=bool(island_progression.call("is_activity_completed",str(activity["id"])))
-			if activity_zone_open or activity_done:
-				_add_island_activity_marker(island,activity,1 if activity_available else 2)
+			if activity_zone_open:
+				_add_island_activity_marker(island,activity,1 if activity_available else (2 if activity_done else 0))
 
 	var legend:=Label.new()
 	legend.text="🟢 восстановлено   🟠 ремонт   🔵 NPC   🎁 сундук   ✨ событие   🔑 интерактив   🎮 активность"
@@ -875,6 +875,7 @@ func _add_island_interactive_marker(parent:Control,item:Dictionary,visual_state:
 	b.size=Vector2(58,58)
 	b.flat=true
 	b.tooltip_text=str(item["name"])
+	b.disabled=visual_state==0
 	b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),30))
 	b.add_theme_stylebox_override("hover",_style(Color(.25,.55,.72,.18),Color("#83ddff"),30))
@@ -900,6 +901,7 @@ func _add_island_activity_marker(parent:Control,activity:Dictionary,visual_state
 	b.size=Vector2(58,58)
 	b.flat=true
 	b.tooltip_text=str(activity["name"])
+	b.disabled=visual_state==0
 	b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),30))
 	b.add_theme_stylebox_override("hover",_style(Color(.55,.34,.18,.18),Color("#ffc56e"),30))
@@ -935,9 +937,12 @@ func _show_interactive_object(id:String)->void:
 	var desc:=Label.new(); desc.text=str(item["description"]); desc.position=Vector2(45,85); desc.size=Vector2(500,90); desc.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; desc.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; desc.add_theme_font_size_override("font_size",14); desc.add_theme_color_override("font_color",Color("#c4dbe6")); box.add_child(desc)
 	var reward:Dictionary=item["reward"]
 	var reward_label:=Label.new(); reward_label.text="🎁 Награда: ⭐ +%d   •   %s +%d"%[int(reward.get("stars",0)),str(reward.get("booster","")),int(reward.get("amount",0))]; reward_label.position=Vector2(40,183); reward_label.size=Vector2(510,30); reward_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; reward_label.add_theme_font_size_override("font_size",13); reward_label.add_theme_color_override("font_color",Color("#ffd86a")); box.add_child(reward_label)
+	var available:=bool(island_progression.call("is_interactive_available",item))
 	var claim:=Button.new(); claim.position=Vector2(85,242); claim.size=Vector2(420,48); claim.add_theme_font_size_override("font_size",14); box.add_child(claim)
 	if claimed:
 		claim.text="ОБЪЕКТ УЖЕ АКТИВИРОВАН"; claim.disabled=true
+	elif not available:
+		claim.text="НУЖЕН: %s"%str(item.get("unique_required","особый предмет")); claim.disabled=true; claim.add_theme_stylebox_override("normal",_style(Color("#202d3b"),Color("#45586d"),12))
 	else:
 		claim.text="ИСПОЛЬЗОВАТЬ ПРЕДМЕТ"; claim.add_theme_stylebox_override("normal",_style(Color("#22586f"),Color("#75d7f2"),12)); claim.pressed.connect(_claim_interactive.bind(id))
 	var close:=Button.new(); close.text="← КАРТА ОСТРОВА"; close.position=Vector2(85,315); close.size=Vector2(420,38); close.add_theme_stylebox_override("normal",_style(Color("#18334a"),Color("#527a99"),10)); close.pressed.connect(_close_island_visual_map); box.add_child(close)
