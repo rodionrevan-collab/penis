@@ -530,9 +530,9 @@ func _show_island_visual_map(focus_id:String="")->void:
 	title.add_theme_color_override("font_color",Color("#f3f8f4"))
 	panel.add_child(title)
 	var bank:=Label.new()
-	var unique_count:=island_progression.get_unique_reward_count() if is_instance_valid(island_progression) else 0
-	var collection_text:=island_progression.get_collection_completion_text() if is_instance_valid(island_progression) else "Коллекция недоступна"
-	var secret_collection_text:=island_progression.get_secret_collection_text() if is_instance_valid(island_progression) else "Секреты недоступны"
+	var unique_count:int=island_progression.get_unique_reward_count() if is_instance_valid(island_progression) else 0
+	var collection_text:String=island_progression.get_collection_completion_text() if is_instance_valid(island_progression) else "Коллекция недоступна"
+	var secret_collection_text:String=island_progression.get_secret_collection_text() if is_instance_valid(island_progression) else "Секреты недоступны"
 	bank.text="⭐ %d    •    %s    •    🏆 %d/4    •    %s    •    💠 %s"%[island_stars,island_progression.get_progress_text() if is_instance_valid(island_progression) else "Прогресс недоступен",unique_count,collection_text,secret_collection_text]
 	bank.position=Vector2(35,58)
 	bank.size=Vector2(770,28)
@@ -551,7 +551,7 @@ func _show_island_visual_map(focus_id:String="")->void:
 	var states:Array[bool]=[]
 	for zone_id in range(6):
 		states.append(bool(island_progression.call("is_zone_unlocked",zone_id)) if is_instance_valid(island_progression) else zone_id==0)
-	var backdrop:=island_art_factory.call("create_backdrop",states)
+	var backdrop:Node2D=island_art_factory.call("create_backdrop",states)
 	island.add_child(backdrop)
 
 	# Объекты, которые можно ремонтировать/осматривать.
@@ -648,7 +648,7 @@ func _add_island_object_marker(parent:Control,id:String,item:Dictionary,focus_id
 	marker.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),14))
 	marker.add_theme_stylebox_override("hover",_style(Color(1,1,1,.08),Color(1,1,1,.18),14))
 	marker.add_theme_stylebox_override("pressed",_style(Color(1,1,1,.14),Color(1,1,1,.25),14))
-	var art_node:=island_art_factory.call("create_object",id,repaired_now)
+	var art_node:Node2D=island_art_factory.call("create_object",id,repaired_now)
 	art_node.position=Vector2(42,32)
 	marker.add_child(art_node)
 	marker.pressed.connect(_island_object_clicked.bind(id))
@@ -695,7 +695,7 @@ func _add_island_npc_marker(parent:Control,npc:Dictionary)->void:
 	b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),30))
 	b.add_theme_stylebox_override("hover",_style(Color(1,1,1,.08),Color(1,1,1,.18),30))
-	var art_node:=island_art_factory.call("create_npc",str(npc["role"]))
+	var art_node:Node2D=island_art_factory.call("create_npc",str(npc["role"]))
 	art_node.position=Vector2(30,30)
 	b.add_child(art_node)
 	b.pressed.connect(_show_island_npc_dialog.bind(str(npc["id"])))
@@ -712,7 +712,7 @@ func _add_island_chest_marker(parent:Control,chest:Dictionary)->void:
 	b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),20))
 	b.add_theme_stylebox_override("hover",_style(Color(1,1,1,.08),Color("#f0d36f"),20))
-	var art_node:=island_art_factory.call("create_chest",claimed)
+	var art_node:Node2D=island_art_factory.call("create_chest",claimed)
 	art_node.position=Vector2(30,28)
 	b.add_child(art_node)
 	b.pressed.connect(_show_island_chests)
@@ -886,7 +886,7 @@ func _add_island_interactive_marker(parent:Control,item:Dictionary,visual_state:
 	b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),30))
 	b.add_theme_stylebox_override("hover",_style(Color(.25,.55,.72,.18),Color("#83ddff"),30))
-	var art:=island_art_factory.call("create_interactive",str(item["id"]),visual_state)
+	var art:Node2D=island_art_factory.call("create_interactive",str(item["id"]),visual_state)
 	art.position=Vector2(29,29)
 	b.add_child(art)
 	b.pressed.connect(_show_interactive_object.bind(str(item["id"])))
@@ -912,7 +912,7 @@ func _add_island_activity_marker(parent:Control,activity:Dictionary,visual_state
 	b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),30))
 	b.add_theme_stylebox_override("hover",_style(Color(.55,.34,.18,.18),Color("#ffc56e"),30))
-	var art:=island_art_factory.call("create_activity",str(activity["icon"]),visual_state,is_secret)
+	var art:Node2D=island_art_factory.call("create_activity",str(activity["icon"]),visual_state,is_secret)
 	art.position=Vector2(29,29)
 	b.add_child(art)
 	b.pressed.connect(_show_mini_activity.bind(str(activity["id"])))
@@ -1091,7 +1091,7 @@ func _show_island_npc_dialog(id:String)->void:
 	modal.mouse_filter=Control.MOUSE_FILTER_STOP
 	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.02,0.04,0.09,.72); modal.add_child(shade)
 	var box:=Panel.new(); box.position=Vector2(150,265); box.size=Vector2(600,350); box.add_theme_stylebox_override("panel",_style(Color("#10263b"),Color("#5b8eb0"),22)); modal.add_child(box)
-	var face_art:=island_art_factory.call("create_npc",str(npc["role"])); face_art.position=Vector2(92,90); box.add_child(face_art)
+	var face_art:Node2D=island_art_factory.call("create_npc",str(npc["role"])); face_art.position=Vector2(92,90); box.add_child(face_art)
 	var name:=Label.new(); name.text=str(npc["name"]); name.position=Vector2(165,40); name.size=Vector2(390,35); name.add_theme_font_size_override("font_size",24); name.add_theme_color_override("font_color",Color("#f2f7ff")); box.add_child(name)
 	var role:=Label.new(); role.text=str(npc["role"]); role.position=Vector2(165,78); role.size=Vector2(390,25); role.add_theme_font_size_override("font_size",11); role.add_theme_color_override("font_color",Color("#71d7b0")); box.add_child(role)
 	var dialogue:=str(npc["text"])
@@ -1265,7 +1265,7 @@ func _show_island_chests()->void:
 	var title:=Label.new(); title.text="🎁 СУНДУКИ ОСТРОВА"; title.position=Vector2(30,25); title.size=Vector2(570,40); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",25); title.add_theme_color_override("font_color",Color("#f4f7ff")); panel.add_child(title)
 	var bank:=Label.new(); bank.text="⭐ %d"%island_stars; bank.position=Vector2(30,68); bank.size=Vector2(570,25); bank.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; bank.add_theme_font_size_override("font_size",14); bank.add_theme_color_override("font_color",Color("#ffd86a")); panel.add_child(bank)
 	var list:=VBoxContainer.new(); list.position=Vector2(35,110); list.size=Vector2(560,300); list.add_theme_constant_override("separation",12); panel.add_child(list)
-	var chests:=island_progression.get_chests()
+	var chests:Array=island_progression.get_chests()
 	if chests.is_empty():
 		var empty:=Label.new(); empty.text="Сундуков пока нет.\nВосстанавливайте новые зоны острова."; empty.size=Vector2(560,90); empty.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; empty.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; empty.add_theme_font_size_override("font_size",16); empty.add_theme_color_override("font_color",Color("#8ba3bb")); list.add_child(empty)
 	else:
@@ -1273,7 +1273,7 @@ func _show_island_chests()->void:
 			var id:=str(chest["id"]); var claimed:=bool(island_progression.call("is_chest_claimed",id))
 			var row:=Panel.new(); row.custom_minimum_size=Vector2(560,82); row.add_theme_stylebox_override("panel",_style(Color("#1a3045"),Color("#596b49") if not claimed else Color("#38515a"),14)); list.add_child(row)
 			var label:=Label.new(); label.text=str(chest["icon"])+" "+str(chest["name"]); label.position=Vector2(15,10); label.size=Vector2(270,30); label.add_theme_font_size_override("font_size",14); label.add_theme_color_override("font_color",Color("#f2f6ff")); row.add_child(label)
-			var reward:=chest["reward"]; var reward_label:=Label.new(); reward_label.text="⭐ +%d   •   %s +%d"%[int(reward["stars"]),str(reward["booster"]),int(reward["amount"])]; reward_label.position=Vector2(15,43); reward_label.size=Vector2(300,24); reward_label.add_theme_font_size_override("font_size",10); reward_label.add_theme_color_override("font_color",Color("#c7d39a")); row.add_child(reward_label)
+			var reward:Dictionary=chest["reward"]; var reward_label:=Label.new(); reward_label.text="⭐ +%d   •   %s +%d"%[int(reward["stars"]),str(reward["booster"]),int(reward["amount"])]; reward_label.position=Vector2(15,43); reward_label.size=Vector2(300,24); reward_label.add_theme_font_size_override("font_size",10); reward_label.add_theme_color_override("font_color",Color("#c7d39a")); row.add_child(reward_label)
 			var btn:=Button.new(); btn.text="ПОЛУЧЕНО" if claimed else "ОТКРЫТЬ"; btn.position=Vector2(390,15); btn.size=Vector2(145,48); btn.disabled=claimed; btn.add_theme_stylebox_override("normal",_style(Color("#625126") if not claimed else Color("#28433c"),Color("#d6ae4e") if not claimed else Color("#4d806e"),12)); row.add_child(btn)
 			if not claimed: btn.pressed.connect(_claim_island_chest.bind(id))
 	var close:=Button.new(); close.text="← НАЗАД"; close.position=Vector2(35,430); close.size=Vector2(560,42); close.add_theme_stylebox_override("normal",_style(Color("#182c45"),Color("#4a6989"))); close.pressed.connect(_show_island_repair); panel.add_child(close)
@@ -2013,7 +2013,7 @@ func _collapse_and_refill()->void:
 						var g:Gem=gems[old_p]
 						gems.erase(old_p)
 						gems[new_p]=g
-						var dur:=.18+(write_y-read_y)*.055
+						var dur:float=.18+(write_y-read_y)*.055
 						max_time=max(max_time,dur)
 						g.create_tween().tween_property(g,"position",_cell_pos(new_p),dur).set_trans(Tween.TRANS_QUAD)
 					if spider_nodes.has(old_p):
