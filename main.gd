@@ -478,7 +478,7 @@ func _show_map()->void:
 	var back:=Button.new(); back.text="← МИРЫ"; back.position=Vector2(735,28); back.size=Vector2(115,42); back.add_theme_stylebox_override("normal",_style(Color("#162f49"),Color("#42688b"))); back.pressed.connect(_show_menu); map_layer.add_child(back)
 	var legend:=Label.new(); legend.text="🟢 ПРОЙДЕН   🔵 ДОСТУПЕН   🔴 ЗАБЛОКИРОВАН"; legend.position=Vector2(50,96); legend.add_theme_font_size_override("font_size",11); legend.add_theme_color_override("font_color",Color("#b6c8dc")); map_layer.add_child(legend)
 	var star_bank:=Label.new(); star_bank.text="⭐ ЗВЁЗДЫ: %d"%island_stars; star_bank.position=Vector2(420,92); star_bank.size=Vector2(170,28); star_bank.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; star_bank.add_theme_font_size_override("font_size",14); star_bank.add_theme_color_override("font_color",Color("#ffd86a")); map_layer.add_child(star_bank)
-	var island_btn:=Button.new(); island_btn.text="🏝️ ВОССТАНОВИТЬ ОСТРОВ"; island_btn.position=Vector2(600,88); island_btn.size=Vector2(250,36); island_btn.add_theme_font_size_override("font_size",11); island_btn.add_theme_stylebox_override("normal",_style(Color("#1c594f"),Color("#5fd9aa"))); island_btn.pressed.connect(_show_island_repair); map_layer.add_child(island_btn)
+	var island_btn:=Button.new(); island_btn.text="🏝️ КАРТА ОСТРОВА"; island_btn.position=Vector2(600,88); island_btn.size=Vector2(250,36); island_btn.add_theme_font_size_override("font_size",11); island_btn.add_theme_stylebox_override("normal",_style(Color("#1c594f"),Color("#5fd9aa"))); island_btn.pressed.connect(_show_island_visual_map); map_layer.add_child(island_btn)
 	var scroll:=ScrollContainer.new(); scroll.position=Vector2(25,140); scroll.size=Vector2(850,735); scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; map_layer.add_child(scroll)
 	var world:=Control.new(); world.custom_minimum_size=Vector2(850,2050); scroll.add_child(world)
 	var path:=Line2D.new(); path.width=18; path.default_color=Color("#315e70"); world.add_child(path)
@@ -489,6 +489,223 @@ func _show_map()->void:
 	for i in range(100): _create_level_node(world,i,points[i])
 	var note:=Label.new(); note.text="ПРОЛИСТАЙ ВНИЗ • ПУТЕШЕСТВИЕ ПРОДОЛЖАЕТСЯ"; note.position=Vector2(190,1990); note.size=Vector2(470,35); note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; note.add_theme_font_size_override("font_size",12); note.add_theme_color_override("font_color",Color("#6f94a5")); world.add_child(note)
 	busy=false
+
+func _island_zone_name(zone_id:int)->String:
+	if not is_instance_valid(island_progression): return "Зона"
+	for zone in island_progression.zones:
+		if int(zone["id"])==zone_id:
+			return str(zone["name"])
+	return "Зона"
+
+func _show_island_visual_map()->void:
+	if modal:
+		modal.queue_free()
+		modal=null
+	modal=Control.new()
+	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new()
+	shade.size=Vector2(900,900)
+	shade.color=Color(0.02,0.06,0.09,.94)
+	modal.add_child(shade)
+	var panel:=Panel.new()
+	panel.position=Vector2(30,30)
+	panel.size=Vector2(840,840)
+	panel.add_theme_stylebox_override("panel",_style(Color("#0b2531"),Color("#4f8f84"),24))
+	modal.add_child(panel)
+	var title:=Label.new()
+	title.text="🏝️ ЗАБЫТЫЕ ТРОПИКИ — ОСТРОВ"
+	title.position=Vector2(30,18)
+	title.size=Vector2(780,40)
+	title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size",25)
+	title.add_theme_color_override("font_color",Color("#f3f8f4"))
+	panel.add_child(title)
+	var bank:=Label.new()
+	bank.text="⭐ %d    •    %s"%[island_stars,island_progression.get_progress_text() if is_instance_valid(island_progression) else "Прогресс недоступен"]
+	bank.position=Vector2(35,58)
+	bank.size=Vector2(770,28)
+	bank.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	bank.add_theme_font_size_override("font_size",12)
+	bank.add_theme_color_override("font_color",Color("#ffd86a"))
+	panel.add_child(bank)
+
+	var island:=Panel.new()
+	island.position=Vector2(35,100)
+	island.size=Vector2(770,655)
+	island.add_theme_stylebox_override("panel",_style(Color("#14506a"),Color("#4f8f84"),32))
+	panel.add_child(island)
+
+	# Море и зоны острова.
+	for zone_id in range(6):
+		var zone_panel:=Panel.new()
+		var zone_pos:Array[Vector2]=[
+			Vector2(42,70),Vector2(180,65),Vector2(325,105),
+			Vector2(470,85),Vector2(505,340),Vector2(275,385)
+		]
+		var zone_size:Array[Vector2]=[
+			Vector2(210,190),Vector2(210,205),Vector2(230,190),
+			Vector2(230,205),Vector2(220,205),Vector2(250,180)
+		]
+		zone_panel.position=zone_pos[zone_id]
+		zone_panel.size=zone_size[zone_id]
+		var zone_open:=bool(island_progression.call("is_zone_unlocked",zone_id)) if is_instance_valid(island_progression) else zone_id==0
+		var zfill:=Color("#5b965f") if zone_open else Color("#30434a")
+		var zborder:=Color("#9bd36d") if zone_open else Color("#4c6069")
+		zone_panel.add_theme_stylebox_override("panel",_style(Color(zfill.r,zfill.g,zfill.b,.72),zborder,28))
+		island.add_child(zone_panel)
+		var zlabel:=Label.new()
+		zlabel.text=("✓ " if zone_open else "🔒 ")+_island_zone_name(zone_id)
+		zlabel.position=Vector2(10,8)
+		zlabel.size=Vector2(zone_size[zone_id].x-20,26)
+		zlabel.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+		zlabel.add_theme_font_size_override("font_size",11)
+		zlabel.add_theme_color_override("font_color",Color("#eff7e9") if zone_open else Color("#91a0a7"))
+		zone_panel.add_child(zlabel)
+
+	# Линии дорог между зонами.
+	var route:=Line2D.new()
+	route.width=9
+	route.default_color=Color("#d2ae69")
+	route.points=PackedVector2Array([Vector2(125,270),Vector2(260,270),Vector2(400,300),Vector2(585,255),Vector2(610,430),Vector2(400,515)])
+	island.add_child(route)
+
+	# Объекты, которые можно ремонтировать/осматривать.
+	if is_instance_valid(island_progression):
+		for item in island_progression.objects:
+			_add_island_object_marker(island,str(item["id"]),item)
+
+	# NPC появляются только после ремонта соответствующих объектов.
+	if is_instance_valid(island_progression):
+		for npc in island_progression.get_npc_list():
+			_add_island_npc_marker(island,npc)
+		for chest in island_progression.get_chests():
+			_add_island_chest_marker(island,chest)
+
+	var legend:=Label.new()
+	legend.text="🟢 восстановлено   🟠 нужно ремонтировать   🔵 NPC   🎁 сундук"
+	legend.position=Vector2(45,770)
+	legend.size=Vector2(750,25)
+	legend.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	legend.add_theme_font_size_override("font_size",10)
+	legend.add_theme_color_override("font_color",Color("#a5bfca"))
+	panel.add_child(legend)
+
+	var repair:=Button.new()
+	repair.text="🔨 СПИСОК РЕМОНТА"
+	repair.position=Vector2(45,797)
+	repair.size=Vector2(250,32)
+	repair.add_theme_font_size_override("font_size",10)
+	repair.add_theme_stylebox_override("normal",_style(Color("#225b50"),Color("#61d6a2"),10))
+	repair.pressed.connect(_show_island_repair)
+	panel.add_child(repair)
+	var close:=Button.new()
+	close.text="← НАЗАД НА КАРТУ УРОВНЕЙ"
+	close.position=Vector2(305,797)
+	close.size=Vector2(250,32)
+	close.add_theme_font_size_override("font_size",10)
+	close.add_theme_stylebox_override("normal",_style(Color("#182c45"),Color("#4a6989"),10))
+	close.pressed.connect(_close_island_visual_map)
+	panel.add_child(close)
+	var main_map:=Button.new()
+	main_map.text="🎁 СУНДУКИ"
+	main_map.position=Vector2(565,797)
+	main_map.size=Vector2(240,32)
+	main_map.add_theme_font_size_override("font_size",10)
+	main_map.add_theme_stylebox_override("normal",_style(Color("#604b25"),Color("#d3a94f"),10))
+	main_map.pressed.connect(_show_island_chests)
+	panel.add_child(main_map)
+	map_layer.add_child(modal)
+
+func _add_island_object_marker(parent:Control,id:String,item:Dictionary)->void:
+	var repaired_now:=bool(island_progression.call("is_repaired",id))
+	var zone_id:=int(item["zone"])
+	var zone_open:=bool(island_progression.call("is_zone_unlocked",zone_id))
+	var marker:=Button.new()
+	var p:Vector2=item.get("map_pos",Vector2(100,100))
+	marker.position=p-Vector2(42,32)
+	marker.size=Vector2(84,64)
+	marker.text=str(item["icon"]) if repaired_now else "🔨"
+	marker.add_theme_font_size_override("font_size",25)
+	marker.tooltip_text=str(item["name"])
+	marker.disabled=not zone_open
+	marker.add_theme_stylebox_override("normal",_style(Color("#275f49") if repaired_now else Color("#6d5032"),Color("#9be07d") if repaired_now else Color("#d7ae62"),14))
+	marker.add_theme_stylebox_override("hover",_style(Color("#318060") if repaired_now else Color("#85613c"),Color.WHITE,14))
+	marker.pressed.connect(_island_object_clicked.bind(id))
+	parent.add_child(marker)
+	var label:=Label.new()
+	label.text=str(item["name"])+(" ✓" if repaired_now else "")
+	label.position=p+Vector2(-60,34)
+	label.size=Vector2(120,30)
+	label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size",9)
+	label.add_theme_color_override("font_color",Color("#ddf2dd") if repaired_now else Color("#e6d0a1"))
+	parent.add_child(label)
+
+func _island_object_clicked(id:String)->void:
+	if is_instance_valid(island_progression) and bool(island_progression.call("is_repaired",id)):
+		var item:Dictionary=island_progression.call("get_object",id)
+		_show_island_object_info(item)
+	else:
+		_show_island_repair()
+
+func _show_island_object_info(item:Dictionary)->void:
+	if modal:
+		modal.queue_free()
+		modal=null
+	modal=Control.new()
+	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.02,0.04,0.09,.78); modal.add_child(shade)
+	var box:=Panel.new(); box.position=Vector2(190,275); box.size=Vector2(520,315); box.add_theme_stylebox_override("panel",_style(Color("#10263a"),Color("#5bb58f"),20)); modal.add_child(box)
+	var title:=Label.new(); title.text=str(item["icon"])+" "+str(item["name"])+" ✓"; title.position=Vector2(25,24); title.size=Vector2(470,42); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",23); title.add_theme_color_override("font_color",Color("#70dfa9")); box.add_child(title)
+	var body:=Label.new(); body.text=str(item["description"])+"\n\n"+str(item["reward_text"]); body.position=Vector2(35,82); body.size=Vector2(450,110); body.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; body.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; body.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; body.add_theme_font_size_override("font_size",14); body.add_theme_color_override("font_color",Color("#bfd2df")); box.add_child(body)
+	var close:=Button.new(); close.text="ПОНЯТНО"; close.position=Vector2(100,225); close.size=Vector2(320,50); close.add_theme_stylebox_override("normal",_style(Color("#237b57"),Color("#63d5a2"),12)); close.pressed.connect(_close_island_visual_map); box.add_child(close)
+	map_layer.add_child(modal)
+
+func _add_island_npc_marker(parent:Control,npc:Dictionary)->void:
+	var p:Vector2=npc.get("map_pos",Vector2(100,100))
+	var b:=Button.new()
+	b.position=p-Vector2(30,30)
+	b.size=Vector2(60,60)
+	b.text=str(npc["icon"])
+	b.add_theme_font_size_override("font_size",24)
+	b.add_theme_stylebox_override("normal",_style(Color("#264866"),Color("#72b7e4"),30))
+	b.add_theme_stylebox_override("hover",_style(Color("#35617f"),Color.WHITE,30))
+	b.pressed.connect(_show_island_npc_dialog.bind(str(npc["id"])))
+	parent.add_child(b)
+	var l:=Label.new(); l.text=str(npc["name"]); l.position=p+Vector2(-50,31); l.size=Vector2(100,22); l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; l.add_theme_font_size_override("font_size",9); l.add_theme_color_override("font_color",Color("#b8dcf1")); parent.add_child(l)
+
+func _add_island_chest_marker(parent:Control,chest:Dictionary)->void:
+	var p:Vector2=chest.get("map_pos",Vector2(100,100))
+	var claimed:=bool(island_progression.call("is_chest_claimed",str(chest["id"])))
+	var b:=Button.new(); b.position=p-Vector2(28,28); b.size=Vector2(56,56); b.text="✓" if claimed else str(chest["icon"]); b.add_theme_font_size_override("font_size",23); b.add_theme_stylebox_override("normal",_style(Color("#39433a") if claimed else Color("#6a5128"),Color("#71917b") if claimed else Color("#e0b956"),28)); b.pressed.connect(_show_island_chests); parent.add_child(b)
+	var l:=Label.new(); l.text=str(chest["name"])+(" • получено" if claimed else " • доступно"); l.position=p+Vector2(-65,28); l.size=Vector2(130,30); l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; l.add_theme_font_size_override("font_size",8); l.add_theme_color_override("font_color",Color("#c9d7c4")); parent.add_child(l)
+
+func _show_island_npc_dialog(id:String)->void:
+	if not is_instance_valid(island_progression): return
+	var npc:Dictionary=island_progression.call("get_npc_definition",id)
+	if npc.is_empty(): return
+	if modal:
+		modal.queue_free()
+		modal=null
+	modal=Control.new()
+	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.02,0.04,0.09,.72); modal.add_child(shade)
+	var box:=Panel.new(); box.position=Vector2(150,265); box.size=Vector2(600,350); box.add_theme_stylebox_override("panel",_style(Color("#10263b"),Color("#5b8eb0"),22)); modal.add_child(box)
+	var face:=Label.new(); face.text=str(npc["icon"]); face.position=Vector2(30,30); face.size=Vector2(120,100); face.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; face.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; face.add_theme_font_size_override("font_size",54); box.add_child(face)
+	var name:=Label.new(); name.text=str(npc["name"]); name.position=Vector2(165,40); name.size=Vector2(390,35); name.add_theme_font_size_override("font_size",24); name.add_theme_color_override("font_color",Color("#f2f7ff")); box.add_child(name)
+	var role:=Label.new(); role.text=str(npc["role"]); role.position=Vector2(165,78); role.size=Vector2(390,25); role.add_theme_font_size_override("font_size",11); role.add_theme_color_override("font_color",Color("#71d7b0")); box.add_child(role)
+	var text_label:=Label.new(); text_label.text="«%s»"%str(npc["text"]); text_label.position=Vector2(45,145); text_label.size=Vector2(510,100); text_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; text_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; text_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; text_label.add_theme_font_size_override("font_size",17); text_label.add_theme_color_override("font_color",Color("#c4d3e2")); box.add_child(text_label)
+	var close:=Button.new(); close.text="ЗАКРЫТЬ"; close.position=Vector2(150,280); close.size=Vector2(300,44); close.add_theme_stylebox_override("normal",_style(Color("#193b52"),Color("#63a6d3"),12)); close.pressed.connect(_close_island_visual_map); box.add_child(close)
+	map_layer.add_child(modal)
+
+func _close_island_visual_map()->void:
+	if modal:
+		modal.queue_free()
+		modal=null
 
 func _show_island_repair()->void:
 	if modal:
