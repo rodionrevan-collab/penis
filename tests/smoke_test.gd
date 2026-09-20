@@ -349,6 +349,13 @@ func _initialize() -> void:
 	assert(progression.get_mini_activities().size() == 3)
 	assert(progression.get_interactive_object("pirate_chart_table")["unique_required"] == "tom_log")
 	assert(progression.get_mini_activity("pirate_navigation")["unique_required"] == "tom_log")
+	assert(progression.get_mini_activity("pirate_navigation")["type"] == "sequence")
+	assert(progression.get_mini_activity("cave_runes")["type"] == "odd_one")
+	assert(progression.get_mini_activity("village_market")["type"] == "collect_three")
+	assert(progression.get_mini_activity("village_trade_route")["type"] == "order_goods")
+	assert(progression.get_mini_activities().size() == 4)
+	assert(progression.get_collection_total() == 8)
+	assert(progression.get_collection_count() == 1)
 	assert(progression.get_available_interactives().size() == 0)
 	assert(progression.get_available_activities().size() == 0)
 	progression.repaired["secret_cave"]=true
@@ -365,9 +372,11 @@ func _initialize() -> void:
 	var activity_reward:Dictionary=progression.claim_mini_activity("pirate_navigation")
 	assert(activity_reward["ok"] == true)
 	assert(progression.is_activity_completed("pirate_navigation"))
+	assert(progression.is_collection_item_collected("pirate_chart"))
+	assert(progression.get_collection_count() == 2)
 	assert(progression.claim_mini_activity("pirate_navigation")["ok"] == false)
 	assert(progression.get_available_interactives().size() == 3)
-	assert(progression.get_available_activities().size() == 2)
+	assert(progression.get_available_activities().size() == 3)
 
 	# Секреты открываются зоной и забираются только один раз.
 	var secrets:Array = progression.get_secrets()
