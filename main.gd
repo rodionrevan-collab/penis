@@ -688,9 +688,58 @@ func _build_game_layer()->void:
 	var restart:=Button.new(); restart.text="↻"; restart.position=Vector2(780,24); restart.size=Vector2(48,42); restart.add_theme_font_size_override("font_size",20); restart.add_theme_stylebox_override("normal",_style(Color("#1a2a4b"),Color("#3b5787"))); restart.pressed.connect(_restart_level); game_layer.add_child(restart)
 	var mapb:=Button.new(); mapb.text="КАРТА"; mapb.position=Vector2(670,86); mapb.size=Vector2(98,34); mapb.add_theme_font_size_override("font_size",12); mapb.add_theme_stylebox_override("normal",_style(Color("#16243f"),Color("#30486f"))); mapb.pressed.connect(_show_map); game_layer.add_child(mapb)
 	var hint_button:=Button.new(); hint_button.text="ПОДСКАЗКА"; hint_button.position=Vector2(670,126); hint_button.size=Vector2(98,34); hint_button.add_theme_font_size_override("font_size",10); hint_button.add_theme_stylebox_override("normal",_style(Color("#18324b"),Color("#3f7292"))); hint_button.pressed.connect(_show_hint); game_layer.add_child(hint_button)
+	hammer_button=_booster_button("🔨",Vector2(138,840))
+	extra_moves_button=_booster_button("+3",Vector2(255,840))
+	shuffle_button=_booster_button("↻",Vector2(372,840))
+	var booster_note:=Label.new(); booster_note.position=Vector2(500,840); booster_note.size=Vector2(260,32); booster_note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; booster_note.add_theme_font_size_override("font_size",10); booster_note.add_theme_color_override("font_color",Color("#7389aa")); booster_note.text="БУСТЕРЫ"; game_layer.add_child(booster_note)
 	var frame:=BoardFrame.new(); frame.position=ORIGIN+Vector2(312,312); game_layer.add_child(frame)
 	root=Node2D.new(); game_layer.add_child(root); fx=Node2D.new(); game_layer.add_child(fx)
 	status=Label.new(); status.position=Vector2(138,832); status.size=Vector2(624,34); status.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; status.add_theme_font_size_override("font_size",14); status.add_theme_color_override("font_color",Color("#9baad0")); game_layer.add_child(status)
+
+func _booster_button(icon:String,p:Vector2)->Button:
+	var b:=Button.new()
+	b.position=p
+	b.size=Vector2(105,32)
+	b.add_theme_font_size_override("font_size",11)
+	b.add_theme_stylebox_override("normal",_style(Color("#172842"),Color("#416189"),10))
+	b.pressed.connect(_booster_pressed.bind(icon))
+	game_layer.add_child(b)
+	return b
+
+func _booster_pressed(icon:String)->void:
+	if busy: return
+	if icon=="🔨":
+		if int(booster_inventory["hammer"])<=0: return
+		active_booster="hammer"
+		status.text="Молот: выберите клетку"
+	elif icon=="+3":
+		if _consume_booster("extra_moves"):
+			moves_left+=3
+			_update_labels()
+	elif icon=="↻":
+		if int(booster_inventory["shuffle"])<=0: return
+		if _consume_booster("shuffle"):
+			var p=get_node_or_null("Polish")
+			if is_instance_valid(p): p.call("_shuffle_board")
+
+func _use_active_booster(p:Vector2i)->void:
+	if active_booster!="hammer": return
+	active_booster=""
+	if p.x<0 or p.y<0 or p.x>=SIZE or p.y>=SIZE: return
+	if not _consume_booster("hammer"): return
+	if blockers.has(p):
+		_damage_blockers([p])
+		_update_labels()
+		return
+	if _cell_is_blocked(p) or board[p.y][p.x]<0:
+		return
+	busy=true
+	await _destroy_matches([p])
+	await _collapse_and_refill()
+	if is_instance_valid(mechanics):
+		mechanics.call("after_matches_cleared",[p])
+	_update_labels()
+	busy=false
 
 func _stat(n:String,p:Vector2)->Label:
 	var l:=Label.new(); l.position=p; l.size=Vector2(105,45); l.text=n+"\n0"; l.add_theme_font_size_override("font_size",12); l.add_theme_color_override("font_color",Color("#8395bd")); game_layer.add_child(l); return l
@@ -937,6 +986,9 @@ func _swipe_move(a:Vector2i,b:Vector2i)->void:
 
 
 func _click(p:Vector2i)->void:
+	if active_booster=="hammer":
+		_use_active_booster(p)
+		return
 	if moves_left<=0: return
 	if not gems.has(p): return
 	if selected.x<0:
@@ -1422,11 +1474,12 @@ func _result_modal(won:bool)->void:
 	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	modal.mouse_filter=Control.MOUSE_FILTER_STOP
 	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.02,0.04,0.09,.8); modal.add_child(shade)
-	var p:=Panel.new(); p.position=Vector2(145,245); p.size=Vector2(610,350); p.add_theme_stylebox_override("panel",_style(Color("#111c31"),Color("#38527d"),22)); modal.add_child(p)
-	var t:=Label.new(); t.text="УРОВЕНЬ ПРОЙДЕН! 🎉" if won else "ХОДЫ ЗАКОНЧИЛИСЬ"; t.position=Vector2(40,35); t.size=Vector2(530,55); t.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; t.add_theme_font_size_override("font_size",29); t.add_theme_color_override("font_color",Color("#63e6a0") if won else Color("#ff8794")); p.add_child(t)
-	var tx:=Label.new(); tx.text=("Поздравляем!\nВсе цели уровня %d выполнены.\n\nОчки: %d     Ходов осталось: %d"%[current_level+1,score,moves_left]) if won else ("Попробуй ещё раз!\nЦель не выполнена.\n\nОчки: %d"%score); tx.position=Vector2(55,105); tx.size=Vector2(500,105); tx.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; tx.add_theme_font_size_override("font_size",16); tx.add_theme_color_override("font_color",Color("#c5d1e8")); p.add_child(tx)
-	var primary:=Button.new(); primary.position=Vector2(65,255); primary.size=Vector2(230,52); primary.add_theme_font_size_override("font_size",13); primary.add_theme_stylebox_override("normal",_style(Color("#237b50") if won else Color("#334d78"),Color("#62dfa1") if won else Color("#6484b8"))); primary.text=("СЛЕДУЮЩИЙ УРОВЕНЬ →" if current_level<99 else "ВЕРНУТЬСЯ НА КАРТУ") if won else "ПОПРОБОВАТЬ СНОВА"; primary.pressed.connect(_modal_primary.bind(won)); p.add_child(primary)
-	var secondary:=Button.new(); secondary.position=Vector2(315,255); secondary.size=Vector2(230,52); secondary.text="ВЕРНУТЬСЯ В ЛОББИ"; secondary.add_theme_stylebox_override("normal",_style(Color("#182943"),Color("#466187"))); secondary.pressed.connect(_show_map); p.add_child(secondary); game_layer.add_child(modal)
+	var p:=Panel.new(); p.position=Vector2(145,215); p.size=Vector2(610,410); p.add_theme_stylebox_override("panel",_style(Color("#111c31"),Color("#38527d"),22)); modal.add_child(p)
+	var t:=Label.new(); t.text="УРОВЕНЬ ПРОЙДЕН! 🎉" if won else "ХОДЫ ЗАКОНЧИЛИСЬ"; t.position=Vector2(40,25); t.size=Vector2(530,55); t.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; t.add_theme_font_size_override("font_size",29); t.add_theme_color_override("font_color",Color("#63e6a0") if won else Color("#ff8794")); p.add_child(t)
+	var stars:=Label.new(); stars.text=_stars_string(_calculate_stars()) if won else "☆ ☆ ☆"; stars.position=Vector2(55,78); stars.size=Vector2(500,48); stars.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; stars.add_theme_font_size_override("font_size",30); stars.add_theme_color_override("font_color",Color("#ffd86a")); p.add_child(stars)
+	var tx:=Label.new(); tx.text=("Все цели выполнены!\nОчки: %d\nХодов осталось: %d\nЛучшее комбо: x%d"%[score,moves_left,best_combo_level]) if won else ("Цели не выполнены.\nОчки: %d\nЛучшее комбо: x%d"%[score,best_combo_level]); tx.position=Vector2(55,135); tx.size=Vector2(500,110); tx.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; tx.add_theme_font_size_override("font_size",16); tx.add_theme_color_override("font_color",Color("#c5d1e8")); p.add_child(tx)
+	var primary:=Button.new(); primary.position=Vector2(65,320); primary.size=Vector2(230,52); primary.add_theme_font_size_override("font_size",13); primary.add_theme_stylebox_override("normal",_style(Color("#237b50") if won else Color("#334d78"),Color("#62dfa1") if won else Color("#6484b8"))); primary.text=("СЛЕДУЮЩИЙ УРОВЕНЬ →" if current_level<99 else "ВЕРНУТЬСЯ НА КАРТУ") if won else "ПОПРОБОВАТЬ СНОВА"; primary.pressed.connect(_modal_primary.bind(won)); p.add_child(primary)
+	var secondary:=Button.new(); secondary.position=Vector2(315,320); secondary.size=Vector2(230,52); secondary.text="ВЕРНУТЬСЯ В ЛОББИ"; secondary.add_theme_stylebox_override("normal",_style(Color("#182943"),Color("#466187"))); secondary.pressed.connect(_show_map); p.add_child(secondary); game_layer.add_child(modal)
 
 func _modal_primary(won:bool)->void:
 	if modal:
