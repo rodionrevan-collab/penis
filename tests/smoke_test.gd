@@ -289,10 +289,10 @@ func _initialize() -> void:
 	assert(progression.get_chests()[0].has("map_pos"))
 
 	# NPC-задания: доступность, прогресс и одноразовая награда.
-	var lisa_state:Dictionary = progression.get_quest_status("lisa",3,1,0)
+	var lisa_state:Dictionary = progression.get_quest_status("lisa",5,1,0)
 	assert(lisa_state["done"] == true)
 	assert(lisa_state["claimed"] == false)
-	var lisa_reward:Dictionary = progression.claim_npc_quest("lisa",3,1,0)
+	var lisa_reward:Dictionary = progression.claim_npc_quest("lisa",5,1,0)
 	assert(lisa_reward["ok"] == true)
 	assert(progression.claim_npc_quest("lisa",3,1,0)["ok"] == false)
 
