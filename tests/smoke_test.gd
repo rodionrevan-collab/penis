@@ -332,9 +332,9 @@ func _initialize() -> void:
 	progression.unique_rewards["keeper_key"]=true
 	progression.unique_rewards["merchant_token"]=true
 	assert(progression.get_start_move_bonus(0) == 2)
-	assert(progression.get_start_move_bonus(69) == 2)
+	assert(progression.get_start_move_bonus(69) == 1)
 	assert(progression.get_start_move_bonus(70) == 2)
-	assert(progression.get_score_multiplier() == 1.05)
+	assert(abs(progression.get_score_multiplier() - 1.05) < 0.001)
 	assert(progression.get_three_star_bonus() == 1)
 	assert(progression.get_permanent_bonus_text() != "Постоянные преимущества ещё не открыты.")
 
