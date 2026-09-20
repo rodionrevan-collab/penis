@@ -166,3 +166,91 @@ func create_chest(done:bool)->Node2D:
 	var n:=IslandChestArt.new()
 	n.setup(done)
 	return n
+
+
+class IslandInteractiveArt extends Node2D:
+	var object_id := ""
+	var state := 0 # 0 locked, 1 available, 2 completed
+	var pulse := 0.0
+	func setup(id:String,visual_state:int)->void:
+		object_id=id
+		state=visual_state
+		if state==1:
+			pulse=1.0
+		queue_redraw()
+	func _process(delta:float)->void:
+		if state==1:
+			pulse=maxf(0.0,pulse-delta)
+			queue_redraw()
+	func _draw()->void:
+		var base:=Color("#4c5963")
+		var accent:=Color("#53606a")
+		if state==1:
+			base=Color("#287da0")
+			accent=Color("#7de2ff")
+		elif state==2:
+			base=Color("#2f6658")
+			accent=Color("#75d6aa")
+		draw_circle(Vector2(2,4),24,Color(0,0,0,.24))
+		draw_circle(Vector2.ZERO,22,base)
+		draw_circle(Vector2.ZERO,14,Color(accent.r,accent.g,accent.b,.18))
+		match object_id:
+			"beach_watch_lantern":
+				draw_rect(Rect2(-7,-13,14,24),Color("#dbbd70") if state!=0 else Color("#65717a"))
+				draw_circle(Vector2(0,-17),9,accent)
+				if state==2: draw_circle(Vector2(0,-17),13,Color(1,.83,.38,.18))
+			"pirate_chart_table":
+				draw_rect(Rect2(-24,4,48,8),Color("#8a5d36"))
+				draw_rect(Rect2(-18,-13,36,17),Color("#dbc58f") if state!=0 else Color("#667079"))
+				draw_line(Vector2(-13,-6),Vector2(12,-6),accent,2)
+				draw_line(Vector2(-8,0),Vector2(9,0),accent,2)
+			"cave_ancient_lock":
+				draw_rect(Rect2(-16,-16,32,32),Color("#67717c") if state!=0 else Color("#49545d"))
+				draw_circle(Vector2.ZERO,8,Color("#1c2630"))
+				draw_arc(Vector2.ZERO,10,-PI/2,PI/2,10,accent,3)
+			"village_trade_scale":
+				draw_line(Vector2(0,-18),Vector2(0,15),accent,4)
+				draw_line(Vector2(-17,-12),Vector2(17,-12),accent,4)
+				draw_line(Vector2(-17,-12),Vector2(-24,4),accent,3)
+				draw_line(Vector2(17,-12),Vector2(24,4),accent,3)
+				draw_line(Vector2(-29,5),Vector2(-19,5),base.darkened(.2),4)
+				draw_line(Vector2(19,5),Vector2(29,5),base.darkened(.2),4)
+		if state==1 and pulse>0:
+			draw_circle(Vector2.ZERO,28+pulse*3,Color(0.45,0.85,1.0,.14))
+
+class IslandActivityArt extends Node2D:
+	var icon := ""
+	var state := 0 # 0 locked, 1 available, 2 completed
+	func setup(activity_icon:String,visual_state:int)->void:
+		icon=activity_icon
+		state=visual_state
+		queue_redraw()
+	func _draw()->void:
+		var outer:=Color("#4f4a43")
+		var inner:=Color("#7b7062")
+		if state==1:
+			outer=Color("#8b6435")
+			inner=Color("#ffd171")
+		elif state==2:
+			outer=Color("#3d6658")
+			inner=Color("#79d1a7")
+		draw_circle(Vector2(2,4),25,Color(0,0,0,.25))
+		draw_circle(Vector2.ZERO,23,outer)
+		draw_circle(Vector2.ZERO,17,inner)
+		if state==0:
+			draw_line(Vector2(-9,-9),Vector2(9,9),Color("#49545d"),4)
+			draw_line(Vector2(9,-9),Vector2(-9,9),Color("#49545d"),4)
+		else:
+			draw_string(ThemeDB.fallback_font,Vector2(-13,8),icon,HORIZONTAL_ALIGNMENT_CENTER,26,18,Color("#16212b"))
+			if state==2:
+				draw_arc(Vector2.ZERO,25,-PI*0.8,PI*0.8,18,Color("#8ce0ba"),3)
+
+func create_interactive(id:String,visual_state:int)->Node2D:
+	var n:=IslandInteractiveArt.new()
+	n.setup(id,visual_state)
+	return n
+
+func create_activity(icon:String,visual_state:int)->Node2D:
+	var n:=IslandActivityArt.new()
+	n.setup(icon,visual_state)
+	return n
