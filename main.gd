@@ -557,6 +557,9 @@ func _show_island_visual_map(focus_id:String="")->void:
 			_add_island_npc_marker(island,npc)
 		for chest in island_progression.get_chests():
 			_add_island_chest_marker(island,chest)
+		for secret in island_progression.get_secrets():
+			if island_progression.is_secret_available(secret):
+				_add_island_secret_marker(island,secret)
 
 	var legend:=Label.new()
 	legend.text="🟢 восстановлено   🟠 нужно ремонтировать   🔵 NPC   🎁 сундук"
@@ -679,6 +682,87 @@ func _add_island_chest_marker(parent:Control,chest:Dictionary)->void:
 	parent.add_child(b)
 	var l:=Label.new(); l.text=str(chest["name"])+(" • получено" if claimed else " • доступно"); l.position=p+Vector2(-65,28); l.size=Vector2(130,30); l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; l.add_theme_font_size_override("font_size",8); l.add_theme_color_override("font_color",Color("#c9d7c4")); parent.add_child(l)
 
+func _completed_level_count()->int:
+	var count:=0
+	for done in completed:
+		if done: count+=1
+	return count
+
+func _repaired_object_count()->int:
+	if not is_instance_valid(island_progression): return 0
+	return int(island_progression.repaired.size())
+
+func _claim_npc_quest(id:String)->void:
+	if not is_instance_valid(island_progression): return
+	var result:Dictionary=island_progression.call("claim_npc_quest",id,_completed_level_count(),island_progression.get_unlocked_zone_count(),_repaired_object_count())
+	if not bool(result.get("ok",false)): return
+	_apply_island_reward(result["reward"])
+	_show_island_npc_dialog(id)
+
+func _claim_secret(id:String)->void:
+	if not is_instance_valid(island_progression): return
+	var result:Dictionary=island_progression.call("claim_secret",id)
+	if not bool(result.get("ok",false)): return
+	_apply_island_reward(result["reward"])
+	_show_secret_dialog(id)
+
+func _show_npc_quest(id:String)->void:
+	if not is_instance_valid(island_progression): return
+	var npc:Dictionary=island_progression.call("get_npc_definition",id)
+	var state:Dictionary=island_progression.call("get_quest_status",id,_completed_level_count(),island_progression.get_unlocked_zone_count(),_repaired_object_count())
+	if npc.is_empty() or state.is_empty(): return
+	if modal:
+		modal.queue_free()
+		modal=null
+	modal=Control.new()
+	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.02,0.04,0.09,.78); modal.add_child(shade)
+	var box:=Panel.new(); box.position=Vector2(145,235); box.size=Vector2(610,430); box.add_theme_stylebox_override("panel",_style(Color("#10263b"),Color("#5b8eb0"),22)); modal.add_child(box)
+	var head:=Label.new(); head.text=str(npc["name"])+": "+str(state["quest"]["title"]); head.position=Vector2(35,25); head.size=Vector2(540,45); head.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; head.add_theme_font_size_override("font_size",22); head.add_theme_color_override("font_color",Color("#f2f7ff")); box.add_child(head)
+	var desc:=Label.new(); desc.text=str(state["quest"]["description"]); desc.position=Vector2(45,90); desc.size=Vector2(520,75); desc.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; desc.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; desc.add_theme_font_size_override("font_size",14); desc.add_theme_color_override("font_color",Color("#b8cbe0")); box.add_child(desc)
+	var progress:=Label.new(); progress.text="Прогресс: %d / %d"%[int(state["current"]),int(state["target"])]; progress.position=Vector2(50,175); progress.size=Vector2(510,32); progress.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; progress.add_theme_font_size_override("font_size",18); progress.add_theme_color_override("font_color",Color("#72d7b0")); box.add_child(progress)
+	var reward:Dictionary=state["quest"]["reward"]; var reward_label:=Label.new(); reward_label.text="🎁 Награда: ⭐ +%d   •   %s +%d"%[int(reward["stars"]),str(reward["booster"]),int(reward["amount"])]; reward_label.position=Vector2(35,225); reward_label.size=Vector2(540,35); reward_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; reward_label.add_theme_font_size_override("font_size",13); reward_label.add_theme_color_override("font_color",Color("#ffd86a")); box.add_child(reward_label)
+	var claim:=Button.new(); claim.position=Vector2(85,285); claim.size=Vector2(440,52); claim.add_theme_font_size_override("font_size",14); box.add_child(claim)
+	if bool(state["claimed"]):
+		claim.text="ЗАДАНИЕ ВЫПОЛНЕНО"; claim.disabled=true
+	elif bool(state["done"]):
+		claim.text="ПОЛУЧИТЬ НАГРАДУ"; claim.add_theme_stylebox_override("normal",_style(Color("#5c4a25"),Color("#d8b354"),12)); claim.pressed.connect(_claim_npc_quest.bind(id))
+	else:
+		claim.text="ЕЩЁ НЕ ВЫПОЛНЕНО"; claim.disabled=true
+	var close:=Button.new(); close.text="← НАЗАД К NPC"; close.position=Vector2(85,355); close.size=Vector2(440,42); close.add_theme_stylebox_override("normal",_style(Color("#18334a"),Color("#527a99"),12)); close.pressed.connect(_show_island_npc_dialog.bind(id)); box.add_child(close)
+	map_layer.add_child(modal)
+
+func _show_secret_dialog(id:String)->void:
+	if not is_instance_valid(island_progression): return
+	var secret:Dictionary=island_progression.call("get_secret",id)
+	if secret.is_empty(): return
+	var claimed:=bool(island_progression.call("is_secret_claimed",id))
+	if modal:
+		modal.queue_free()
+		modal=null
+	modal=Control.new(); modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.02,0.04,0.09,.78); modal.add_child(shade)
+	var box:=Panel.new(); box.position=Vector2(160,270); box.size=Vector2(580,335); box.add_theme_stylebox_override("panel",_style(Color("#142b35"),Color("#8a7443"),22)); modal.add_child(box)
+	var title:=Label.new(); title.text=str(secret["icon"])+" "+str(secret["name"]); title.position=Vector2(35,25); title.size=Vector2(510,40); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",23); title.add_theme_color_override("font_color",Color("#f4e2a7")); box.add_child(title)
+	var desc:=Label.new(); desc.text=str(secret["description"]); desc.position=Vector2(40,85); desc.size=Vector2(500,80); desc.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; desc.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; desc.add_theme_font_size_override("font_size",15); desc.add_theme_color_override("font_color",Color("#c7d5d4")); box.add_child(desc)
+	var reward:Dictionary=secret["reward"]; var reward_label:=Label.new(); reward_label.text="⭐ +%d   •   %s +%d"%[int(reward["stars"]),str(reward["booster"]),int(reward["amount"])]; reward_label.position=Vector2(40,175); reward_label.size=Vector2(500,32); reward_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; reward_label.add_theme_font_size_override("font_size",14); reward_label.add_theme_color_override("font_color",Color("#ffd86a")); box.add_child(reward_label)
+	var claim:=Button.new(); claim.position=Vector2(90,230); claim.size=Vector2(400,48); claim.add_theme_font_size_override("font_size",14); box.add_child(claim)
+	if claimed:
+		claim.text="НАЙДЕНО"; claim.disabled=true
+	else:
+		claim.text="ЗАБРАТЬ НАХОДКУ"; claim.add_theme_stylebox_override("normal",_style(Color("#5c4a25"),Color("#d8b354"),12)); claim.pressed.connect(_claim_secret.bind(id))
+	var close:=Button.new(); close.text="← КАРТА ОСТРОВА"; close.position=Vector2(90,285); close.size=Vector2(400,34); close.add_theme_stylebox_override("normal",_style(Color("#18334a"),Color("#527a99"),10)); close.pressed.connect(_close_island_visual_map); box.add_child(close)
+	map_layer.add_child(modal)
+
+func _add_island_secret_marker(parent:Control,secret:Dictionary)->void:
+	var p:Vector2=secret.get("map_pos",Vector2(100,100))
+	var claimed:=bool(island_progression.call("is_secret_claimed",str(secret["id"])))
+	var b:=Button.new(); b.position=p-Vector2(26,26); b.size=Vector2(52,52); b.flat=true; b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND; b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),20)); b.add_theme_stylebox_override("hover",_style(Color(1,1,1,.09),Color("#e7cb72"),20))
+	var icon:=Label.new(); icon.text="✓" if claimed else str(secret["icon"]); icon.position=Vector2.ZERO; icon.size=Vector2(52,52); icon.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; icon.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; icon.add_theme_font_size_override("font_size",23); icon.add_theme_color_override("font_color",Color("#a9b8ad") if claimed else Color("#f1d679")); b.add_child(icon)
+	b.pressed.connect(_show_secret_dialog.bind(str(secret["id"]))); parent.add_child(b)
+	var l:=Label.new(); l.text=str(secret["name"]); l.position=p+Vector2(-55,25); l.size=Vector2(110,24); l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; l.add_theme_font_size_override("font_size",8); l.add_theme_color_override("font_color",Color("#d7c993")); parent.add_child(l)
+
 func _show_island_npc_dialog(id:String)->void:
 	if not is_instance_valid(island_progression): return
 	var npc:Dictionary=island_progression.call("get_npc_definition",id)
@@ -695,7 +779,8 @@ func _show_island_npc_dialog(id:String)->void:
 	var name:=Label.new(); name.text=str(npc["name"]); name.position=Vector2(165,40); name.size=Vector2(390,35); name.add_theme_font_size_override("font_size",24); name.add_theme_color_override("font_color",Color("#f2f7ff")); box.add_child(name)
 	var role:=Label.new(); role.text=str(npc["role"]); role.position=Vector2(165,78); role.size=Vector2(390,25); role.add_theme_font_size_override("font_size",11); role.add_theme_color_override("font_color",Color("#71d7b0")); box.add_child(role)
 	var text_label:=Label.new(); text_label.text="«%s»"%str(npc["text"]); text_label.position=Vector2(45,145); text_label.size=Vector2(510,100); text_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; text_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; text_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; text_label.add_theme_font_size_override("font_size",17); text_label.add_theme_color_override("font_color",Color("#c4d3e2")); box.add_child(text_label)
-	var close:=Button.new(); close.text="ЗАКРЫТЬ"; close.position=Vector2(150,280); close.size=Vector2(300,44); close.add_theme_stylebox_override("normal",_style(Color("#193b52"),Color("#63a6d3"),12)); close.pressed.connect(_close_island_visual_map); box.add_child(close)
+	var quest:=Button.new(); quest.text="📜 ЗАДАНИЕ"; quest.position=Vector2(110,235); quest.size=Vector2(170,44); quest.add_theme_stylebox_override("normal",_style(Color("#5c4a25"),Color("#d8b354"),12)); quest.pressed.connect(_show_npc_quest.bind(id)); box.add_child(quest)
+	var close:=Button.new(); close.text="ЗАКРЫТЬ"; close.position=Vector2(300,235); close.size=Vector2(170,44); close.add_theme_stylebox_override("normal",_style(Color("#193b52"),Color("#63a6d3"),12)); close.pressed.connect(_close_island_visual_map); box.add_child(close)
 	map_layer.add_child(modal)
 
 func _close_island_visual_map()->void:
