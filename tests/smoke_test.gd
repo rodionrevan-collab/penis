@@ -169,6 +169,19 @@ func _initialize() -> void:
 	for p in g.specials.keys():
 		assert(int(g.specials[p]) == 5)
 	assert(g._is_active_special_type(5) == false)
+	mechanics.collect_map_piece_at(Vector2i(0,0))
+	assert(mechanics.map_collected == 1)
+	mechanics.clear()
+
+	# Фрагмент карты не должен маскироваться под активную спецфишку для dead-board detection.
+	var polish_map = load("res://polish.gd").new()
+	polish_map.game = g
+	g.mechanics = mechanics
+	g.board = dead_board.duplicate(true)
+	g.specials.clear()
+	g.specials[Vector2i(3,3)] = 5
+	assert(polish_map._has_legal_move(g.board) == false)
+	polish_map.free()
 	mechanics.clear()
 
 	g.current_level = 70
