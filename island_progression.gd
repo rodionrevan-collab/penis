@@ -9,14 +9,14 @@ var claimed_chests: Dictionary = {}
 var discovered_npcs: Dictionary = {}
 
 var objects: Array[Dictionary] = [
-	{"id":"bridge","name":"Старый мост","icon":"🌉","cost":5,"zone":1,"description":"Разрушенный мост открывает путь в джунгли.","reward_text":"Открывает зону: Джунгли"},
-	{"id":"hut","name":"Пляжная хижина","icon":"🏠","cost":8,"zone":0,"description":"После ремонта здесь поселяется первый житель острова.","reward_text":"NPC: Лиза, смотрительница пляжа"},
-	{"id":"jungle_path","name":"Тропа в джунглях","icon":"🌴","cost":12,"zone":2,"description":"Расчищенная тропа ведёт к старой пристани.","reward_text":"Открывает зону: Старая пристань"},
-	{"id":"dock","name":"Старая пристань","icon":"⚓","cost":15,"zone":2,"description":"Восстановленная пристань возвращает на остров рыбака.","reward_text":"NPC: Рыбак Том"},
-	{"id":"pirate_cove","name":"Пиратская бухта","icon":"🏴","cost":20,"zone":3,"description":"За старым проходом скрыта заброшенная пиратская бухта.","reward_text":"Открывает зону: Пиратская бухта + сундук"},
-	{"id":"lighthouse","name":"Маяк","icon":"🔦","cost":25,"zone":3,"description":"Маяк снова освещает море и привлекает смотрителя.","reward_text":"NPC: Смотритель маяка"},
-	{"id":"secret_cave","name":"Тайная пещера","icon":"🪨","cost":30,"zone":4,"description":"Старый вход в скале открывает секретную часть острова.","reward_text":"Открывает зону: Тайная пещера + большой сундук"},
-	{"id":"old_village","name":"Старая деревня","icon":"🏚️","cost":35,"zone":5,"description":"Последний большой объект возвращает острову его поселение.","reward_text":"NPC: Торговец и дополнительная награда"}
+	{"id":"bridge","name":"Старый мост","icon":"🌉","cost":5,"zone":1,"description":"Разрушенный мост открывает путь в джунгли.","reward_text":"Открывает зону: Джунгли","map_pos":Vector2(170,245)},
+	{"id":"hut","name":"Пляжная хижина","icon":"🏠","cost":8,"zone":0,"description":"После ремонта здесь поселяется первый житель острова.","reward_text":"NPC: Лиза, смотрительница пляжа","map_pos":Vector2(250,500)},
+	{"id":"jungle_path","name":"Тропа в джунглях","icon":"🌴","cost":12,"zone":2,"description":"Расчищенная тропа ведёт к старой пристани.","reward_text":"Открывает зону: Старая пристань","map_pos":Vector2(385,210)},
+	{"id":"dock","name":"Старая пристань","icon":"⚓","cost":15,"zone":2,"description":"Восстановленная пристань возвращает на остров рыбака.","reward_text":"NPC: Рыбак Том","map_pos":Vector2(465,470)},
+	{"id":"pirate_cove","name":"Пиратская бухта","icon":"🏴","cost":20,"zone":3,"description":"За старым проходом скрыта заброшенная пиратская бухта.","reward_text":"Открывает зону: Пиратская бухта + сундук","map_pos":Vector2(640,250)},
+	{"id":"lighthouse","name":"Маяк","icon":"🔦","cost":25,"zone":3,"description":"Маяк снова освещает море и привлекает смотрителя.","reward_text":"NPC: Смотритель маяка","map_pos":Vector2(695,470)},
+	{"id":"secret_cave","name":"Тайная пещера","icon":"🪨","cost":30,"zone":4,"description":"Старый вход в скале открывает секретную часть острова.","reward_text":"Открывает зону: Тайная пещера + большой сундук","map_pos":Vector2(560,375)},
+	{"id":"old_village","name":"Старая деревня","icon":"🏚️","cost":35,"zone":5,"description":"Последний большой объект возвращает острову его поселение.","reward_text":"NPC: Торговец и дополнительная награда","map_pos":Vector2(380,385)}
 ]
 
 var zones: Array[Dictionary] = [
@@ -130,13 +130,25 @@ func _register_unlocks_for_object(item: Dictionary) -> void:
 	elif id == "old_village":
 		discovered_npcs["merchant"] = true
 
+func get_npc_definition(id: String) -> Dictionary:
+	var definitions := [
+		{"id":"lisa","name":"Лиза","role":"Смотрительница пляжа","icon":"👩","text":"Спасибо! Теперь здесь снова можно жить.","map_pos":Vector2(250,540)},
+		{"id":"tom","name":"Том","role":"Рыбак","icon":"🧑‍🌾","text":"Пристань снова работает. Море хранит много тайн.","map_pos":Vector2(465,510)},
+		{"id":"keeper","name":"Смотритель маяка","role":"Хранитель маяка","icon":"🧔","text":"Ночью я буду следить за огнями и кораблями.","map_pos":Vector2(695,510)},
+		{"id":"merchant","name":"Торговец","role":"Хозяин лавки","icon":"🧑‍💼","text":"Восстановите остров полностью — и я открою редкие товары.","map_pos":Vector2(380,425)}
+	]
+	for npc in definitions:
+		if str(npc["id"]) == id:
+			return npc
+	return {}
+
 func get_npc_list() -> Array:
 	var result: Array = []
 	var definitions := [
-		{"id":"lisa","name":"Лиза","role":"Смотрительница пляжа","icon":"👩","text":"Спасибо! Теперь здесь снова можно жить."},
-		{"id":"tom","name":"Том","role":"Рыбак","icon":"🧑‍🌾","text":"Пристань снова работает. Море хранит много тайн."},
-		{"id":"keeper","name":"Смотритель маяка","role":"Хранитель маяка","icon":"🧔","text":"Ночью я буду следить за огнями и кораблями."},
-		{"id":"merchant","name":"Торговец","role":"Хозяин лавки","icon":"🧑‍💼","text":"Восстановите остров полностью — и я открою редкие товары."}
+		{"id":"lisa","name":"Лиза","role":"Смотрительница пляжа","icon":"👩","text":"Спасибо! Теперь здесь снова можно жить.","map_pos":Vector2(250,540)},
+		{"id":"tom","name":"Том","role":"Рыбак","icon":"🧑‍🌾","text":"Пристань снова работает. Море хранит много тайн.","map_pos":Vector2(465,510)},
+		{"id":"keeper","name":"Смотритель маяка","role":"Хранитель маяка","icon":"🧔","text":"Ночью я буду следить за огнями и кораблями.","map_pos":Vector2(695,510)},
+		{"id":"merchant","name":"Торговец","role":"Хозяин лавки","icon":"🧑‍💼","text":"Восстановите остров полностью — и я открою редкие товары.","map_pos":Vector2(380,425)}
 	]
 	for npc in definitions:
 		if bool(discovered_npcs.get(str(npc["id"]), false)):
@@ -146,11 +158,11 @@ func get_npc_list() -> Array:
 func get_chests() -> Array:
 	var result: Array = []
 	if is_repaired("pirate_cove"):
-		result.append({"id":"pirate_chest","name":"Пиратский сундук","icon":"🎁","reward":{"stars":3,"booster":"shuffle","amount":2}})
+		result.append({"id":"pirate_chest","name":"Пиратский сундук","icon":"🎁","map_pos":Vector2(730,330),"reward":{"stars":3,"booster":"shuffle","amount":2}})
 	if is_repaired("secret_cave"):
-		result.append({"id":"cave_chest","name":"Сундук тайной пещеры","icon":"💎","reward":{"stars":5,"booster":"hammer","amount":2}})
+		result.append({"id":"cave_chest","name":"Сундук тайной пещеры","icon":"💎","map_pos":Vector2(500,330),"reward":{"stars":5,"booster":"hammer","amount":2}})
 	if is_repaired("old_village"):
-		result.append({"id":"village_chest","name":"Сундук деревни","icon":"🧰","reward":{"stars":7,"booster":"extra_moves","amount":3}})
+		result.append({"id":"village_chest","name":"Сундук деревни","icon":"🧰","map_pos":Vector2(330,330),"reward":{"stars":7,"booster":"extra_moves","amount":3}})
 	return result
 
 func is_chest_claimed(id: String) -> bool:
