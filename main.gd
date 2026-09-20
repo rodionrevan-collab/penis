@@ -875,7 +875,7 @@ func _show_island_npc_dialog(id:String)->void:
 	var quest_state:Dictionary=island_progression.call("get_quest_status",id,_completed_level_count(),island_progression.get_unlocked_zone_count(),_repaired_object_count())
 	var quest_text:="📜 ЗАДАНИЕ"
 	if not quest_state.is_empty():
-		quest_text="🏆 ЦЕПОЧКА ЗАВЕРШЕНА" if bool(qstate.get("chain_done",false)) else "📜 ЭТАП %d/%d"%[int(qstate.get("stage",1)),int(qstate.get("stage_count",1))]
+		quest_text="🏆 ЦЕПОЧКА ЗАВЕРШЕНА" if bool(quest_state.get("chain_done",false)) else "📜 ЭТАП %d/%d"%[int(quest_state.get("stage",1)),int(quest_state.get("stage_count",1))]
 	var quest:=Button.new(); quest.text=quest_text; quest.position=Vector2(85,235); quest.size=Vector2(220,44); quest.add_theme_stylebox_override("normal",_style(Color("#5c4a25"),Color("#d8b354"),12)); quest.pressed.connect(_show_npc_quest.bind(id)); box.add_child(quest)
 	var event_to_show:Dictionary={}
 	for event in island_progression.get_available_events():
