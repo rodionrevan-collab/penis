@@ -130,3 +130,24 @@ class IslandChestArt extends Node2D:
 		draw_rect(Rect2(-24,-22,48,12),body.lightened(.15))
 		draw_line(Vector2(0,-22),Vector2(0,17),Color("#e1bf62") if not claimed else Color("#879f8e"),4)
 		draw_circle(Vector2(0,-1),5,Color("#e8cb76") if not claimed else Color("#93a69a"))
+
+
+func create_backdrop(states:Array[bool])->Node2D:
+	var n:=IslandBackdrop.new()
+	n.setup(states)
+	return n
+
+func create_object(id:String,done:bool)->Node2D:
+	var n:=IslandObjectArt.new()
+	n.setup(id,done)
+	return n
+
+func create_npc(npc_role:String)->Node2D:
+	var n:=IslandNPCArt.new()
+	n.setup(npc_role)
+	return n
+
+func create_chest(done:bool)->Node2D:
+	var n:=IslandChestArt.new()
+	n.setup(done)
+	return n
