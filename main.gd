@@ -953,8 +953,13 @@ func _input(event:InputEvent)->void:
 				if abs(delta.x)>abs(delta.y): dir=Vector2i(1 if delta.x>0 else -1,0)
 				else: dir=Vector2i(0,1 if delta.y>0 else -1)
 				var to:=from+dir
-				if _valid_cell(from) and _valid_cell(to):
+				if active_booster=="hammer":
+					if from.x>=0 and from.y>=0 and from.x<SIZE and from.y<SIZE: _click(from)
+				elif _valid_cell(from) and _valid_cell(to):
 					_swipe_move(from,to)
+			elif active_booster=="hammer":
+				var bp:=_board_cell_from_position(touch.position)
+				if bp.x>=0 and bp.y>=0 and bp.x<SIZE and bp.y<SIZE: _click(bp)
 			elif _valid_cell(_board_cell_from_position(touch.position)):
 				_click(_board_cell_from_position(touch.position))
 		return
@@ -962,7 +967,9 @@ func _input(event:InputEvent)->void:
 		var m:=event as InputEventMouseButton
 		if not m.pressed or m.button_index!=MOUSE_BUTTON_LEFT: return
 		var p:=_board_cell_from_position(m.position)
-		if _valid_cell(p): _click(p)
+		if active_booster=="hammer":
+			if p.x>=0 and p.y>=0 and p.x<SIZE and p.y<SIZE: _click(p)
+		elif _valid_cell(p): _click(p)
 
 func _board_cell_from_position(pos:Vector2)->Vector2i:
 	var local:=pos-ORIGIN
