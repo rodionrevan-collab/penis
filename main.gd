@@ -786,9 +786,6 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 	while true:
 		combo+=1
 		var wave:Array[Vector2i]=matches.duplicate()
-		for cleared_cell in wave:
-			if not turn_cleared.has(cleared_cell):
-				turn_cleared.append(cleared_cell)
 		if special_combo:
 			wave.append_array(_special_combo_cells(a,b))
 			special_combo=false
@@ -803,6 +800,9 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 		for p in matched_specials:
 			wave.append_array(_special_effect_cells(p,p))
 		wave=_unique_cells(wave)
+		for cleared_cell in wave:
+			if not turn_cleared.has(cleared_cell):
+				turn_cleared.append(cleared_cell)
 		if wave.is_empty():
 			break
 		if not matches.is_empty():
@@ -870,6 +870,8 @@ func _destroy_matches(matches:Array[Vector2i])->void:
 	for p in matches:
 		var kind:int=board[p.y][p.x]
 		var sp:int=int(specials.get(p,0))
+		if sp==5 and is_instance_valid(mechanics):
+			mechanics.call("collect_map_piece_at", p)
 		if kind >= 0 and kind < destroyed_counts.size():
 			destroyed_counts[kind]+=1
 		_spawn_fx(_cell_pos(p),COLORS[kind])
