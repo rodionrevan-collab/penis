@@ -69,6 +69,11 @@ var mechanics: Node
 var island_progression: Node
 var island_stars := 0
 var island_art_factory: Node
+var mini_activity_id := ""
+var mini_sequence_progress := 0
+var mini_goods_collected := {}
+var mini_status_label: Label
+var mini_activity_buttons: Array[Button] = []
 
 class Gem extends Node2D:
 	var kind := 0
@@ -564,9 +569,15 @@ func _show_island_visual_map(focus_id:String="")->void:
 		for event in island_progression.get_island_events():
 			if island_progression.is_event_available(event):
 				_add_island_event_marker(island,event)
+		for item in island_progression.get_interactive_objects():
+			if island_progression.is_interactive_available(item):
+				_add_island_interactive_marker(island,item)
+		for activity in island_progression.get_mini_activities():
+			if island_progression.is_activity_available(activity):
+				_add_island_activity_marker(island,activity)
 
 	var legend:=Label.new()
-	legend.text="🟢 восстановлено   🟠 ремонт   🔵 NPC   🎁 сундук   ✨ событие"
+	legend.text="🟢 восстановлено   🟠 ремонт   🔵 NPC   🎁 сундук   ✨ событие   🔑 интерактив   🎮 активность"
 	legend.position=Vector2(45,770)
 	legend.size=Vector2(750,25)
 	legend.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
@@ -841,6 +852,185 @@ func _add_island_event_marker(parent:Control,event:Dictionary)->void:
 	l.add_theme_font_size_override("font_size",8)
 	l.add_theme_color_override("font_color",Color("#e2c8ff"))
 	parent.add_child(l)
+
+func _add_island_interactive_marker(parent:Control,item:Dictionary)->void:
+	var p:Vector2=item.get("map_pos",Vector2(100,100))
+	var b:=Button.new()
+	b.position=p-Vector2(29,29)
+	b.size=Vector2(58,58)
+	b.flat=true
+	b.tooltip_text=str(item["name"])
+	b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),30))
+	b.add_theme_stylebox_override("hover",_style(Color(.25,.55,.72,.18),Color("#83ddff"),30))
+	var icon:=Label.new()
+	icon.text=str(item["icon"])
+	icon.position=Vector2.ZERO
+	icon.size=Vector2(58,58)
+	icon.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	icon.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+	icon.add_theme_font_size_override("font_size",22)
+	icon.add_theme_color_override("font_color",Color("#83ddff"))
+	b.add_child(icon)
+	b.pressed.connect(_show_interactive_object.bind(str(item["id"])))
+	parent.add_child(b)
+	var l:=Label.new()
+	l.text=str(item["name"])
+	l.position=p+Vector2(-65,28)
+	l.size=Vector2(130,28)
+	l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	l.add_theme_font_size_override("font_size",8)
+	l.add_theme_color_override("font_color",Color("#bfeaff"))
+	parent.add_child(l)
+
+func _add_island_activity_marker(parent:Control,activity:Dictionary)->void:
+	var p:Vector2=activity.get("map_pos",Vector2(100,100))
+	var b:=Button.new()
+	b.position=p-Vector2(29,29)
+	b.size=Vector2(58,58)
+	b.flat=true
+	b.tooltip_text=str(activity["name"])
+	b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),30))
+	b.add_theme_stylebox_override("hover",_style(Color(.55,.34,.18,.18),Color("#ffc56e"),30))
+	var icon:=Label.new()
+	icon.text=str(activity["icon"])
+	icon.position=Vector2.ZERO
+	icon.size=Vector2(58,58)
+	icon.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	icon.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+	icon.add_theme_font_size_override("font_size",22)
+	icon.add_theme_color_override("font_color",Color("#ffc56e"))
+	b.add_child(icon)
+	b.pressed.connect(_show_mini_activity.bind(str(activity["id"])))
+	parent.add_child(b)
+	var l:=Label.new()
+	l.text=str(activity["name"])
+	l.position=p+Vector2(-65,28)
+	l.size=Vector2(130,28)
+	l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	l.add_theme_font_size_override("font_size",8)
+	l.add_theme_color_override("font_color",Color("#ffe0a8"))
+	parent.add_child(l)
+
+func _show_interactive_object(id:String)->void:
+	if not is_instance_valid(island_progression): return
+	var item:Dictionary=island_progression.call("get_interactive_object",id)
+	if item.is_empty(): return
+	var claimed:=bool(island_progression.call("is_interactive_available",item)) == false
+	if modal:
+		modal.queue_free()
+		modal=null
+	modal=Control.new()
+	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.02,0.07,0.11,.84); modal.add_child(shade)
+	var box:=Panel.new(); box.position=Vector2(155,235); box.size=Vector2(590,410); box.add_theme_stylebox_override("panel",_style(Color("#122a3b"),Color("#69c7e7"),22)); modal.add_child(box)
+	var title:=Label.new(); title.text="%s %s"%[str(item["icon"]),str(item["name"])]; title.position=Vector2(35,25); title.size=Vector2(520,40); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",23); title.add_theme_color_override("font_color",Color("#e6f8ff")); box.add_child(title)
+	var desc:=Label.new(); desc.text=str(item["description"]); desc.position=Vector2(45,85); desc.size=Vector2(500,90); desc.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; desc.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; desc.add_theme_font_size_override("font_size",14); desc.add_theme_color_override("font_color",Color("#c4dbe6")); box.add_child(desc)
+	var reward:Dictionary=item["reward"]
+	var reward_label:=Label.new(); reward_label.text="🎁 Награда: ⭐ +%d   •   %s +%d"%[int(reward.get("stars",0)),str(reward.get("booster","")),int(reward.get("amount",0))]; reward_label.position=Vector2(40,183); reward_label.size=Vector2(510,30); reward_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; reward_label.add_theme_font_size_override("font_size",13); reward_label.add_theme_color_override("font_color",Color("#ffd86a")); box.add_child(reward_label)
+	var claim:=Button.new(); claim.position=Vector2(85,242); claim.size=Vector2(420,48); claim.add_theme_font_size_override("font_size",14); box.add_child(claim)
+	if claimed:
+		claim.text="ОБЪЕКТ УЖЕ АКТИВИРОВАН"; claim.disabled=true
+	else:
+		claim.text="ИСПОЛЬЗОВАТЬ ПРЕДМЕТ"; claim.add_theme_stylebox_override("normal",_style(Color("#22586f"),Color("#75d7f2"),12)); claim.pressed.connect(_claim_interactive.bind(id))
+	var close:=Button.new(); close.text="← КАРТА ОСТРОВА"; close.position=Vector2(85,315); close.size=Vector2(420,38); close.add_theme_stylebox_override("normal",_style(Color("#18334a"),Color("#527a99"),10)); close.pressed.connect(_close_island_visual_map); box.add_child(close)
+	map_layer.add_child(modal)
+
+func _claim_interactive(id:String)->void:
+	if not is_instance_valid(island_progression): return
+	var result:Dictionary=island_progression.call("claim_interactive",id)
+	if not bool(result.get("ok",false)): return
+	_apply_island_reward(result["reward"])
+	_show_island_visual_map()
+
+func _show_mini_activity(id:String)->void:
+	if not is_instance_valid(island_progression): return
+	var activity:Dictionary=island_progression.call("get_mini_activity",id)
+	if activity.is_empty(): return
+	mini_activity_id=id
+	mini_sequence_progress=0
+	mini_goods_collected.clear()
+	mini_activity_buttons.clear()
+	if modal:
+		modal.queue_free()
+		modal=null
+	modal=Control.new()
+	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new(); shade.size=Vector2(900,900); shade.color=Color(0.06,0.035,0.015,.90); modal.add_child(shade)
+	var box:=Panel.new(); box.position=Vector2(105,160); box.size=Vector2(690,580); box.add_theme_stylebox_override("panel",_style(Color("#332514"),Color("#c78b47"),24)); modal.add_child(box)
+	var title:=Label.new(); title.text="%s %s"%[str(activity["icon"]),str(activity["name"])]; title.position=Vector2(40,25); title.size=Vector2(610,46); title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; title.add_theme_font_size_override("font_size",25); title.add_theme_color_override("font_color",Color("#ffe6bd")); box.add_child(title)
+	var desc:=Label.new(); desc.text=str(activity["description"]); desc.position=Vector2(55,82); desc.size=Vector2(580,62); desc.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; desc.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; desc.add_theme_font_size_override("font_size",14); desc.add_theme_color_override("font_color",Color("#e3cfb5")); box.add_child(desc)
+	mini_status_label=Label.new(); mini_status_label.text="Начинаем..."
+	mini_status_label.position=Vector2(50,150); mini_status_label.size=Vector2(590,38); mini_status_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; mini_status_label.add_theme_font_size_override("font_size",15); mini_status_label.add_theme_color_override("font_color",Color("#ffd36d")); box.add_child(mini_status_label)
+	var type:=str(activity.get("type",""))
+	if type=="sequence":
+		var labels:Array=activity.get("labels",[])
+		for i in range(labels.size()):
+			var b:=Button.new(); b.text=str(labels[i]); b.position=Vector2(80+i*130,235); b.size=Vector2(100,100); b.add_theme_font_size_override("font_size",28); b.add_theme_stylebox_override("normal",_style(Color("#4a351f"),Color("#c8904d"),16)); b.pressed.connect(_mini_sequence_press.bind(i)); box.add_child(b); mini_activity_buttons.append(b)
+		mini_status_label.text="Повтори последовательность"
+	elif type=="collect_three":
+		var labels:Array=activity.get("labels",[])
+		for i in range(labels.size()):
+			var b:=Button.new(); b.text=str(labels[i]); b.position=Vector2(80+i*190,235); b.size=Vector2(170,100); b.add_theme_font_size_override("font_size",13); b.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; b.add_theme_stylebox_override("normal",_style(Color("#4a351f"),Color("#c8904d"),16)); b.pressed.connect(_mini_collect_press.bind(i)); box.add_child(b); mini_activity_buttons.append(b)
+		mini_status_label.text="Подготовь все три товара"
+	var close:=Button.new(); close.text="← НАЗАД"; close.position=Vector2(140,470); close.size=Vector2(410,45); close.add_theme_stylebox_override("normal",_style(Color("#3a2d25"),Color("#826a54"),12)); close.pressed.connect(_close_mini_activity); box.add_child(close)
+	map_layer.add_child(modal)
+
+func _mini_sequence_press(index:int)->void:
+	if mini_activity_id.is_empty() or not is_instance_valid(mini_status_label): return
+	var activity:Dictionary=island_progression.call("get_mini_activity",mini_activity_id)
+	var sequence:Array=activity.get("sequence",[])
+	if mini_sequence_progress>=sequence.size(): return
+	if int(sequence[mini_sequence_progress])==index:
+		mini_sequence_progress+=1
+		if index<mini_activity_buttons.size():
+			mini_activity_buttons[index].disabled=true
+		if mini_sequence_progress>=sequence.size():
+			_finish_mini_activity()
+		else:
+			mini_status_label.text="Правильно! %d / %d"%[mini_sequence_progress,sequence.size()]
+	else:
+		mini_sequence_progress=0
+		for b in mini_activity_buttons:
+			b.disabled=false
+		mini_status_label.text="Ошибка! Последовательность сброшена."
+
+func _mini_collect_press(index:int)->void:
+	if mini_activity_id.is_empty(): return
+	if mini_goods_collected.has(index): return
+	mini_goods_collected[index]=true
+	if index<mini_activity_buttons.size():
+		mini_activity_buttons[index].disabled=true
+	var count:=mini_goods_collected.size()
+	if count>=3:
+		_finish_mini_activity()
+	elif is_instance_valid(mini_status_label):
+		mini_status_label.text="Товар принят: %d / 3"%count
+
+func _finish_mini_activity()->void:
+	if not is_instance_valid(island_progression): return
+	var id:=mini_activity_id
+	var result:Dictionary=island_progression.call("claim_mini_activity",id)
+	if not bool(result.get("ok",false)):
+		return
+	_apply_island_reward(result["reward"])
+	mini_activity_id=""
+	mini_sequence_progress=0
+	mini_goods_collected.clear()
+	mini_activity_buttons.clear()
+	_show_island_visual_map()
+
+func _close_mini_activity()->void:
+	mini_activity_id=""
+	mini_sequence_progress=0
+	mini_goods_collected.clear()
+	mini_activity_buttons.clear()
+	_close_island_visual_map()
 
 func _add_island_secret_marker(parent:Control,secret:Dictionary)->void:
 	var p:Vector2=secret.get("map_pos",Vector2(100,100))
