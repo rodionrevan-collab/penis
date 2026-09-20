@@ -573,9 +573,9 @@ func _show_island_visual_map(focus_id:String="")->void:
 		for item in island_progression.get_interactive_objects():
 			var item_zone_open:=bool(island_progression.call("is_zone_unlocked",int(item.get("zone",0))))
 			var item_available:=bool(island_progression.call("is_interactive_available",item))
-			var item_done:=not item_available and item_zone_open
-			if item_zone_open or item_done:
-				_add_island_interactive_marker(island,item,1 if item_available else 2)
+			var item_done:=bool(island_progression.call("is_interactive_completed",str(item["id"])))
+			if item_zone_open:
+				_add_island_interactive_marker(island,item,1 if item_available else (2 if item_done else 0))
 		for activity in island_progression.get_mini_activities():
 			var activity_zone_open:=bool(island_progression.call("is_zone_unlocked",int(activity.get("zone",0))))
 			var activity_available:=bool(island_progression.call("is_activity_available",activity))
@@ -922,7 +922,7 @@ func _show_interactive_object(id:String)->void:
 	if not is_instance_valid(island_progression): return
 	var item:Dictionary=island_progression.call("get_interactive_object",id)
 	if item.is_empty(): return
-	var claimed:=bool(island_progression.call("is_interactive_available",item)) == false
+	var claimed:=bool(island_progression.call("is_interactive_completed",id))
 	if modal:
 		modal.queue_free()
 		modal=null
