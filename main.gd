@@ -872,9 +872,9 @@ func _show_island_npc_dialog(id:String)->void:
 		if dialogue.is_empty():
 			dialogue=str(npc["text"])
 	var text_label:=Label.new(); text_label.text="«%s»"%dialogue; text_label.position=Vector2(45,145); text_label.size=Vector2(510,100); text_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; text_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER; text_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; text_label.add_theme_font_size_override("font_size",17); text_label.add_theme_color_override("font_color",Color("#c4d3e2")); box.add_child(text_label)
-	var qstate:Dictionary=island_progression.call("get_quest_status",id,_completed_level_count(),island_progression.get_unlocked_zone_count(),_repaired_object_count())
+	var quest_state:Dictionary=island_progression.call("get_quest_status",id,_completed_level_count(),island_progression.get_unlocked_zone_count(),_repaired_object_count())
 	var quest_text:="📜 ЗАДАНИЕ"
-	if not qstate.is_empty():
+	if not quest_state.is_empty():
 		quest_text="🏆 ЦЕПОЧКА ЗАВЕРШЕНА" if bool(qstate.get("chain_done",false)) else "📜 ЭТАП %d/%d"%[int(qstate.get("stage",1)),int(qstate.get("stage_count",1))]
 	var quest:=Button.new(); quest.text=quest_text; quest.position=Vector2(85,235); quest.size=Vector2(220,44); quest.add_theme_stylebox_override("normal",_style(Color("#5c4a25"),Color("#d8b354"),12)); quest.pressed.connect(_show_npc_quest.bind(id)); box.add_child(quest)
 	var event_to_show:Dictionary={}
