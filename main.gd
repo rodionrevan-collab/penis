@@ -2494,7 +2494,6 @@ func _spawn_special_flash(p:Vector2)->void:
 	rt.chain().tween_callback(ray.queue_free)
 
 func _spawn_fx(p:Vector2,c:Color)->void:
-	_spawn_match_burst(p,c)
 	for i in range(14):
 		var d:=Polygon2D.new()
 		d.polygon=PackedVector2Array([Vector2(-3,-3),Vector2(3,-3),Vector2(3,3),Vector2(-3,3)])
