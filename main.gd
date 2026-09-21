@@ -10,6 +10,17 @@ const TYPE_NAMES := ["красных кругов", "синих ромбов", "
 const ISLAND_ART = preload("res://island_art.gd")
 const MENU_BACKGROUND = preload("res://art/backgrounds/menu_background.svg")
 const GAME_BACKGROUND = preload("res://art/backgrounds/game_background.svg")
+const BOARD_FRAME_TEXTURE = preload("res://art/ui/board_frame.svg")
+const CELL_TEXTURE = preload("res://art/ui/cell.svg")
+const SELECTION_TEXTURE = preload("res://art/ui/selection.svg")
+const BOOSTER_TEXTURES = {
+	"🔨": preload("res://art/ui/booster_hammer.svg"),
+	"+3": preload("res://art/ui/booster_moves.svg"),
+	"↻": preload("res://art/ui/booster_shuffle.svg")
+}
+const MATCH_BURST_TEXTURE = preload("res://art/fx/match_burst.svg")
+const COMBO_RING_TEXTURE = preload("res://art/fx/combo_ring.svg")
+const SPECIAL_RAY_TEXTURE = preload("res://art/fx/special_ray.svg")
 const GEM_TEXTURES = [
 	preload("res://art/gems/gem_red.svg"),
 	preload("res://art/gems/gem_blue.svg"),
@@ -122,6 +133,7 @@ class Gem extends Node2D:
 		draw_circle(Vector2(2, 4), s + 4.0, Color(0, 0, 0, 0.28))
 		if chosen:
 			draw_circle(Vector2.ZERO, s + 9.0, Color(color.r, color.g, color.b, 0.20))
+			draw_texture_rect(SELECTION_TEXTURE,Rect2(-47,-47,94,94),false)
 		if special_type != 0 and special_texture != null:
 			draw_texture_rect(special_texture,Rect2(-s,-s,s*2,s*2),false)
 			return
@@ -213,20 +225,10 @@ class SpiderMark extends Node2D:
 
 class BoardFrame extends Node2D:
 	func _draw() -> void:
-		var o := StyleBoxFlat.new()
-		o.bg_color=Color("#0e172b")
-		o.border_color=Color("#344e7c")
-		o.set_border_width_all(2)
-		o.set_corner_radius_all(18)
-		draw_style_box(o,Rect2(-314,-314,628,628))
-		var c := StyleBoxFlat.new()
-		c.bg_color=Color("#0b1426")
-		c.border_color=Color("#172846")
-		c.set_border_width_all(1)
-		c.set_corner_radius_all(10)
+		draw_texture_rect(BOARD_FRAME_TEXTURE,Rect2(-340,-340,680,680),false)
 		for y in SIZE:
 			for x in SIZE:
-				draw_style_box(c,Rect2(-312+x*CELL+4,-312+y*CELL+4,CELL-8,CELL-8))
+				draw_texture_rect(CELL_TEXTURE,Rect2(-312+x*CELL+3,-312+y*CELL+3,CELL-6,CELL-6),false)
 
 func _ready() -> void:
 	rng.randomize()
@@ -1575,17 +1577,24 @@ func _build_game_layer()->void:
 	hammer_button=_booster_button("🔨",Vector2(138,840))
 	extra_moves_button=_booster_button("+3",Vector2(255,840))
 	shuffle_button=_booster_button("↻",Vector2(372,840))
-	var booster_note:=Label.new(); booster_note.position=Vector2(500,840); booster_note.size=Vector2(260,32); booster_note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; booster_note.add_theme_font_size_override("font_size",10); booster_note.add_theme_color_override("font_color",Color("#7389aa")); booster_note.text="БУСТЕРЫ"; game_layer.add_child(booster_note)
+	var booster_note:=Label.new(); booster_note.position=Vector2(500,840); booster_note.size=Vector2(260,32); booster_note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; booster_note.add_theme_font_size_override("font_size",10); booster_note.add_theme_color_override("font_color",Color("#88a7b9")); booster_note.text="БУСТЕРЫ • нажмите, затем выберите клетку"; game_layer.add_child(booster_note)
 	var frame:=BoardFrame.new(); frame.position=ORIGIN+Vector2(312,312); game_layer.add_child(frame)
 	root=Node2D.new(); game_layer.add_child(root); fx=Node2D.new(); game_layer.add_child(fx)
-	status=Label.new(); status.position=Vector2(138,832); status.size=Vector2(624,34); status.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; status.add_theme_font_size_override("font_size",14); status.add_theme_color_override("font_color",Color("#9baad0")); game_layer.add_child(status)
+	status=Label.new(); status.position=Vector2(138,803); status.size=Vector2(624,30); status.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; status.add_theme_font_size_override("font_size",14); status.add_theme_color_override("font_color",Color("#9baad0")); game_layer.add_child(status)
 
 func _booster_button(icon:String,p:Vector2)->Button:
 	var b:=Button.new()
 	b.position=p
-	b.size=Vector2(105,32)
+	b.size=Vector2(105,38)
+	b.icon=BOOSTER_TEXTURES.get(icon) as Texture2D
+	b.text="0"
+	b.alignment=HORIZONTAL_ALIGNMENT_CENTER
+	b.expand_icon=true
 	b.add_theme_font_size_override("font_size",11)
-	b.add_theme_stylebox_override("normal",_style(Color("#172842"),Color("#416189"),10))
+	b.add_theme_color_override("font_color",Color("#eef8ff"))
+	b.add_theme_stylebox_override("normal",_style(Color("#132a40"),Color("#4e7893"),12))
+	b.add_theme_stylebox_override("hover",_style(Color("#1c3b54"),Color("#75d9b5"),12))
+	b.add_theme_stylebox_override("pressed",_style(Color("#102536"),Color("#d7bc6b"),12))
 	b.pressed.connect(_booster_pressed.bind(icon))
 	game_layer.add_child(b)
 	return b
@@ -1976,6 +1985,7 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 			gained=int(round(float(gained)*float(island_progression.call("get_score_multiplier"))))
 		score+=gained
 		_play("combo" if combo>1 else "match")
+		_spawn_combo_fx(_cell_pos(wave[0])) if combo>1 else _spawn_match_burst(_cell_pos(wave[0]),COLORS[board[wave[0].y][wave[0].x]] if board[wave[0].y][wave[0].x]>=0 else Color.WHITE)
 		_popup(_cell_pos(wave[0]),gained)
 		await _destroy_matches(wave)
 		await _collapse_and_refill()
@@ -2040,7 +2050,10 @@ func _destroy_matches(matches:Array[Vector2i])->void:
 			mechanics.call("collect_map_piece_at", p)
 		if kind >= 0 and kind < destroyed_counts.size():
 			destroyed_counts[kind]+=1
-		_spawn_fx(_cell_pos(p),COLORS[kind])
+		var fx_color:Color=COLORS[kind] if kind>=0 and kind<COLORS.size() else Color.WHITE
+		_spawn_fx(_cell_pos(p),fx_color)
+		if _is_active_special_type(sp):
+			_spawn_special_flash(_cell_pos(p))
 		if sp==4 and rng.randf()<0.05:
 			preserved_rainbows[p]=true
 			if gems.has(p):
@@ -2435,11 +2448,48 @@ func _update_labels()->void:
 	goal_label.size=Vector2(624,54)
 	goal_label.add_theme_font_size_override("font_size",11)
 	if is_instance_valid(hammer_button):
-		hammer_button.text="🔨 %d"%int(booster_inventory["hammer"])
-		extra_moves_button.text="+3 %d"%int(booster_inventory["extra_moves"])
-		shuffle_button.text="↻ %d"%int(booster_inventory["shuffle"])
+		hammer_button.text="%d"%int(booster_inventory["hammer"])
+		extra_moves_button.text="+3  %d"%int(booster_inventory["extra_moves"])
+		shuffle_button.text="%d"%int(booster_inventory["shuffle"])
+
+func _spawn_match_burst(p:Vector2,c:Color)->void:
+	var burst:=Sprite2D.new()
+	burst.texture=MATCH_BURST_TEXTURE
+	burst.position=p
+	burst.scale=Vector2(.20,.20)
+	burst.modulate=Color(c.r,c.g,c.b,.92)
+	fx.add_child(burst)
+	var bt:=burst.create_tween().set_parallel(true)
+	bt.tween_property(burst,"scale",Vector2(.62,.62),.24).set_trans(Tween.TRANS_BACK)
+	bt.tween_property(burst,"modulate:a",0.0,.28)
+	bt.chain().tween_callback(burst.queue_free)
+
+func _spawn_combo_fx(p:Vector2)->void:
+	var ring:=Sprite2D.new()
+	ring.texture=COMBO_RING_TEXTURE
+	ring.position=p
+	ring.scale=Vector2(.12,.12)
+	fx.add_child(ring)
+	var rt:=ring.create_tween().set_parallel(true)
+	rt.tween_property(ring,"scale",Vector2(.68,.68),.34).set_trans(Tween.TRANS_BACK)
+	rt.tween_property(ring,"rotation",TAU*.5,.45)
+	rt.tween_property(ring,"modulate:a",0.0,.45)
+	rt.chain().tween_callback(ring.queue_free)
+
+func _spawn_special_flash(p:Vector2)->void:
+	var ray:=Sprite2D.new()
+	ray.texture=SPECIAL_RAY_TEXTURE
+	ray.position=p
+	ray.scale=Vector2(.15,.15)
+	fx.add_child(ray)
+	var rt:=ray.create_tween().set_parallel(true)
+	rt.tween_property(ray,"scale",Vector2(.72,.72),.20).set_trans(Tween.TRANS_BACK)
+	rt.tween_property(ray,"rotation",PI*.25,.26)
+	rt.tween_property(ray,"modulate:a",0.0,.24)
+	rt.chain().tween_callback(ray.queue_free)
 
 func _spawn_fx(p:Vector2,c:Color)->void:
+	_spawn_match_burst(p,c)
 	for i in range(14):
 		var d:=Polygon2D.new()
 		d.polygon=PackedVector2Array([Vector2(-3,-3),Vector2(3,-3),Vector2(3,3),Vector2(-3,3)])
