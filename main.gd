@@ -1989,6 +1989,10 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 		elif special_triggered:
 			wave.append_array(_special_effect_cells(a,b))
 			special_triggered=false
+		if special_a==6 and not wave.has(a):
+			wave.append(a)
+		if special_b==6 and not wave.has(b):
+			wave.append(b)
 		var propeller_result:Dictionary=_propeller_targets_from_wave(wave)
 		var propeller_targets:Array[Vector2i]=propeller_result["targets"]
 		var propeller_duration:float=float(propeller_result["duration"])
