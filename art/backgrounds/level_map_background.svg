@@ -1,20 +1,53 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900">
 <defs>
- <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#08283a"/><stop offset=".55" stop-color="#0a3440"/><stop offset="1" stop-color="#0d4a47"/></linearGradient>
- <radialGradient id="glow"><stop stop-color="#62d6b3" stop-opacity=".18"/><stop offset="1" stop-color="#62d6b3" stop-opacity="0"/></radialGradient>
- <pattern id="dots" width="52" height="52" patternUnits="userSpaceOnUse"><circle cx="6" cy="8" r="1.4" fill="#baf3dd" opacity=".10"/><circle cx="35" cy="29" r="1" fill="#baf3dd" opacity=".08"/></pattern>
+ <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#0b3445"/><stop offset=".58" stop-color="#0c4650"/><stop offset="1" stop-color="#0c5a54"/></linearGradient>
+ <linearGradient id="mount" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#123e44"/><stop offset="1" stop-color="#0a292f"/></linearGradient>
+ <radialGradient id="sun"><stop stop-color="#ffe8a4" stop-opacity=".32"/><stop offset="1" stop-color="#ffe8a4" stop-opacity="0"/></radialGradient>
+ <pattern id="grain" width="42" height="42" patternUnits="userSpaceOnUse"><circle cx="8" cy="8" r="1.3" fill="#d7fff0" opacity=".10"/><circle cx="31" cy="24" r="1" fill="#d7fff0" opacity=".08"/></pattern>
 </defs>
-<rect width="900" height="900" fill="url(#bg)"/>
-<rect width="900" height="900" fill="url(#dots)"/>
-<ellipse cx="160" cy="210" rx="220" ry="180" fill="url(#glow)"/>
-<ellipse cx="760" cy="500" rx="260" ry="210" fill="url(#glow)"/>
-<path d="M0 160 C140 105 230 145 350 115 S590 90 900 145" fill="none" stroke="#78d8c0" stroke-opacity=".08" stroke-width="6"/>
-<path d="M-30 760 C110 700 220 765 350 720 S620 675 930 735" fill="none" stroke="#72d8bf" stroke-opacity=".08" stroke-width="8"/>
-<path d="M70 95 q35-34 70 0 q-35-18-70 0Z" fill="#5fc6ab" opacity=".10"/>
-<path d="M745 160 q40-38 80 0 q-40-20-80 0Z" fill="#5fc6ab" opacity=".08"/>
-<g opacity=".10" fill="#0b1e2b">
- <path d="M40 530 l90-60 95 55 -25 75 -130 10Z"/>
- <path d="M660 780 l88-56 95 46 -16 80 -142 18Z"/>
- <path d="M670 250 l100-58 92 48 -18 72 -145 16Z"/>
+<rect width="900" height="900" fill="url(#sky)"/>
+<ellipse cx="710" cy="120" rx="190" ry="150" fill="url(#sun)"/>
+<path d="M0 360 Q120 250 240 340 T470 315 T700 335 T930 275 L930 900 L0 900Z" fill="url(#mount)"/>
+<path d="M0 475 Q170 395 315 470 T620 445 T930 500 L930 900 L0 900Z" fill="#0a353c" opacity=".82"/>
+<path d="M0 610 Q150 540 300 610 T610 590 T930 620 L930 900 L0 900Z" fill="#0b4243" opacity=".78"/>
+<path d="M0 710 Q170 650 330 705 T650 690 T930 730" fill="none" stroke="#53a998" stroke-opacity=".24" stroke-width="7"/>
+<rect width="900" height="900" fill="url(#grain)"/>
+
+<!-- left palm -->
+<g transform="translate(84 420)">
+ <path d="M0 260 Q18 130 11 18" fill="none" stroke="#183f37" stroke-width="17" stroke-linecap="round"/>
+ <path d="M10 25 Q-58 -12 -78 5 Q-42 25 -4 33 Q-55 35 -70 60 Q-29 61 9 43 Q-35 83 -30 108 Q7 76 20 47 Q31 82 63 92 Q56 55 22 34 Q73 54 82 38 Q58 15 21 25Z" fill="#1a594b"/>
+ <path d="M21 41 Q64 12 86 18 Q62 36 25 49Z" fill="#287662"/>
+</g>
+
+<!-- right palm -->
+<g transform="translate(760 510)">
+ <path d="M0 250 Q-12 132 10 20" fill="none" stroke="#183f37" stroke-width="18" stroke-linecap="round"/>
+ <path d="M9 28 Q-54 -8 -76 8 Q-45 29 -7 36 Q-51 37 -68 62 Q-29 65 9 47 Q-24 86 -16 111 Q16 77 19 46 Q37 79 67 87 Q62 53 28 35 Q71 53 80 37 Q54 14 19 27Z" fill="#1b5e50"/>
+</g>
+
+<!-- ancient ruins -->
+<g transform="translate(620 500)" opacity=".68">
+ <path d="M0 115 L10 25 L38 35 L45 115Z" fill="#1f5551"/>
+ <path d="M57 115 L65 13 L94 25 L98 115Z" fill="#245d57"/>
+ <path d="M-8 24 L50 8 L105 21 L101 38 L48 26 L1 42Z" fill="#2e6d63"/>
+ <path d="M16 80 L32 67 L47 80 L33 93Z" fill="#123b3d"/>
+</g>
+
+<!-- tiny ship -->
+<g transform="translate(185 590)" opacity=".55">
+ <path d="M0 50 Q66 78 132 50 L113 78 Q66 92 19 77Z" fill="#6b5541"/>
+ <path d="M59 50 V0" stroke="#826d4f" stroke-width="6"/>
+ <path d="M62 3 L105 27 L62 36Z" fill="#b58f5d"/>
+</g>
+
+<!-- birds -->
+<path d="M250 180 Q262 168 274 180 Q286 168 298 180" fill="none" stroke="#bfe6d5" stroke-opacity=".45" stroke-width="4" stroke-linecap="round"/>
+<path d="M610 245 Q620 235 630 245 Q640 235 650 245" fill="none" stroke="#bfe6d5" stroke-opacity=".34" stroke-width="3" stroke-linecap="round"/>
+
+<!-- foreground leaves -->
+<g opacity=".30">
+ <path d="M0 820 Q70 760 122 785 Q80 835 0 850Z" fill="#1a6955"/>
+ <path d="M900 815 Q832 752 780 786 Q820 838 900 850Z" fill="#1a6955"/>
 </g>
 </svg>
