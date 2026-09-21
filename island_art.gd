@@ -18,6 +18,19 @@ const NPC_TEXTURES = {
 	"Торговец": preload("res://art/npcs/merchant.svg")
 }
 const CHEST_TEXTURE = preload("res://art/objects/chest.svg")
+const INTERACTIVE_TEXTURES = {
+	"beach_watch_lantern": preload("res://art/objects/interactive_lantern.svg"),
+	"pirate_chart_table": preload("res://art/objects/interactive_chart.svg"),
+	"cave_ancient_lock": preload("res://art/objects/interactive_lock.svg"),
+	"village_trade_scale": preload("res://art/objects/interactive_scale.svg")
+}
+const ACTIVITY_TEXTURES = {
+	"🧭": preload("res://art/objects/activity_compass.svg"),
+	"🔮": preload("res://art/objects/activity_rune.svg"),
+	"🛒": preload("res://art/objects/activity_goods.svg"),
+	"📦": preload("res://art/objects/activity_trade.svg"),
+	"💠": preload("res://art/objects/activity_rune.svg")
+}
 
 # Временный процедурный слой теперь используется как интерактивный overlay
 # поверх основной 2D-картины острова.
@@ -199,96 +212,78 @@ class IslandInteractiveArt extends Node2D:
 	var object_id := ""
 	var state := 0 # 0 locked, 1 available, 2 completed
 	var pulse := 0.0
+	var sprite:Sprite2D
 	func setup(id:String,visual_state:int)->void:
 		object_id=id
 		state=visual_state
+		sprite=Sprite2D.new()
+		sprite.texture=INTERACTIVE_TEXTURES.get(id) as Texture2D
+		sprite.scale=Vector2.ONE*.58
+		sprite.position=Vector2(0,-2)
+		sprite.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
+		sprite.modulate=Color(0.50,0.58,0.60,0.78) if state==0 else (Color(0.78,1.0,0.94,1.0) if state==2 else Color.WHITE)
+		add_child(sprite)
 		if state==1:
 			pulse=1.0
 		queue_redraw()
 	func _process(delta:float)->void:
 		if state==1:
 			pulse=maxf(0.0,pulse-delta)
+			if pulse<=0.0: pulse=1.0
 			queue_redraw()
 	func _draw()->void:
-		var base:=Color("#4c5963")
-		var accent:=Color("#53606a")
+		draw_ellipse_shadow()
 		if state==1:
-			base=Color("#287da0")
-			accent=Color("#7de2ff")
+			draw_circle(Vector2.ZERO,34+pulse*2.0,Color(0.55,0.90,0.78,0.08))
 		elif state==2:
-			base=Color("#2f6658")
-			accent=Color("#75d6aa")
-		draw_circle(Vector2(2,4),24,Color(0,0,0,.24))
-		draw_circle(Vector2.ZERO,22,base)
-		draw_circle(Vector2.ZERO,14,Color(accent.r,accent.g,accent.b,.18))
-		match object_id:
-			"beach_watch_lantern":
-				draw_rect(Rect2(-7,-13,14,24),Color("#dbbd70") if state!=0 else Color("#65717a"))
-				draw_circle(Vector2(0,-17),9,accent)
-				if state==2: draw_circle(Vector2(0,-17),13,Color(1,.83,.38,.18))
-			"pirate_chart_table":
-				draw_rect(Rect2(-24,4,48,8),Color("#8a5d36"))
-				draw_rect(Rect2(-18,-13,36,17),Color("#dbc58f") if state!=0 else Color("#667079"))
-				draw_line(Vector2(-13,-6),Vector2(12,-6),accent,2)
-				draw_line(Vector2(-8,0),Vector2(9,0),accent,2)
-			"cave_ancient_lock":
-				draw_rect(Rect2(-16,-16,32,32),Color("#67717c") if state!=0 else Color("#49545d"))
-				draw_circle(Vector2.ZERO,8,Color("#1c2630"))
-				draw_arc(Vector2.ZERO,10,-PI/2,PI/2,10,accent,3)
-			"village_trade_scale":
-				draw_line(Vector2(0,-18),Vector2(0,15),accent,4)
-				draw_line(Vector2(-17,-12),Vector2(17,-12),accent,4)
-				draw_line(Vector2(-17,-12),Vector2(-24,4),accent,3)
-				draw_line(Vector2(17,-12),Vector2(24,4),accent,3)
-				draw_line(Vector2(-29,5),Vector2(-19,5),base.darkened(.2),4)
-				draw_line(Vector2(19,5),Vector2(29,5),base.darkened(.2),4)
-		if state==1 and pulse>0:
-			draw_circle(Vector2.ZERO,28+pulse*3,Color(0.45,0.85,1.0,.14))
-
-class IslandActivityArt extends Node2D:
-	var icon := ""
-	var state := 0 # 0 locked, 1 available, 2 completed
-	var secret := false
-	func setup(activity_icon:String,visual_state:int,is_secret:bool=false)->void:
-		icon=activity_icon
-		state=visual_state
-		secret=is_secret
-		queue_redraw()
-	func _draw()->void:
-		var outer:=Color("#4f4a43")
-		var inner:=Color("#7b7062")
-		if secret:
-			outer=Color("#5d4677")
-			inner=Color("#d19aff")
-			if state==2:
-				outer=Color("#365f5a")
-				inner=Color("#8ee0cb")
-		elif state==1:
-			outer=Color("#8b6435")
-			inner=Color("#ffd171")
-		elif state==2:
-			outer=Color("#3d6658")
-			inner=Color("#79d1a7")
-		draw_circle(Vector2(2,4),25,Color(0,0,0,.25))
-		draw_circle(Vector2.ZERO,23,outer)
-		draw_circle(Vector2.ZERO,17,inner)
-		if secret:
-			draw_dashed_line(Vector2(0,-28),Vector2(28,0),Color("#e7c5ff"),2.0,3.0)
-			draw_dashed_line(Vector2(28,0),Vector2(0,28),Color("#e7c5ff"),2.0,3.0)
-			draw_dashed_line(Vector2(0,28),Vector2(-28,0),Color("#e7c5ff"),2.0,3.0)
-			draw_dashed_line(Vector2(-28,0),Vector2(0,-28),Color("#e7c5ff"),2.0,3.0)
-		if state==0:
-			draw_line(Vector2(-9,-9),Vector2(9,9),Color("#49545d"),4)
-			draw_line(Vector2(9,-9),Vector2(-9,9),Color("#49545d"),4)
-		else:
-			draw_string(ThemeDB.fallback_font,Vector2(-13,8),icon,HORIZONTAL_ALIGNMENT_CENTER,26,18,Color("#16212b"))
-			if state==2:
-				draw_arc(Vector2.ZERO,25,-PI*0.8,PI*0.8,18,Color("#8ce0ba") if not secret else Color("#cfa6ff"),3)
+			draw_circle(Vector2.ZERO,32,Color(0.42,0.86,0.68,0.08))
+	func draw_ellipse_shadow()->void:
+		draw_set_transform(Vector2.ZERO,0.0,Vector2(1.0,0.45))
+		draw_circle(Vector2(0,10),28,Color(0,0,0,.22))
+		draw_set_transform(Vector2.ZERO,0.0,Vector2.ONE)
 
 func create_interactive(id:String,visual_state:int)->Node2D:
 	var n:=IslandInteractiveArt.new()
 	n.setup(id,visual_state)
 	return n
+
+func create_activity(icon:String,visual_state:int,is_secret:bool=false)->Node2D:
+	var n:=IslandActivityArt.new()
+	n.setup(icon,visual_state,is_secret)
+	return nclass IslandActivityArt extends Node2D:
+	var icon := ""
+	var state := 0 # 0 locked, 1 available, 2 completed
+	var secret := false
+	var sprite:Sprite2D
+	func setup(activity_icon:String,visual_state:int,is_secret:bool=false)->void:
+		icon=activity_icon
+		state=visual_state
+		secret=is_secret
+		sprite=Sprite2D.new()
+		sprite.texture=ACTIVITY_TEXTURES.get(activity_icon) as Texture2D
+		sprite.scale=Vector2.ONE*.57
+		sprite.position=Vector2(0,-1)
+		sprite.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
+		if secret:
+			sprite.modulate=Color("#d8b4ff") if state==1 else Color("#8ed8cb")
+		elif state==0:
+			sprite.modulate=Color(0.46,0.50,0.52,0.74)
+		elif state==1:
+			sprite.modulate=Color.WHITE
+		else:
+			sprite.modulate=Color(0.70,1.0,0.88,1.0)
+		add_child(sprite)
+		queue_redraw()
+	func _draw()->void:
+		draw_set_transform(Vector2.ZERO,0.0,Vector2(1.0,0.45))
+		draw_circle(Vector2(0,10),27,Color(0,0,0,.22))
+		draw_set_transform(Vector2.ZERO,0.0,Vector2.ONE)
+		var ring_color:=Color("#8ee0cb") if state==2 else (Color("#d9b0ff") if secret else Color("#ffd171"))
+		if state==1:
+			draw_circle(Vector2.ZERO,32,Color(ring_color.r,ring_color.g,ring_color.b,.10))
+			draw_arc(Vector2.ZERO,30,-PI/2.0,PI*1.5,18,Color(ring_color.r,ring_color.g,ring_color.b,.75),3.0)
+		elif state==2:
+			draw_arc(Vector2.ZERO,31,-PI*0.82,PI*0.82,18,ring_color,3.0)
 
 func create_activity(icon:String,visual_state:int,is_secret:bool=false)->Node2D:
 	var n:=IslandActivityArt.new()
