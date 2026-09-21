@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+<defs><radialGradient id="g"><stop stop-color="#fff9d6" stop-opacity=".95"/><stop offset=".25" stop-color="#ffd76b" stop-opacity=".85"/><stop offset="1" stop-color="#ffae45" stop-opacity="0"/></radialGradient></defs>
+<circle cx="90" cy="90" r="62" fill="url(#g)"/>
+<g stroke="#fff6cb" stroke-linecap="round">
+<path d="M90 10 V38 M90 142 V170 M10 90 H38 M142 90 H170" stroke-width="7"/>
+<path d="M29 29 L49 49 M131 131 L151 151 M151 29 L131 49 M49 131 L29 151" stroke-width="6"/>
+</g>
+<circle cx="90" cy="90" r="20" fill="#fff9e7" opacity=".95"/>
+</svg>
