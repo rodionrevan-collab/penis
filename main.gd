@@ -610,6 +610,7 @@ func _dev_start_level(spin:SpinBox)->void:
 	_show_level_intro(index)
 
 func _show_dev_panel()->void:
+	busy=true
 	if modal:
 		modal.queue_free()
 		modal=null
@@ -735,10 +736,16 @@ func _show_dev_panel()->void:
 		if modal:
 			modal.queue_free()
 			modal=null
+		busy=false
 	)
 	box.add_child(close)
 
 func _show_island2_map()->void:
+	busy=true
+	if menu_layer:
+		menu_layer.visible=false
+	if game_layer:
+		game_layer.visible=false
 	if modal:
 		modal.queue_free()
 		modal=null
