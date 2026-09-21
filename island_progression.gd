@@ -101,6 +101,42 @@ func _load() -> void:
 			claimed_secret_collection_reward = pair[1] == "true"
 	_migrate_legacy_quests()
 
+func dev_complete_all() -> void:
+	for item in objects:
+		repaired[str(item["id"])] = true
+	for npc_id in ["lisa","tom","keeper","merchant"]:
+		discovered_npcs[npc_id] = true
+		var chain:Array = _quest_chain_for(npc_id)
+		quest_chain_state[npc_id] = {
+			"stage":chain.size(),
+			"active":false,
+			"base_levels":0,
+			"base_zones":0,
+			"base_objects":0
+		}
+		for quest in chain:
+			claimed_quests[str(quest["id"])] = true
+	for item in get_collection_items():
+		var item_id:=str(item["id"])
+		if str(item.get("kind",""))=="unique":
+			unique_rewards[item_id]=true
+	for activity in get_mini_activities():
+		completed_activities[str(activity["id"])] = true
+	for activity in get_secret_mini_activities():
+		completed_secret_activities[str(activity["id"])] = true
+	for milestone in get_collection_milestones():
+		claimed_collection_rewards[str(milestone["id"])] = true
+	claimed_secret_collection_reward = true
+	for event in get_island_events():
+		completed_events[str(event["id"])] = true
+	for item in get_interactive_objects():
+		claimed_interactives[str(item["id"])] = true
+	for secret in get_secrets():
+		claimed_secrets[str(secret["id"])] = true
+	for chest in get_chests():
+		claimed_chests[str(chest["id"])] = true
+	save()
+
 func save() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if not file:
