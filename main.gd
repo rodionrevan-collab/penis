@@ -530,11 +530,16 @@ func _show_map()->void:
 	if modal:
 		modal.queue_free()
 		modal=null
-	if menu_layer: menu_layer.visible=false
-	if game_layer: game_layer.visible=false
-	if modal: modal.queue_free(); modal=null
-	if map_layer: map_layer.queue_free()
-	map_layer=Control.new(); map_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(map_layer)
+	if menu_layer:
+		menu_layer.visible=false
+	if game_layer:
+		game_layer.visible=false
+	if map_layer:
+		map_layer.queue_free()
+	map_layer=Control.new()
+	map_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(map_layer)
+
 	var bg:=TextureRect.new()
 	bg.texture=LEVEL_MAP_BACKGROUND
 	bg.position=Vector2.ZERO
@@ -543,71 +548,127 @@ func _show_map()->void:
 	bg.stretch_mode=TextureRect.STRETCH_SCALE
 	bg.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	map_layer.add_child(bg)
+
 	var bg_shade:=ColorRect.new()
 	bg_shade.size=Vector2(900,900)
-	bg_shade.color=Color(0.01,0.05,0.08,0.18)
+	bg_shade.color=Color(0.01,0.05,0.08,0.20)
 	bg_shade.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	map_layer.add_child(bg_shade)
-	var top:=ColorRect.new(); top.size=Vector2(900,130); top.color=Color("#0b2b40"); map_layer.add_child(top)
-	var title:=Label.new(); title.text="ЗАБЫТЫЕ ТРОПИКИ"; title.position=Vector2(48,20); title.add_theme_font_size_override("font_size",31); title.add_theme_color_override("font_color",Color("#f4f7ff")); map_layer.add_child(title)
-	var sub:=Label.new(); sub.text="Остров 1 • 100 уровней • каждые 10 уровней — новая механика"; sub.position=Vector2(50,62); sub.add_theme_font_size_override("font_size",13); sub.add_theme_color_override("font_color",Color("#8eafc9")); map_layer.add_child(sub)
-	var back:=Button.new(); back.text="← МИРЫ"; back.position=Vector2(735,28); back.size=Vector2(115,42); back.add_theme_stylebox_override("normal",_style(Color("#162f49"),Color("#42688b"))); back.pressed.connect(_show_menu); map_layer.add_child(back)
-	var legend:=Label.new(); legend.text="🟢 ПРОЙДЕН   🔵 ДОСТУПЕН   🔴 ЗАБЛОКИРОВАН"; legend.position=Vector2(50,96); legend.add_theme_font_size_override("font_size",11); legend.add_theme_color_override("font_color",Color("#b6c8dc")); map_layer.add_child(legend)
-	var star_bank:=Label.new(); star_bank.text="⭐ ЗВЁЗДЫ: %d"%island_stars; star_bank.position=Vector2(420,92); star_bank.size=Vector2(170,28); star_bank.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; star_bank.add_theme_font_size_override("font_size",14); star_bank.add_theme_color_override("font_color",Color("#ffd86a")); map_layer.add_child(star_bank)
-	var island_btn:=Button.new(); island_btn.text="🏝️ КАРТА ОСТРОВА"; island_btn.position=Vector2(600,88); island_btn.size=Vector2(250,36); island_btn.add_theme_font_size_override("font_size",11); island_btn.add_theme_stylebox_override("normal",_style(Color("#1c594f"),Color("#5fd9aa"))); island_btn.pressed.connect(_show_island_visual_map); map_layer.add_child(island_btn)
+
+	var top:=ColorRect.new()
+	top.size=Vector2(900,130)
+	top.color=Color("#0b2b40")
+	map_layer.add_child(top)
+
+	var title:=Label.new()
+	title.text="ЗАБЫТЫЕ ТРОПИКИ"
+	title.position=Vector2(48,20)
+	title.add_theme_font_size_override("font_size",31)
+	title.add_theme_color_override("font_color",Color("#f4f7ff"))
+	map_layer.add_child(title)
+
+	var sub:=Label.new()
+	sub.text="Остров 1 • 100 уровней • каждые 10 уровней — новая механика"
+	sub.position=Vector2(50,62)
+	sub.add_theme_font_size_override("font_size",13)
+	sub.add_theme_color_override("font_color",Color("#8eafc9"))
+	map_layer.add_child(sub)
+
+	var back:=Button.new()
+	back.text="← МИРЫ"
+	back.position=Vector2(735,28)
+	back.size=Vector2(115,42)
+	back.add_theme_stylebox_override("normal",_style(Color("#162f49"),Color("#42688b")))
+	back.pressed.connect(_show_menu)
+	map_layer.add_child(back)
+
+	var legend:=Label.new()
+	legend.text="🟢 ПРОЙДЕН   🔵 ДОСТУПЕН   🔴 ЗАБЛОКИРОВАН"
+	legend.position=Vector2(50,96)
+	legend.add_theme_font_size_override("font_size",11)
+	legend.add_theme_color_override("font_color",Color("#b6c8dc"))
+	map_layer.add_child(legend)
+
+	var star_bank:=Label.new()
+	star_bank.text="⭐ ЗВЁЗДЫ: %d"%island_stars
+	star_bank.position=Vector2(420,92)
+	star_bank.size=Vector2(170,28)
+	star_bank.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	star_bank.add_theme_font_size_override("font_size",14)
+	star_bank.add_theme_color_override("font_color",Color("#ffd86a"))
+	map_layer.add_child(star_bank)
+
+	var island_btn:=Button.new()
+	island_btn.text="🏝️ КАРТА ОСТРОВА"
+	island_btn.position=Vector2(600,88)
+	island_btn.size=Vector2(250,36)
+	island_btn.add_theme_font_size_override("font_size",11)
+	island_btn.add_theme_stylebox_override("normal",_style(Color("#1c594f"),Color("#5fd9aa")))
+	island_btn.pressed.connect(_show_island_visual_map)
+	map_layer.add_child(island_btn)
+
 	var scroll:=ScrollContainer.new()
 	scroll.position=Vector2(25,140)
 	scroll.size=Vector2(850,735)
 	scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
 	map_layer.add_child(scroll)
+
 	var world:=Control.new()
-	world.custom_minimum_size=Vector2(850,3700)
+	world.custom_minimum_size=Vector2(850,3900)
 	scroll.add_child(world)
 
-	var path_shadow:=Line2D.new()
-	path_shadow.width=28
-	path_shadow.default_color=Color(0.02,0.10,0.13,0.55)
-	world.add_child(path_shadow)
+	var road_shadow:=Line2D.new()
+	road_shadow.width=30
+	road_shadow.default_color=Color(0.02,0.09,0.12,0.62)
+	world.add_child(road_shadow)
 
-	var path:=Line2D.new()
-	path.width=20
-	path.default_color=Color("#3d7375")
-	world.add_child(path)
+	var road:=Line2D.new()
+	road.width=21
+	road.default_color=Color("#3e7373")
+	world.add_child(road)
 
-	var inner:=Line2D.new()
-	inner.width=5
-	inner.default_color=Color("#82c7b0")
-	world.add_child(inner)
+	var road_inner:=Line2D.new()
+	road_inner.width=5
+	road_inner.default_color=Color("#87cbb4")
+	world.add_child(road_inner)
 
 	var points:=PackedVector2Array()
-	var cols:=5
-	var row_gap:=175.0
-	var x_positions:=PackedFloat32Array([105.0,265.0,425.0,585.0,745.0])
-	for i in range(100):
-		var row:=int(i/cols)
-		var col:=i%cols
-		var x:=x_positions[col] if row%2==0 else x_positions[4-col]
-		var y:=65.0+row*row_gap
-		points.append(Vector2(x,y))
-	path_shadow.points=points
-	path.points=points
-	inner.points=points
+	var node_x:Array[float]=[105.0,265.0,425.0,585.0,745.0]
+	var row_gap:=205.0
+	var first_y:=72.0
+	for row in range(20):
+		var y:=first_y+row*row_gap
+		for col in range(5):
+			var x:=node_x[col]
+			points.append(Vector2(x,y))
+		if row<19:
+			points.append(Vector2(745.0,y+row_gap/2.0))
+			points.append(Vector2(105.0,y+row_gap/2.0))
+
+	road_shadow.points=points
+	road.points=points
+	road_inner.points=points
 
 	for i in range(100):
-		_create_level_node(world,i,points[i])
+		var row:=int(i/5)
+		var col:=i%5
+		var pos:=Vector2(node_x[col],first_y+row*row_gap)
+		_create_level_node(world,i,pos)
 
 	for chapter_index in range(10):
+		var chapter_y:=first_y+chapter_index*2*row_gap-42.0
 		var chapter:=Label.new()
 		chapter.text="ГЛАВА %d"%[chapter_index+1]
-		chapter.position=Vector2(24,chapter_index*2*row_gap+22)
-		chapter.size=Vector2(90,24)
+		chapter.position=Vector2(27,chapter_y)
+		chapter.size=Vector2(110,22)
+		chapter.horizontal_alignment=HORIZONTAL_ALIGNMENT_LEFT
 		chapter.add_theme_font_size_override("font_size",10)
 		chapter.add_theme_color_override("font_color",Color("#75d8b6"))
 		world.add_child(chapter)
 
 	var note:=Label.new()
 	note.text="ПРОЛИСТАЙ ВНИЗ • ПУТЕШЕСТВИЕ ПРОДОЛЖАЕТСЯ"
-	note.position=Vector2(190,3650)
+	note.position=Vector2(190,3830)
 	note.size=Vector2(470,35)
 	note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	note.add_theme_font_size_override("font_size",11)
@@ -1454,8 +1515,8 @@ func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 
 	var number_label:=Label.new()
 	number_label.text=str(index+1)
-	number_label.position=Vector2(5,13)
-	number_label.size=Vector2(52,30)
+	number_label.position=Vector2(5,14)
+	number_label.size=Vector2(52,28)
 	number_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	number_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
 	number_label.add_theme_font_size_override("font_size",14 if unlocked else 12)
@@ -1466,11 +1527,11 @@ func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 	if done:
 		var check:=Label.new()
 		check.text="✓"
-		check.position=Vector2(38,-4)
-		check.size=Vector2(24,24)
+		check.position=Vector2(39,-3)
+		check.size=Vector2(22,22)
 		check.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 		check.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
-		check.add_theme_font_size_override("font_size",15)
+		check.add_theme_font_size_override("font_size",14)
 		check.add_theme_color_override("font_color",Color("#eafff4"))
 		check.mouse_filter=Control.MOUSE_FILTER_IGNORE
 		b.add_child(check)
@@ -1478,24 +1539,14 @@ func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 	b.pressed.connect(_show_level_intro.bind(index))
 	parent.add_child(b)
 
-	var stars_label:=Label.new()
-	stars_label.text=_stars_string(level_stars[index]) if unlocked else "— — —"
-	stars_label.position=pos+Vector2(-31,35)
-	stars_label.size=Vector2(62,18)
-	stars_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-	stars_label.add_theme_font_size_override("font_size",9)
-	stars_label.add_theme_color_override("font_color",Color("#ffd86a") if unlocked else Color("#526879"))
-	parent.add_child(stars_label)
-
-	if index%10==0:
-		var chapter:=Label.new()
-		chapter.text="ГЛАВА %d"%(int(index/10)+1)
-		chapter.position=pos+Vector2(-70,-58)
-		chapter.size=Vector2(140,22)
-		chapter.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-		chapter.add_theme_font_size_override("font_size",10)
-		chapter.add_theme_color_override("font_color",Color("#78e0bc"))
-		parent.add_child(chapter)
+	var star_label:=Label.new()
+	star_label.text=_stars_string(level_stars[index]) if unlocked else "☆ ☆ ☆"
+	star_label.position=pos+Vector2(-31,35)
+	star_label.size=Vector2(62,18)
+	star_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	star_label.add_theme_font_size_override("font_size",9)
+	star_label.add_theme_color_override("font_color",Color("#ffd86a") if unlocked else Color("#506877"))
+	parent.add_child(star_label)
 
 func _stars_string(value:int)->String:
 	return ("★" if value>=1 else "☆")+" "+("★" if value>=2 else "☆")+" "+("★" if value>=3 else "☆")
