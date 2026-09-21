@@ -89,11 +89,15 @@ func _initialize() -> void:
 	assert(int(g.specials[propeller_pos]) == 6)
 	assert(g._is_active_special_type(6))
 
-	# Пропеллер выбирает допустимую цель.
+	# Пропеллер выбирает одну обычную цель и не активирует другую спецфишку.
 	g.spiders.clear()
-	var prop_target:Array[Vector2i] = g._special_effect_cells(propeller_pos,propeller_pos)
+	g.specials[Vector2i(6,6)] = 1
+	var prop_result:Dictionary = g._propeller_targets_from_wave([propeller_pos])
+	var prop_target:Array[Vector2i] = prop_result["targets"]
 	assert(prop_target.size() == 1)
 	assert(prop_target[0] != propeller_pos)
+	assert(prop_target[0] != Vector2i(6,6))
+	assert(float(prop_result["duration"]) > 0.0)
 
 	# Бомба очищает область 3x3.
 	g.board = board
