@@ -47,7 +47,12 @@
 ### Препятствия
 - art/obstacles/vine_blocker.svg
 - art/obstacles/coconut.svg
+- art/obstacles/tide_swirl.svg
+- art/obstacles/cursed_totem.svg
+- art/obstacles/monkey.svg
+- art/obstacles/fog.svg
 - art/obstacles/fire_stone.svg
+- art/obstacles/final_totem.svg
 - art/obstacles/spider.svg
 
 ### Остров
@@ -65,4 +70,5 @@
 1. Проверка нового ассет-пака в Godot 4.7.2 и корректировка масштабов после реального запуска.
 2. Полировка экрана результата, карты уровней и главного меню.
 3. Отдельный проход мелких UI/UX багов и выравнивания элементов.
-4. Затем — финальный аудит всех механик и прогрессии без изменения работающей логики.
+4. Проверка обменов/каскадов после визуального прохода.
+5. Затем — финальный аудит всех механик и прогрессии без изменения рабочей логики.
