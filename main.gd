@@ -34,7 +34,8 @@ const SPECIAL_TEXTURES = {
 	2: preload("res://art/specials/vertical.svg"),
 	3: preload("res://art/specials/bomb.svg"),
 	4: preload("res://art/specials/rainbow.svg"),
-	5: preload("res://art/specials/map_fragment.svg")
+	5: preload("res://art/specials/map_fragment.svg"),
+	6: preload("res://art/specials/propeller.svg")
 }
 const VINE_TEXTURE = preload("res://art/obstacles/vine_blocker.svg")
 const COCONUT_TEXTURE = preload("res://art/obstacles/coconut.svg")
@@ -1652,9 +1653,16 @@ func _generate_board()->void:
 				continue
 			var opts:Array[int]=[]
 			for t in range(TYPES):
-				if x>=2 and row[x-1]==t and row[x-2]==t: continue
-				if y>=2 and board[y-1][x]==t and board[y-2][x]==t: continue
+				if x>=2 and row[x-1]==t and row[x-2]==t:
+					continue
+				if y>=2 and board[y-1][x]==t and board[y-2][x]==t:
+					continue
+				if x>=1 and y>=1 and row[x-1]==t and board[y-1][x-1]==t and board[y-1][x]==t:
+					continue
 				opts.append(t)
+			if opts.is_empty():
+				for t in range(TYPES):
+					opts.append(t)
 			row.append(opts[rng.randi_range(0,opts.size()-1)])
 		board.append(row)
 
@@ -1673,7 +1681,7 @@ func _clear_visuals(preserve_mechanics:bool=false)->void:
 	if is_instance_valid(mechanics) and not preserve_mechanics:
 		mechanics.call("clear")
 func _is_active_special_type(sp:int)->bool:
-	return sp>=1 and sp<=4
+	return sp>=1 and sp<=4 or sp==6
 
 func _cell_is_blocked(p:Vector2i)->bool:
 	if blockers.has(p):
@@ -1994,7 +2002,8 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 		if wave.is_empty():
 			break
 		if not matches.is_empty():
-			_create_special_from_match(wave)
+			var preferred_special_cell:=b if wave.has(b) else a
+			_create_special_from_match(wave,preferred_special_cell)
 		var gained:int=wave.size()*10*combo
 		if is_instance_valid(island_progression):
 			gained=int(round(float(gained)*float(island_progression.call("get_score_multiplier"))))
@@ -2181,67 +2190,200 @@ func _match_groups()->Array:
 		while x<SIZE:
 			var k:int=int(board[y][x])
 			var e:=x+1
-			while e<SIZE and board[y][e]==k: e+=1
+			while e<SIZE and board[y][e]==k:
+				e+=1
 			if k>=0 and e-x>=3:
 				var cells:Array[Vector2i]=[]
-				for xx in range(x,e): cells.append(Vector2i(xx,y))
-				groups.append({"cells":cells,"horizontal":true})
+				for xx in range(x,e):
+					cells.append(Vector2i(xx,y))
+				groups.append({"cells":cells,"shape":"line","horizontal":true})
 			x=e
 	for x in range(SIZE):
 		var y:=0
 		while y<SIZE:
 			var k:int=int(board[y][x])
 			var e:=y+1
-			while e<SIZE and board[e][x]==k: e+=1
+			while e<SIZE and board[e][x]==k:
+				e+=1
 			if k>=0 and e-y>=3:
 				var cells:Array[Vector2i]=[]
-				for yy in range(y,e): cells.append(Vector2i(x,yy))
-				groups.append({"cells":cells,"horizontal":false})
+				for yy in range(y,e):
+					cells.append(Vector2i(x,yy))
+				groups.append({"cells":cells,"shape":"line","horizontal":false})
 			y=e
+	# Четыре одинаковых фишки квадратом 2x2 создают пропеллер.
+	for y in range(1,SIZE):
+		for x in range(1,SIZE):
+			var k:int=int(board[y][x])
+			if k<0:
+				continue
+			if board[y-1][x]==k and board[y][x-1]==k and board[y-1][x-1]==k:
+				groups.append({
+					"cells":[Vector2i(x-1,y-1),Vector2i(x,y-1),Vector2i(x-1,y),Vector2i(x,y)],
+					"shape":"square",
+					"horizontal":false
+				})
 	return groups
 
-func _create_special_from_match(cells:Array[Vector2i])->void:
+func _create_special_from_match(cells:Array[Vector2i],preferred:Vector2i=Vector2i(-1,-1))->void:
 	var groups:=_match_groups()
+	# 1) Квадрат 2x2 имеет приоритет — это пропеллер.
 	for group in groups:
+		if str(group.get("shape",""))!="square":
+			continue
+		var square_cells:Array=group["cells"]
+		var square_overlap:=0
+		for p in square_cells:
+			if cells.has(p):
+				square_overlap+=1
+		if square_overlap < 4:
+			continue
+		var square_chosen:Vector2i=preferred if preferred.x>=0 and square_cells.has(preferred) and cells.has(preferred) else square_cells[0]
+		if specials.has(square_chosen):
+			for candidate in square_cells:
+				if cells.has(candidate) and not specials.has(candidate):
+					square_chosen=candidate
+					break
+		if specials.has(square_chosen):
+			continue
+		specials[square_chosen]=6
+		if gems.has(square_chosen):
+			var square_gem:Gem=gems[square_chosen]
+			square_gem.special_type=6
+			square_gem.special_texture=SPECIAL_TEXTURES[6]
+			square_gem.scale=Vector2.ONE
+			square_gem.modulate.a=1.0
+			square_gem.queue_redraw()
+		cells.erase(square_chosen)
+		return
+
+	# 2) Пятёрка и больше в линию — радуга.
+	for group in groups:
+		if str(group.get("shape",""))!="line":
+			continue
 		var gc:Array=group["cells"]
+		if gc.size()<5:
+			continue
 		var overlap:=0
 		for p in gc:
-			if cells.has(p): overlap+=1
-		if overlap < 3: continue
-		var chosen:Vector2i=gc[mini(2,gc.size()-1)]
-		var found_free:=false
-		for candidate in gc:
-			if not specials.has(candidate) and cells.has(candidate):
-				chosen=candidate
-				found_free=true
-				break
-		if not found_free:
+			if cells.has(p):
+				overlap+=1
+		if overlap<5:
 			continue
-		var special_type:=0
-		if gc.size() >= 5:
-			special_type=4
-		elif gc.size() == 4:
-			special_type=1 if bool(group["horizontal"]) else 2
-		else:
-			for other in groups:
-				if other == group: continue
-				var oc:Array=other["cells"]
-				for p in gc:
-					if oc.has(p) and cells.has(p):
-						special_type=3
-						chosen=p
-						break
-				if special_type==3: break
-		if special_type != 0:
-			specials[chosen]=special_type
+		var chosen:Vector2i=preferred if preferred.x>=0 and gc.has(preferred) and cells.has(preferred) else gc[mini(2,gc.size()-1)]
+		if specials.has(chosen):
+			for candidate in gc:
+				if cells.has(candidate) and not specials.has(candidate):
+					chosen=candidate
+					break
+		if not specials.has(chosen):
+			specials[chosen]=4
 			if gems.has(chosen):
 				var g:Gem=gems[chosen]
-				g.special_type=special_type
+				g.special_type=4
+				g.special_texture=SPECIAL_TEXTURES[4]
 				g.scale=Vector2.ONE
 				g.modulate.a=1.0
 				g.queue_redraw()
 			cells.erase(chosen)
 			return
+
+	# 3) Пересечение горизонтали и вертикали — бомба.
+	for horizontal in groups:
+		if str(horizontal.get("shape",""))!="line" or not bool(horizontal.get("horizontal",false)):
+			continue
+		var hc:Array=horizontal["cells"]
+		if hc.size()<3:
+			continue
+		for vertical in groups:
+			if str(vertical.get("shape",""))!="line" or bool(vertical.get("horizontal",true)):
+				continue
+			var vc:Array=vertical["cells"]
+			if vc.size()<3:
+				continue
+			for p in hc:
+				if vc.has(p) and cells.has(p) and not specials.has(p):
+					specials[p]=3
+					if gems.has(p):
+						var bomb:Gem=gems[p]
+						bomb.special_type=3
+						bomb.special_texture=SPECIAL_TEXTURES[3]
+						bomb.scale=Vector2.ONE
+						bomb.modulate.a=1.0
+						bomb.queue_redraw()
+					cells.erase(p)
+					return
+
+	# 4) Четвёрка в линию — стрелка.
+	for group in groups:
+		if str(group.get("shape",""))!="line":
+			continue
+		var line_cells:Array=group["cells"]
+		if line_cells.size()!=4:
+			continue
+		var line_overlap:=0
+		for p in line_cells:
+			if cells.has(p):
+				line_overlap+=1
+		if line_overlap<4:
+			continue
+		var line_chosen:Vector2i=preferred if preferred.x>=0 and line_cells.has(preferred) and cells.has(preferred) else line_cells[2]
+		if specials.has(line_chosen):
+			for candidate in line_cells:
+				if cells.has(candidate) and not specials.has(candidate):
+					line_chosen=candidate
+					break
+		var special_type:int=1 if bool(group.get("horizontal",false)) else 2
+		specials[line_chosen]=special_type
+		if gems.has(line_chosen):
+			var line_gem:Gem=gems[line_chosen]
+			line_gem.special_type=special_type
+			line_gem.special_texture=SPECIAL_TEXTURES[special_type]
+			line_gem.scale=Vector2.ONE
+			line_gem.modulate.a=1.0
+			line_gem.queue_redraw()
+		cells.erase(line_chosen)
+		return
+
+	# 5) T/L из двух троек — бомба.
+	for horizontal in groups:
+		if str(horizontal.get("shape",""))!="line" or not bool(horizontal.get("horizontal",false)):
+			continue
+		var h_cells:Array=horizontal["cells"]
+		for vertical in groups:
+			if str(vertical.get("shape",""))!="line" or bool(vertical.get("horizontal",true)):
+				continue
+			var v_cells:Array=vertical["cells"]
+			for p in h_cells:
+				if v_cells.has(p) and cells.has(p) and not specials.has(p):
+					specials[p]=3
+					if gems.has(p):
+						var bomb:Gem=gems[p]
+						bomb.special_type=3
+						bomb.special_texture=SPECIAL_TEXTURES[3]
+						bomb.queue_redraw()
+					cells.erase(p)
+					return
+
+func _find_propeller_target(origin:Vector2i)->Vector2i:
+	var priority:Array[Vector2i]=[]
+	for p in spiders.keys():
+		var spider_pos:Vector2i=p
+		if spider_pos!=origin and _valid_cell(spider_pos):
+			priority.append(spider_pos)
+	if not priority.is_empty():
+		return priority[rng.randi_range(0,priority.size()-1)]
+	var candidates:Array[Vector2i]=[]
+	for y in range(SIZE):
+		for x in range(SIZE):
+			var p:=Vector2i(x,y)
+			if p==origin:
+				continue
+			if _valid_cell(p) and board[y][x]>=0:
+				candidates.append(p)
+	if candidates.is_empty():
+		return origin
+	return candidates[rng.randi_range(0,candidates.size()-1)]
 
 func _special_combo_cells(a:Vector2i,b:Vector2i)->Array[Vector2i]:
 	var result:Array[Vector2i]=[]
@@ -2301,10 +2443,15 @@ func _special_effect_cells(a:Vector2i,b:Vector2i)->Array[Vector2i]:
 			if target>=0 and target<TYPES:
 				for y in range(SIZE):
 					for x in range(SIZE):
-						if board[y][x]==target: result.append(Vector2i(x,y))
+						if board[y][x]==target:
+							result.append(Vector2i(x,y))
 			else:
 				for y in range(SIZE):
-					for x in range(SIZE): result.append(Vector2i(x,y))
+					for x in range(SIZE):
+						result.append(Vector2i(x,y))
+		elif sp==6:
+			var target_cell:=_find_propeller_target(p)
+			result.append(target_cell)
 	return _unique_cells(result)
 
 func _find_matches()->Array[Vector2i]:
@@ -2312,23 +2459,36 @@ func _find_matches()->Array[Vector2i]:
 	for y in range(SIZE):
 		var s:=0
 		while s<SIZE:
-			var k=board[y][s]
+			var k:int=int(board[y][s])
 			var e:=s+1
-			while e<SIZE and board[y][e]==k: e+=1
+			while e<SIZE and board[y][e]==k:
+				e+=1
 			if k>=0 and e-s>=3:
-				for x in range(s,e): found[Vector2i(x,y)]=true
+				for x in range(s,e):
+					found[Vector2i(x,y)]=true
 			s=e
 	for x in range(SIZE):
 		var s:=0
 		while s<SIZE:
-			var k=board[s][x]
+			var k:int=int(board[s][x])
 			var e:=s+1
-			while e<SIZE and board[e][x]==k: e+=1
+			while e<SIZE and board[e][x]==k:
+				e+=1
 			if k>=0 and e-s>=3:
-				for y in range(s,e): found[Vector2i(x,y)]=true
+				for y in range(s,e):
+					found[Vector2i(x,y)]=true
 			s=e
+	for y in range(1,SIZE):
+		for x in range(1,SIZE):
+			var k:int=int(board[y][x])
+			if k>=0 and board[y-1][x]==k and board[y][x-1]==k and board[y-1][x-1]==k:
+				found[Vector2i(x-1,y-1)]=true
+				found[Vector2i(x,y-1)]=true
+				found[Vector2i(x-1,y)]=true
+				found[Vector2i(x,y)]=true
 	var result:Array[Vector2i]=[]
-	for p in found.keys(): result.append(p)
+	for p in found.keys():
+		result.append(p)
 	return result
 
 func _show_hint()->void:
@@ -2381,16 +2541,35 @@ func _cell_has_match(b:Array,x:int,y:int)->bool:
 	if k<0: return false
 	var n:=1
 	var i:=x-1
-	while i>=0 and b[y][i]==k: n+=1; i-=1
+	while i>=0 and b[y][i]==k:
+		n+=1
+		i-=1
 	i=x+1
-	while i<SIZE and b[y][i]==k: n+=1; i+=1
-	if n>=3: return true
+	while i<SIZE and b[y][i]==k:
+		n+=1
+		i+=1
+	if n>=3:
+		return true
 	n=1
 	i=y-1
-	while i>=0 and b[i][x]==k: n+=1; i-=1
+	while i>=0 and b[i][x]==k:
+		n+=1
+		i-=1
 	i=y+1
-	while i<SIZE and b[i][x]==k: n+=1; i+=1
-	return n>=3
+	while i<SIZE and b[i][x]==k:
+		n+=1
+		i+=1
+	if n>=3:
+		return true
+	if x>0 and y>0 and b[y-1][x]==k and b[y][x-1]==k and b[y-1][x-1]==k:
+		return true
+	if x+1<SIZE and y>0 and b[y-1][x]==k and b[y][x+1]==k and b[y-1][x+1]==k:
+		return true
+	if x>0 and y+1<SIZE and b[y+1][x]==k and b[y][x-1]==k and b[y+1][x-1]==k:
+		return true
+	if x+1<SIZE and y+1<SIZE and b[y+1][x]==k and b[y][x+1]==k and b[y+1][x+1]==k:
+		return true
+	return false
 
 func _check_level_state()->void:
 	if is_instance_valid(mechanics) and bool(mechanics.call("is_failed")):
