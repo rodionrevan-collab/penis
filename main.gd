@@ -1985,7 +1985,12 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 			gained=int(round(float(gained)*float(island_progression.call("get_score_multiplier"))))
 		score+=gained
 		_play("combo" if combo>1 else "match")
-		_spawn_combo_fx(_cell_pos(wave[0])) if combo>1 else _spawn_match_burst(_cell_pos(wave[0]),COLORS[board[wave[0].y][wave[0].x]] if board[wave[0].y][wave[0].x]>=0 else Color.WHITE)
+		if combo>1:
+			_spawn_combo_fx(_cell_pos(wave[0]))
+		else:
+			var burst_kind:int=board[wave[0].y][wave[0].x]
+			var burst_color:Color=COLORS[burst_kind] if burst_kind>=0 and burst_kind<COLORS.size() else Color.WHITE
+			_spawn_match_burst(_cell_pos(wave[0]),burst_color)
 		_popup(_cell_pos(wave[0]),gained)
 		await _destroy_matches(wave)
 		await _collapse_and_refill()
