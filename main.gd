@@ -638,12 +638,12 @@ func _show_map()->void:
 	var first_y:=72.0
 	for row in range(20):
 		var y:=first_y+row*row_gap
-		for col in range(5):
-			var x:=node_x[col]
-			points.append(Vector2(x,y))
+		for step in range(5):
+			var col:=step if row%2==0 else 4-step
+			points.append(Vector2(node_x[col],y))
 		if row<19:
-			points.append(Vector2(745.0,y+row_gap/2.0))
-			points.append(Vector2(105.0,y+row_gap/2.0))
+			var edge_x:=745.0 if row%2==0 else 105.0
+			points.append(Vector2(edge_x,y+row_gap))
 
 	road_shadow.points=points
 	road.points=points
@@ -651,7 +651,8 @@ func _show_map()->void:
 
 	for i in range(100):
 		var row:=int(i/5)
-		var col:=i%5
+		var step:=i%5
+		var col:=step if row%2==0 else 4-step
 		var pos:=Vector2(node_x[col],first_y+row*row_gap)
 		_create_level_node(world,i,pos)
 
