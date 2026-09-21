@@ -314,8 +314,31 @@ func _initialize() -> void:
 	assert(g._consume_booster("extra_moves") == true)
 	assert(int(g.booster_inventory["extra_moves"]) == 0)
 
+	# Island 2 data pack содержит 100 уровней и 10 новых механик.
+	var island2_script = load("res://island2_data.gd")
+	var island2_levels:Array = island2_script.build_levels()
+	assert(island2_levels.size() == 100)
+	assert(island2_script.get_mechanics().size() == 10)
+	assert(int(island2_levels[25]["score"]) == 2250)
+
+	# Пропеллер считается активной спецфишкой в поиске доступного хода.
+	g.board = dead_board.duplicate(true)
+	g.specials.clear()
+	g.specials[Vector2i(3,3)] = 6
+	var polish_propeller = load("res://polish.gd").new()
+	polish_propeller.game = g
+	assert(polish_propeller._has_legal_move(g.board) == true)
+	polish_propeller.free()
+
+
 	# Мета-прогресс острова: звёзды -> ремонт -> зоны -> NPC -> сундуки.
 	var progression = load("res://island_progression.gd").new()
+	progression.reset_for_tests()
+	progression.dev_complete_all()
+	assert(progression.get_unlocked_zone_count() == 6)
+	assert(progression.get_collection_count() == 8)
+	assert(progression.get_secret_collection_count() == 3)
+	assert(progression.get_unique_reward_count() == 4)
 	progression.reset_for_tests()
 	assert(progression.is_zone_unlocked(0))
 	assert(progression.is_zone_unlocked(1) == false)
