@@ -599,7 +599,7 @@ func _show_map()->void:
 	for chapter_index in range(10):
 		var chapter:=Label.new()
 		chapter.text="ГЛАВА %d"%[chapter_index+1]
-		chapter.position=Vector2(24,chapter_index*4*row_gap+22)
+		chapter.position=Vector2(24,chapter_index*2*row_gap+22)
 		chapter.size=Vector2(90,24)
 		chapter.add_theme_font_size_override("font_size",10)
 		chapter.add_theme_color_override("font_color",Color("#75d8b6"))
