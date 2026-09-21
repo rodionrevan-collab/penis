@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+<circle cx="48" cy="50" r="42" fill="#000" opacity=".24"/><circle cx="48" cy="47" r="37" fill="#183149" stroke="#64d8ae" stroke-width="3"/>
+<path d="M25 54 Q28 31 49 28 Q64 29 70 43" fill="none" stroke="#ffd46c" stroke-width="8" stroke-linecap="round"/>
+<path d="M67 31 L72 43 L58 40" fill="#ffd46c"/>
+<text x="48" y="69" text-anchor="middle" font-size="25" font-family="sans-serif" font-weight="700" fill="#f7fbff">+3</text>
+</svg>
