@@ -10,6 +10,7 @@ const TYPE_NAMES := ["красных кругов", "синих ромбов", "
 const ISLAND_ART = preload("res://island_art.gd")
 const MENU_BACKGROUND = preload("res://art/backgrounds/menu_background.svg")
 const GAME_BACKGROUND = preload("res://art/backgrounds/game_background.svg")
+const LEVEL_MAP_BACKGROUND = preload("res://art/backgrounds/level_map_background.svg")
 const BOARD_FRAME_TEXTURE = preload("res://art/ui/board_frame.svg")
 const CELL_TEXTURE = preload("res://art/ui/cell.svg")
 const SELECTION_TEXTURE = preload("res://art/ui/selection.svg")
@@ -260,6 +261,8 @@ func _build_levels() -> void:
 		var tier := int(i / 10)
 		var moves := 18 + tier * 2
 		var target_score := 800 + i * 75
+		if i == 25:
+			target_score = 2100
 		var target_count := 10 + int(i * 0.28)
 		var target_type := i % TYPES
 		if i >= 90:
@@ -532,23 +535,84 @@ func _show_map()->void:
 	if modal: modal.queue_free(); modal=null
 	if map_layer: map_layer.queue_free()
 	map_layer=Control.new(); map_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(map_layer)
-	var bg:=ColorRect.new(); bg.size=Vector2(900,900); bg.color=Color("#062033"); map_layer.add_child(bg)
-	var top:=ColorRect.new(); top.size=Vector2(900,130); top.color=Color("#0d2c43"); map_layer.add_child(top)
+	var bg:=TextureRect.new()
+	bg.texture=LEVEL_MAP_BACKGROUND
+	bg.position=Vector2.ZERO
+	bg.size=Vector2(900,900)
+	bg.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode=TextureRect.STRETCH_SCALE
+	bg.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	map_layer.add_child(bg)
+	var bg_shade:=ColorRect.new()
+	bg_shade.size=Vector2(900,900)
+	bg_shade.color=Color(0.01,0.05,0.08,0.18)
+	bg_shade.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	map_layer.add_child(bg_shade)
+	var top:=ColorRect.new(); top.size=Vector2(900,130); top.color=Color("#0b2b40"); map_layer.add_child(top)
 	var title:=Label.new(); title.text="ЗАБЫТЫЕ ТРОПИКИ"; title.position=Vector2(48,20); title.add_theme_font_size_override("font_size",31); title.add_theme_color_override("font_color",Color("#f4f7ff")); map_layer.add_child(title)
 	var sub:=Label.new(); sub.text="Остров 1 • 100 уровней • каждые 10 уровней — новая механика"; sub.position=Vector2(50,62); sub.add_theme_font_size_override("font_size",13); sub.add_theme_color_override("font_color",Color("#8eafc9")); map_layer.add_child(sub)
 	var back:=Button.new(); back.text="← МИРЫ"; back.position=Vector2(735,28); back.size=Vector2(115,42); back.add_theme_stylebox_override("normal",_style(Color("#162f49"),Color("#42688b"))); back.pressed.connect(_show_menu); map_layer.add_child(back)
 	var legend:=Label.new(); legend.text="🟢 ПРОЙДЕН   🔵 ДОСТУПЕН   🔴 ЗАБЛОКИРОВАН"; legend.position=Vector2(50,96); legend.add_theme_font_size_override("font_size",11); legend.add_theme_color_override("font_color",Color("#b6c8dc")); map_layer.add_child(legend)
 	var star_bank:=Label.new(); star_bank.text="⭐ ЗВЁЗДЫ: %d"%island_stars; star_bank.position=Vector2(420,92); star_bank.size=Vector2(170,28); star_bank.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; star_bank.add_theme_font_size_override("font_size",14); star_bank.add_theme_color_override("font_color",Color("#ffd86a")); map_layer.add_child(star_bank)
 	var island_btn:=Button.new(); island_btn.text="🏝️ КАРТА ОСТРОВА"; island_btn.position=Vector2(600,88); island_btn.size=Vector2(250,36); island_btn.add_theme_font_size_override("font_size",11); island_btn.add_theme_stylebox_override("normal",_style(Color("#1c594f"),Color("#5fd9aa"))); island_btn.pressed.connect(_show_island_visual_map); map_layer.add_child(island_btn)
-	var scroll:=ScrollContainer.new(); scroll.position=Vector2(25,140); scroll.size=Vector2(850,735); scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; map_layer.add_child(scroll)
-	var world:=Control.new(); world.custom_minimum_size=Vector2(850,2050); scroll.add_child(world)
-	var path:=Line2D.new(); path.width=18; path.default_color=Color("#315e70"); world.add_child(path)
+	var scroll:=ScrollContainer.new()
+	scroll.position=Vector2(25,140)
+	scroll.size=Vector2(850,735)
+	scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+	map_layer.add_child(scroll)
+	var world:=Control.new()
+	world.custom_minimum_size=Vector2(850,3700)
+	scroll.add_child(world)
+
+	var path_shadow:=Line2D.new()
+	path_shadow.width=28
+	path_shadow.default_color=Color(0.02,0.10,0.13,0.55)
+	world.add_child(path_shadow)
+
+	var path:=Line2D.new()
+	path.width=20
+	path.default_color=Color("#3d7375")
+	world.add_child(path)
+
+	var inner:=Line2D.new()
+	inner.width=5
+	inner.default_color=Color("#82c7b0")
+	world.add_child(inner)
+
 	var points:=PackedVector2Array()
-	for i in range(100): points.append(Vector2(85 + (i%10)*76 if int(i/10)%2==0 else 765-(i%10)*76, 80+int(i/10)*195))
+	var cols:=5
+	var row_gap:=175.0
+	var x_positions:=PackedFloat32Array([105.0,265.0,425.0,585.0,745.0])
+	for i in range(100):
+		var row:=int(i/cols)
+		var col:=i%cols
+		var x:=x_positions[col] if row%2==0 else x_positions[4-col]
+		var y:=65.0+row*row_gap
+		points.append(Vector2(x,y))
+	path_shadow.points=points
 	path.points=points
-	var inner:=Line2D.new(); inner.width=5; inner.default_color=Color("#5b8991"); inner.points=points; world.add_child(inner)
-	for i in range(100): _create_level_node(world,i,points[i])
-	var note:=Label.new(); note.text="ПРОЛИСТАЙ ВНИЗ • ПУТЕШЕСТВИЕ ПРОДОЛЖАЕТСЯ"; note.position=Vector2(190,1990); note.size=Vector2(470,35); note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; note.add_theme_font_size_override("font_size",12); note.add_theme_color_override("font_color",Color("#6f94a5")); world.add_child(note)
+	inner.points=points
+
+	for i in range(100):
+		_create_level_node(world,i,points[i])
+
+	for chapter_index in range(10):
+		var chapter:=Label.new()
+		chapter.text="ГЛАВА %d"%[chapter_index+1]
+		chapter.position=Vector2(24,chapter_index*4*row_gap+22)
+		chapter.size=Vector2(90,24)
+		chapter.add_theme_font_size_override("font_size",10)
+		chapter.add_theme_color_override("font_color",Color("#75d8b6"))
+		world.add_child(chapter)
+
+	var note:=Label.new()
+	note.text="ПРОЛИСТАЙ ВНИЗ • ПУТЕШЕСТВИЕ ПРОДОЛЖАЕТСЯ"
+	note.position=Vector2(190,3650)
+	note.size=Vector2(470,35)
+	note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	note.add_theme_font_size_override("font_size",11)
+	note.add_theme_color_override("font_color",Color("#78a5aa"))
+	world.add_child(note)
 	busy=false
 
 func _island_zone_name(zone_id:int)->String:
@@ -1369,55 +1433,68 @@ func _claim_island_chest(id:String)->void:
 func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 	var unlocked:=index<=unlocked_level
 	var done:=completed[index]
-	var c:=Color("#39cf78") if done else (Color("#328dff") if unlocked else Color("#c94253"))
 	var b:=Button.new()
-	b.position=pos-Vector2(28,28)
-	b.size=Vector2(56,56)
+	b.position=pos-Vector2(31,31)
+	b.size=Vector2(62,62)
 	b.text=""
 	b.disabled=not unlocked
 	b.tooltip_text="Уровень %d"%(index+1)
-	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),28))
-	b.add_theme_stylebox_override("hover",_style(Color(1,1,1,.08),Color("#dffdf4"),28))
-	b.add_theme_stylebox_override("pressed",_style(Color(1,1,1,.12),Color.WHITE,28))
+	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),31))
+	b.add_theme_stylebox_override("hover",_style(Color(1,1,1,.08),Color("#dffdf4"),31))
+	b.add_theme_stylebox_override("pressed",_style(Color(1,1,1,.12),Color.WHITE,31))
+
 	var node_art:=TextureRect.new()
 	node_art.texture=LEVEL_OPEN_TEXTURE if unlocked else LEVEL_LOCKED_TEXTURE
 	node_art.position=Vector2.ZERO
-	node_art.size=Vector2(56,56)
+	node_art.size=Vector2(62,62)
 	node_art.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
 	node_art.stretch_mode=TextureRect.STRETCH_SCALE
 	node_art.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	b.add_child(node_art)
+
 	var number_label:=Label.new()
-	number_label.text="✓" if done else str(index+1)
-	number_label.position=Vector2(5,7)
-	number_label.size=Vector2(46,42)
+	number_label.text=str(index+1)
+	number_label.position=Vector2(5,13)
+	number_label.size=Vector2(52,30)
 	number_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	number_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
-	number_label.add_theme_font_size_override("font_size",16 if done else 13)
-	number_label.add_theme_color_override("font_color",Color("#f7fff9") if unlocked else Color("#91a0ad"))
+	number_label.add_theme_font_size_override("font_size",14 if unlocked else 12)
+	number_label.add_theme_color_override("font_color",Color("#f7fff9") if unlocked else Color("#8797a5"))
 	number_label.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	b.add_child(number_label)
+
+	if done:
+		var check:=Label.new()
+		check.text="✓"
+		check.position=Vector2(38,-4)
+		check.size=Vector2(24,24)
+		check.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+		check.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+		check.add_theme_font_size_override("font_size",15)
+		check.add_theme_color_override("font_color",Color("#eafff4"))
+		check.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		b.add_child(check)
+
 	b.pressed.connect(_show_level_intro.bind(index))
 	parent.add_child(b)
-	if unlocked:
-		var star_y:=pos.y+52
-		for s in range(3):
-			var star:=TextureRect.new()
-			star.texture=STAR_FILLED_TEXTURE if s<int(level_stars[index]) else STAR_EMPTY_TEXTURE
-			star.position=Vector2(pos.x-24+s*16,star_y)
-			star.size=Vector2(16,16)
-			star.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
-			star.stretch_mode=TextureRect.STRETCH_SCALE
-			star.mouse_filter=Control.MOUSE_FILTER_IGNORE
-			parent.add_child(star)
+
+	var stars_label:=Label.new()
+	stars_label.text=_stars_string(level_stars[index]) if unlocked else "— — —"
+	stars_label.position=pos+Vector2(-31,35)
+	stars_label.size=Vector2(62,18)
+	stars_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	stars_label.add_theme_font_size_override("font_size",9)
+	stars_label.add_theme_color_override("font_color",Color("#ffd86a") if unlocked else Color("#526879"))
+	parent.add_child(stars_label)
+
 	if index%10==0:
 		var chapter:=Label.new()
 		chapter.text="ГЛАВА %d"%(int(index/10)+1)
-		chapter.position=pos+Vector2(-65,-55)
-		chapter.size=Vector2(130,24)
+		chapter.position=pos+Vector2(-70,-58)
+		chapter.size=Vector2(140,22)
 		chapter.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-		chapter.add_theme_font_size_override("font_size",11)
-		chapter.add_theme_color_override("font_color",c.lightened(.25))
+		chapter.add_theme_font_size_override("font_size",10)
+		chapter.add_theme_color_override("font_color",Color("#78e0bc"))
 		parent.add_child(chapter)
 
 func _stars_string(value:int)->String:
