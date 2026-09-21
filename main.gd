@@ -8,6 +8,23 @@ const COLORS := [Color("#ff5b67"), Color("#4d9cff"), Color("#43d98b"), Color("#f
 const SYMBOLS := ["●", "◆", "■", "★", "⬟", "▲"]
 const TYPE_NAMES := ["красных кругов", "синих ромбов", "зелёных квадратов", "звёзд", "фиолетовых кристаллов", "оранжевых треугольников"]
 const ISLAND_ART = preload("res://island_art.gd")
+const MENU_BACKGROUND = preload("res://art/backgrounds/menu_background.svg")
+const GAME_BACKGROUND = preload("res://art/backgrounds/game_background.svg")
+const GEM_TEXTURES = [
+	preload("res://art/gems/gem_red.svg"),
+	preload("res://art/gems/gem_blue.svg"),
+	preload("res://art/gems/gem_green.svg"),
+	preload("res://art/gems/gem_yellow.svg"),
+	preload("res://art/gems/gem_purple.svg"),
+	preload("res://art/gems/gem_orange.svg")
+]
+const SPECIAL_TEXTURES = {
+	1: preload("res://art/specials/horizontal.svg"),
+	2: preload("res://art/specials/vertical.svg"),
+	3: preload("res://art/specials/bomb.svg"),
+	4: preload("res://art/specials/rainbow.svg"),
+	5: preload("res://art/specials/map_fragment.svg")
+}
 const MECHANICS := [
 	"Фрукты • базовая механика",
 	"Лианы • блокираторы",
@@ -81,11 +98,15 @@ class Gem extends Node2D:
 	var symbol := "●"
 	var chosen := false
 	var special_type := 0
-	func setup(k: int, c: Color, s: String, sp: int = 0) -> void:
+	var texture: Texture2D
+	var special_texture: Texture2D
+	func setup(k: int, c: Color, s: String, sp: int = 0, tex: Texture2D = null, special_tex: Texture2D = null) -> void:
 		kind = k
 		color = c
 		symbol = s
 		special_type = sp
+		texture = tex
+		special_texture = special_tex
 		queue_redraw()
 	func select(v: bool) -> void:
 		chosen = v
@@ -97,6 +118,12 @@ class Gem extends Node2D:
 		draw_circle(Vector2(2, 4), s + 4.0, Color(0, 0, 0, 0.28))
 		if chosen:
 			draw_circle(Vector2.ZERO, s + 9.0, Color(color.r, color.g, color.b, 0.20))
+		if special_type != 0 and special_texture != null:
+			draw_texture_rect(special_texture,Rect2(-s,-s,s*2,s*2),false)
+			return
+		if texture != null:
+			draw_texture_rect(texture,Rect2(-s,-s,s*2,s*2),false)
+			return
 		if special_type != 0:
 			if special_type == 1:
 				draw_circle(Vector2(-s*.62,0),s*.38,Color("#ffd45a"))
@@ -302,10 +329,19 @@ func _show_menu() -> void:
 	menu_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(menu_layer)
 
-	var bg:=ColorRect.new()
+	var bg:=TextureRect.new()
+	bg.texture=MENU_BACKGROUND
+	bg.position=Vector2.ZERO
 	bg.size=Vector2(900,900)
-	bg.color=Color("#061321")
+	bg.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode=TextureRect.STRETCH_SCALE
+	bg.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	menu_layer.add_child(bg)
+	var bg_tint:=ColorRect.new()
+	bg_tint.size=Vector2(900,900)
+	bg_tint.color=Color(0.02,0.08,0.11,0.28)
+	bg_tint.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	menu_layer.add_child(bg_tint)
 
 	var header:=ColorRect.new()
 	header.size=Vector2(900,145)
@@ -1522,8 +1558,9 @@ func _start_level(index:int)->void:
 
 func _build_game_layer()->void:
 	game_layer=Control.new(); game_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(game_layer)
-	var bg:=ColorRect.new(); bg.size=Vector2(900,900); bg.color=Color("#080e1c"); game_layer.add_child(bg)
-	var head:=ColorRect.new(); head.size=Vector2(900,176); head.color=Color("#111b33"); game_layer.add_child(head)
+	var bg:=TextureRect.new(); bg.texture=GAME_BACKGROUND; bg.position=Vector2.ZERO; bg.size=Vector2(900,900); bg.expand_mode=TextureRect.EXPAND_IGNORE_SIZE; bg.stretch_mode=TextureRect.STRETCH_SCALE; bg.mouse_filter=Control.MOUSE_FILTER_IGNORE; game_layer.add_child(bg)
+	var bg_tint:=ColorRect.new(); bg_tint.size=Vector2(900,900); bg_tint.color=Color(0.02,0.05,0.09,0.20); bg_tint.mouse_filter=Control.MOUSE_FILTER_IGNORE; game_layer.add_child(bg_tint)
+	var head:=ColorRect.new(); head.size=Vector2(900,176); head.color=Color(0.067,0.106,0.20,0.92); game_layer.add_child(head)
 	var title:=Label.new(); title.text="ТРИ В РЯД"; title.position=Vector2(138,12); title.add_theme_font_size_override("font_size",36); title.add_theme_color_override("font_color",Color("#f2f5ff")); game_layer.add_child(title)
 	var hint_desc:=Label.new(); hint_desc.text="Выполни все цели уровня до окончания ходов"; hint_desc.position=Vector2(140,53); hint_desc.add_theme_font_size_override("font_size",13); hint_desc.add_theme_color_override("font_color",Color("#8495bb")); game_layer.add_child(hint_desc)
 	level_label=_stat("УРОВЕНЬ",Vector2(138,88)); moves_label=_stat("ХОДЫ",Vector2(255,88)); score_label=_stat("ОЧКИ",Vector2(372,88)); best_label=_stat("РЕКОРД",Vector2(489,88)); combo_label=_stat("КОМБО",Vector2(606,88))
@@ -1630,7 +1667,11 @@ func _cell_is_blocked(p:Vector2i)->bool:
 func _cell_pos(p:Vector2i)->Vector2: return ORIGIN+Vector2(p.x*CELL+CELL/2,p.y*CELL+CELL/2)
 func _make_gem(k:int, sp:int = 0)->Gem:
 	var g:=Gem.new()
-	g.setup(k,COLORS[k],SYMBOLS[k],sp)
+	var tex:Texture2D=GEM_TEXTURES[k]
+	var special_tex:Texture2D=null
+	if sp>0:
+		special_tex=SPECIAL_TEXTURES.get(sp) as Texture2D
+	g.setup(k,COLORS[k],SYMBOLS[k],sp,tex,special_tex)
 	root.add_child(g)
 	return g
 
