@@ -1785,7 +1785,7 @@ func _create_blocker_visuals()->void:
 	blocker_nodes.clear()
 	var tier:=int(LEVELS[current_level]["mechanic"])
 	for p in blockers.keys():
-		var node:Node2D
+		var node:Node
 		if tier==1 or tier==2 or tier==8:
 			var sprite:=Sprite2D.new()
 			sprite.texture=VINE_TEXTURE if tier==1 else (COCONUT_TEXTURE if tier==2 else FIRE_STONE_TEXTURE)
