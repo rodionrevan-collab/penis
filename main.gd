@@ -14,7 +14,8 @@ const LEVEL_MAP_BACKGROUND = preload("res://art/backgrounds/level_map_background
 const BOARD_FRAME_TEXTURE = preload("res://art/ui/board_frame.svg")
 const CELL_TEXTURE = preload("res://art/ui/cell.svg")
 const SELECTION_TEXTURE = preload("res://art/ui/selection.svg")
-const LEVEL_OPEN_TEXTURE = preload("res://art/ui/level_open.svg")
+const LEVEL_COMPLETED_TEXTURE = preload("res://art/ui/level_completed.svg")
+const LEVEL_AVAILABLE_TEXTURE = preload("res://art/ui/level_available.svg")
 const LEVEL_LOCKED_TEXTURE = preload("res://art/ui/level_locked.svg")
 const STAR_FILLED_TEXTURE = preload("res://art/ui/star_filled.svg")
 const STAR_EMPTY_TEXTURE = preload("res://art/ui/star_empty.svg")
@@ -583,7 +584,7 @@ func _show_map()->void:
 	map_layer.add_child(back)
 
 	var legend:=Label.new()
-	legend.text="🟢 ПРОЙДЕН   🔵 ДОСТУПЕН   🔴 ЗАБЛОКИРОВАН"
+	legend.text="🟢 ПРОЙДЕН   🔴 ДОСТУПЕН   ⚫ ЗАБЛОКИРОВАН"
 	legend.position=Vector2(50,96)
 	legend.add_theme_font_size_override("font_size",11)
 	legend.add_theme_color_override("font_color",Color("#b6c8dc"))
@@ -1496,19 +1497,19 @@ func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 	var unlocked:=index<=unlocked_level
 	var done:=completed[index]
 	var b:=Button.new()
-	b.position=pos-Vector2(31,31)
-	b.size=Vector2(62,62)
+	b.position=pos-Vector2(25,25)
+	b.size=Vector2(50,50)
 	b.text=""
 	b.disabled=not unlocked
-	b.tooltip_text="Уровень %d"%(index+1)
-	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),31))
-	b.add_theme_stylebox_override("hover",_style(Color(1,1,1,.08),Color("#dffdf4"),31))
-	b.add_theme_stylebox_override("pressed",_style(Color(1,1,1,.12),Color.WHITE,31))
+	b.tooltip_text="Уровень %d%s"%[index+1," • ПРОЙДЕН" if done else (" • ДОСТУПЕН" if unlocked else " • ЗАБЛОКИРОВАН")]
+	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),25))
+	b.add_theme_stylebox_override("hover",_style(Color(1,1,1,.08),Color("#dffdf4"),25))
+	b.add_theme_stylebox_override("pressed",_style(Color(1,1,1,.12),Color.WHITE,25))
 
 	var node_art:=TextureRect.new()
-	node_art.texture=LEVEL_OPEN_TEXTURE if unlocked else LEVEL_LOCKED_TEXTURE
+	node_art.texture=LEVEL_COMPLETED_TEXTURE if done else (LEVEL_AVAILABLE_TEXTURE if unlocked else LEVEL_LOCKED_TEXTURE)
 	node_art.position=Vector2.ZERO
-	node_art.size=Vector2(62,62)
+	node_art.size=Vector2(50,50)
 	node_art.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
 	node_art.stretch_mode=TextureRect.STRETCH_SCALE
 	node_art.mouse_filter=Control.MOUSE_FILTER_IGNORE
@@ -1516,37 +1517,25 @@ func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 
 	var number_label:=Label.new()
 	number_label.text=str(index+1)
-	number_label.position=Vector2(5,14)
-	number_label.size=Vector2(52,28)
+	number_label.position=Vector2(4,9)
+	number_label.size=Vector2(42,30)
 	number_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	number_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
-	number_label.add_theme_font_size_override("font_size",14 if unlocked else 12)
+	number_label.add_theme_font_size_override("font_size",12 if unlocked else 11)
 	number_label.add_theme_color_override("font_color",Color("#f7fff9") if unlocked else Color("#8797a5"))
 	number_label.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	b.add_child(number_label)
-
-	if done:
-		var check:=Label.new()
-		check.text="✓"
-		check.position=Vector2(39,-3)
-		check.size=Vector2(22,22)
-		check.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-		check.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
-		check.add_theme_font_size_override("font_size",14)
-		check.add_theme_color_override("font_color",Color("#eafff4"))
-		check.mouse_filter=Control.MOUSE_FILTER_IGNORE
-		b.add_child(check)
 
 	b.pressed.connect(_show_level_intro.bind(index))
 	parent.add_child(b)
 
 	var star_label:=Label.new()
-	star_label.text=_stars_string(level_stars[index]) if unlocked else "☆ ☆ ☆"
-	star_label.position=pos+Vector2(-31,35)
-	star_label.size=Vector2(62,18)
+	star_label.text=_stars_string(level_stars[index]) if done else ("☆ ☆ ☆" if unlocked else "")
+	star_label.position=pos+Vector2(-30,29)
+	star_label.size=Vector2(60,16)
 	star_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-	star_label.add_theme_font_size_override("font_size",9)
-	star_label.add_theme_color_override("font_color",Color("#ffd86a") if unlocked else Color("#506877"))
+	star_label.add_theme_font_size_override("font_size",8)
+	star_label.add_theme_color_override("font_color",Color("#ffd86a") if done else Color("#b48a55") if unlocked else Color("#506877"))
 	parent.add_child(star_label)
 
 func _stars_string(value:int)->String:
