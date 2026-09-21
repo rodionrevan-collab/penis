@@ -1,6 +1,23 @@
 extends Node2D
 
 const MAP_BACKGROUND = preload("res://art/backgrounds/island_map_background.svg")
+const OBJECT_TEXTURES = {
+	"bridge": preload("res://art/objects/bridge.svg"),
+	"hut": preload("res://art/objects/hut.svg"),
+	"jungle_path": preload("res://art/objects/jungle_path.svg"),
+	"dock": preload("res://art/objects/dock.svg"),
+	"pirate_cove": preload("res://art/objects/cove.svg"),
+	"lighthouse": preload("res://art/objects/lighthouse.svg"),
+	"secret_cave": preload("res://art/objects/cave.svg"),
+	"old_village": preload("res://art/objects/village.svg")
+}
+const NPC_TEXTURES = {
+	"Смотрительница пляжа": preload("res://art/npcs/lisa.svg"),
+	"Рыбак": preload("res://art/npcs/tom.svg"),
+	"Хранитель маяка": preload("res://art/npcs/keeper.svg"),
+	"Торговец": preload("res://art/npcs/merchant.svg")
+}
+const CHEST_TEXTURE = preload("res://art/objects/chest.svg")
 
 # Временный процедурный слой теперь используется как интерактивный overlay
 # поверх основной 2D-картины острова.
@@ -54,13 +71,26 @@ class IslandObjectArt extends Node2D:
 	var object_id := ""
 	var repaired := false
 	var glow := 0.0
+	var sprite:Sprite2D
 	var rng:=RandomNumberGenerator.new()
 	func setup(id:String,done:bool)->void:
 		object_id=id
 		repaired=done
+		sprite=Sprite2D.new()
+		sprite.texture=OBJECT_TEXTURES.get(id) as Texture2D
+		sprite.position=Vector2(0,4)
+		sprite.scale=Vector2.ONE*.78
+		sprite.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
+		add_child(sprite)
+		_update_visual_state()
 		queue_redraw()
+	func _update_visual_state()->void:
+		if not is_instance_valid(sprite):
+			return
+		sprite.modulate=Color.WHITE if repaired else Color(0.50,0.52,0.50,0.70)
 	func play_repair()->void:
 		repaired=true
+		_update_visual_state()
 		glow=1.0
 		queue_redraw()
 		var t:=create_tween()
@@ -86,17 +116,8 @@ class IslandObjectArt extends Node2D:
 	func _draw()->void:
 		if not repaired:
 			_draw_ruined()
-		else:
-			match object_id:
-				"bridge": _draw_bridge()
-				"hut": _draw_hut()
-				"jungle_path": _draw_path()
-				"dock": _draw_dock()
-				"pirate_cove": _draw_cove()
-				"lighthouse": _draw_lighthouse()
-				"secret_cave": _draw_cave()
-				"old_village": _draw_village()
-		if glow>0: draw_circle(Vector2.ZERO,34+glow*10,Color(1,.85,.35,.18*glow))
+		if glow>0:
+			draw_circle(Vector2.ZERO,38+glow*10,Color(1,.85,.35,.18*glow))
 	func _draw_ruined()->void:
 		draw_circle(Vector2.ZERO,25,Color(0,0,0,.22))
 		for i in range(4):
@@ -122,32 +143,35 @@ class IslandObjectArt extends Node2D:
 		_draw_hut(); draw_rect(Rect2(-38,4,12,18),Color("#b8d092")); draw_colored_polygon(PackedVector2Array([Vector2(-43,4),Vector2(-32,-8),Vector2(-21,4)]),Color("#6d5136")); draw_circle(Vector2(25,0),12,Color("#74a458")); draw_line(Vector2(25,12),Vector2(25,28),Color("#6a4d33"),4)
 
 class IslandNPCArt extends Node2D:
-	var tint:=Color("#6db8d7")
 	var role := ""
+	var sprite:Sprite2D
 	func setup(npc_role:String)->void:
 		role=npc_role
-		match role:
-			"Смотрительница пляжа": tint=Color("#f0b2a9")
-			"Рыбак": tint=Color("#8fc1dd")
-			"Хранитель маяка": tint=Color("#d5d0a1")
-			_: tint=Color("#c79ee0")
-		queue_redraw()
+		sprite=Sprite2D.new()
+		var texture_role:String=npc_role if NPC_TEXTURES.has(npc_role) else "Торговец"
+		sprite.texture=NPC_TEXTURES[texture_role] as Texture2D
+		sprite.scale=Vector2.ONE*.62
+		sprite.position=Vector2(0,-5)
+		sprite.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
+		add_child(sprite)
 	func _draw()->void:
-		draw_circle(Vector2(0,11),13,Color(0,0,0,.2)); draw_circle(Vector2(0,-10),10,Color("#f0c8a8")); draw_circle(Vector2(0,-12),12,Color("#3a2a25")); draw_rect(Rect2(-11,0,22,29),tint); draw_rect(Rect2(-9,29,7,12),Color("#3c4654")); draw_rect(Rect2(2,29,7,12),Color("#3c4654"))
-		if role=="Рыбак": draw_line(Vector2(13,4),Vector2(25,-15),Color("#7b6248"),3)
-		elif role=="Хранитель маяка": draw_circle(Vector2(0,18),5,Color("#ffe27a"))
+		if not is_instance_valid(sprite):
+			draw_circle(Vector2(0,11),13,Color(0,0,0,.2))
 
 class IslandChestArt extends Node2D:
 	var claimed:=false
+	var sprite:Sprite2D
 	func setup(done:bool)->void:
 		claimed=done
-		queue_redraw()
+		sprite=Sprite2D.new()
+		sprite.texture=CHEST_TEXTURE
+		sprite.scale=Vector2.ONE*.72
+		sprite.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
+		sprite.modulate=Color(0.55,0.62,0.58,1.0) if claimed else Color.WHITE
+		add_child(sprite)
 	func _draw()->void:
-		var body:=Color("#586459") if claimed else Color("#b37a38")
-		draw_rect(Rect2(-24,-15,48,32),body)
-		draw_rect(Rect2(-24,-22,48,12),body.lightened(.15))
-		draw_line(Vector2(0,-22),Vector2(0,17),Color("#e1bf62") if not claimed else Color("#879f8e"),4)
-		draw_circle(Vector2(0,-1),5,Color("#e8cb76") if not claimed else Color("#93a69a"))
+		if not is_instance_valid(sprite):
+			draw_circle(Vector2.ZERO,18,Color("#7b5a35"))
 
 
 func create_backdrop(states:Array[bool])->Node2D:
