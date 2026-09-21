@@ -25,6 +25,10 @@ const SPECIAL_TEXTURES = {
 	4: preload("res://art/specials/rainbow.svg"),
 	5: preload("res://art/specials/map_fragment.svg")
 }
+const VINE_TEXTURE = preload("res://art/obstacles/vine_blocker.svg")
+const COCONUT_TEXTURE = preload("res://art/obstacles/coconut.svg")
+const FIRE_STONE_TEXTURE = preload("res://art/obstacles/fire_stone.svg")
+const SPIDER_TEXTURE = preload("res://art/obstacles/spider.svg")
 const MECHANICS := [
 	"Фрукты • базовая механика",
 	"Лианы • блокираторы",
@@ -1741,9 +1745,11 @@ func _create_spider_visuals()->void:
 		if is_instance_valid(n): n.queue_free()
 	spider_nodes.clear()
 	for p in spiders.keys():
-		var mark:=SpiderMark.new()
+		var mark:=Sprite2D.new()
+		mark.texture=SPIDER_TEXTURE
 		mark.position=_cell_pos(p)+Vector2(20,-21)
-		mark.scale=Vector2.ONE*.75
+		mark.scale=Vector2.ONE*.58
+		mark.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
 		root.add_child(mark)
 		spider_nodes[p]=mark
 
@@ -1768,18 +1774,29 @@ func _create_blocker_visuals()->void:
 	for n in blocker_nodes.values():
 		if is_instance_valid(n): n.queue_free()
 	blocker_nodes.clear()
+	var tier:=int(LEVELS[current_level]["mechanic"])
 	for p in blockers.keys():
-		var l:=Label.new()
-		l.text=_blocker_symbol(int(blockers[p]))
-		l.position=_cell_pos(p)-Vector2(24,25)
-		l.size=Vector2(48,48)
-		l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-		l.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
-		l.mouse_filter=Control.MOUSE_FILTER_IGNORE
-		l.add_theme_font_size_override("font_size",24)
-		l.add_theme_color_override("font_color",Color(1,1,1,.82))
-		game_layer.add_child(l)
-		blocker_nodes[p]=l
+		var node:Node2D
+		if tier==1 or tier==2 or tier==8:
+			var sprite:=Sprite2D.new()
+			sprite.texture=VINE_TEXTURE if tier==1 else (COCONUT_TEXTURE if tier==2 else FIRE_STONE_TEXTURE)
+			sprite.position=_cell_pos(p)
+			sprite.scale=Vector2.ONE*.64
+			sprite.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
+			node=sprite
+		else:
+			var l:=Label.new()
+			l.text=_blocker_symbol(int(blockers[p]))
+			l.position=_cell_pos(p)-Vector2(24,25)
+			l.size=Vector2(48,48)
+			l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+			l.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+			l.mouse_filter=Control.MOUSE_FILTER_IGNORE
+			l.add_theme_font_size_override("font_size",24)
+			l.add_theme_color_override("font_color",Color(1,1,1,.82))
+			node=l
+		game_layer.add_child(node)
+		blocker_nodes[p]=node
 
 func _damage_blockers(cleared:Array[Vector2i])->void:
 	if blockers.is_empty(): return
@@ -1799,7 +1816,13 @@ func _damage_blockers(cleared:Array[Vector2i])->void:
 				blocker_nodes.erase(p)
 		else:
 			if blocker_nodes.has(p) and is_instance_valid(blocker_nodes[p]):
-				blocker_nodes[p].text=_blocker_symbol(int(blockers[p]))
+				var blocker_node:Node=blocker_nodes[p]
+				if blocker_node is Label:
+					(blocker_node as Label).text=_blocker_symbol(int(blockers[p]))
+				else:
+					blocker_node.scale=Vector2.ONE*.54
+					var pulse:=blocker_node.create_tween()
+					pulse.tween_property(blocker_node,"scale",Vector2.ONE*.64,.12)
 	if not blockers.is_empty() and status:
 		status.text="%s: осталось %d"%[_blocker_name(),blockers.size()]
 
