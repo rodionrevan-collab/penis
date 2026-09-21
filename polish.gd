@@ -187,7 +187,17 @@ func _cell_has_match(board: Array, x: int, y: int) -> bool:
 	while i < 8 and board[i][x] == kind:
 		vertical += 1
 		i += 1
-	return vertical >= 3
+	if vertical >= 3:
+		return true
+	if x > 0 and y > 0 and board[y-1][x] == kind and board[y][x-1] == kind and board[y-1][x-1] == kind:
+		return true
+	if x + 1 < 8 and y > 0 and board[y-1][x] == kind and board[y][x+1] == kind and board[y-1][x+1] == kind:
+		return true
+	if x > 0 and y + 1 < 8 and board[y+1][x] == kind and board[y][x-1] == kind and board[y+1][x-1] == kind:
+		return true
+	if x + 1 < 8 and y + 1 < 8 and board[y+1][x] == kind and board[y][x+1] == kind and board[y+1][x+1] == kind:
+		return true
+	return false
 
 func _shuffle_board() -> void:
 	shuffle_cooldown = 0.8
