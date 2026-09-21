@@ -12,6 +12,8 @@ const ISLAND2_DATA = preload("res://island2_data.gd")
 const MENU_BACKGROUND = preload("res://art/backgrounds/menu_background.svg")
 const GAME_BACKGROUND = preload("res://art/backgrounds/game_background.svg")
 const LEVEL_MAP_BACKGROUND = preload("res://art/backgrounds/level_map_background.svg")
+const LEVEL_MAP_DECOR = preload("res://art/backgrounds/level_map_decor.svg")
+const GAME_DECOR = preload("res://art/backgrounds/game_decor.svg")
 const BOARD_FRAME_TEXTURE = preload("res://art/ui/board_frame.svg")
 const CELL_TEXTURE = preload("res://art/ui/cell.svg")
 const SELECTION_TEXTURE = preload("res://art/ui/selection.svg")
@@ -390,15 +392,14 @@ func _show_menu() -> void:
 	sub.add_theme_color_override("font_color",Color("#71d7ad"))
 	menu_layer.add_child(sub)
 
-	if dev_mode:
-		var dev_button:=Button.new()
-		dev_button.text="DEV • ON"
-		dev_button.position=Vector2(515,28)
-		dev_button.size=Vector2(105,34)
-		dev_button.add_theme_font_size_override("font_size",10)
-		dev_button.add_theme_stylebox_override("normal",_style(Color("#4b315f"),Color("#d5adff"),10))
-		dev_button.pressed.connect(_show_dev_panel)
-		menu_layer.add_child(dev_button)
+	var dev_button:=Button.new()
+	dev_button.text="🛠 DEV • ON" if dev_mode else "🛠 DEV"
+	dev_button.position=Vector2(515,28)
+	dev_button.size=Vector2(140,34)
+	dev_button.add_theme_font_size_override("font_size",10)
+	dev_button.add_theme_stylebox_override("normal",_style(Color("#4b315f") if dev_mode else Color("#182a42"),Color("#d5adff") if dev_mode else Color("#53708e"),10))
+	dev_button.pressed.connect(_toggle_dev_mode)
+	menu_layer.add_child(dev_button)
 
 	var progress:=Label.new()
 	var completed_count:=0
@@ -936,9 +937,17 @@ func _show_map()->void:
 	bg.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	map_layer.add_child(bg)
 
+	var decor:=TextureRect.new()
+	decor.texture=LEVEL_MAP_DECOR
+	decor.position=Vector2.ZERO
+	decor.size=Vector2(900,900)
+	decor.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+	decor.stretch_mode=TextureRect.STRETCH_SCALE
+	decor.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	map_layer.add_child(decor)
 	var bg_shade:=ColorRect.new()
 	bg_shade.size=Vector2(900,900)
-	bg_shade.color=Color(0.01,0.05,0.08,0.20)
+	bg_shade.color=Color(0.01,0.05,0.08,0.12)
 	bg_shade.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	map_layer.add_child(bg_shade)
 
@@ -1883,8 +1892,8 @@ func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 	var unlocked:=index<=unlocked_level
 	var done:=completed[index]
 	var b:=Button.new()
-	b.position=pos-Vector2(25,25)
-	b.size=Vector2(50,50)
+	b.position=pos-Vector2(23,23)
+	b.size=Vector2(46,46)
 	b.text=""
 	b.disabled=not unlocked
 	b.tooltip_text="Уровень %d%s"%[index+1," • ПРОЙДЕН" if done else (" • ДОСТУПЕН" if unlocked else " • ЗАБЛОКИРОВАН")]
@@ -1895,7 +1904,7 @@ func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 	var node_art:=TextureRect.new()
 	node_art.texture=LEVEL_COMPLETED_TEXTURE if done else (LEVEL_AVAILABLE_TEXTURE if unlocked else LEVEL_LOCKED_TEXTURE)
 	node_art.position=Vector2.ZERO
-	node_art.size=Vector2(50,50)
+	node_art.size=Vector2(46,46)
 	node_art.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
 	node_art.stretch_mode=TextureRect.STRETCH_SCALE
 	node_art.mouse_filter=Control.MOUSE_FILTER_IGNORE
@@ -1903,8 +1912,8 @@ func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 
 	var number_label:=Label.new()
 	number_label.text=str(index+1)
-	number_label.position=Vector2(4,9)
-	number_label.size=Vector2(42,30)
+	number_label.position=Vector2(3,8)
+	number_label.size=Vector2(40,28)
 	number_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	number_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
 	number_label.add_theme_font_size_override("font_size",12 if unlocked else 11)
@@ -1917,10 +1926,10 @@ func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 
 	var star_label:=Label.new()
 	star_label.text=_stars_string(level_stars[index]) if done else ("☆ ☆ ☆" if unlocked else "")
-	star_label.position=pos+Vector2(-30,29)
-	star_label.size=Vector2(60,16)
+	star_label.position=pos+Vector2(-28,29)
+	star_label.size=Vector2(56,15)
 	star_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-	star_label.add_theme_font_size_override("font_size",8)
+	star_label.add_theme_font_size_override("font_size",7)
 	star_label.add_theme_color_override("font_color",Color("#ffd86a") if done else Color("#b48a55") if unlocked else Color("#506877"))
 	parent.add_child(star_label)
 
@@ -2116,7 +2125,15 @@ func _start_level(index:int)->void:
 func _build_game_layer()->void:
 	game_layer=Control.new(); game_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(game_layer)
 	var bg:=TextureRect.new(); bg.texture=GAME_BACKGROUND; bg.position=Vector2.ZERO; bg.size=Vector2(900,900); bg.expand_mode=TextureRect.EXPAND_IGNORE_SIZE; bg.stretch_mode=TextureRect.STRETCH_SCALE; bg.mouse_filter=Control.MOUSE_FILTER_IGNORE; game_layer.add_child(bg)
-	var bg_tint:=ColorRect.new(); bg_tint.size=Vector2(900,900); bg_tint.color=Color(0.02,0.05,0.09,0.20); bg_tint.mouse_filter=Control.MOUSE_FILTER_IGNORE; game_layer.add_child(bg_tint)
+	var bg_tint:=ColorRect.new(); bg_tint.size=Vector2(900,900); bg_tint.color=Color(0.02,0.05,0.09,0.12); bg_tint.mouse_filter=Control.MOUSE_FILTER_IGNORE; game_layer.add_child(bg_tint)
+	var game_decor:=TextureRect.new()
+	game_decor.texture=GAME_DECOR
+	game_decor.position=Vector2.ZERO
+	game_decor.size=Vector2(900,900)
+	game_decor.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+	game_decor.stretch_mode=TextureRect.STRETCH_SCALE
+	game_decor.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	game_layer.add_child(game_decor)
 	var head:=ColorRect.new(); head.size=Vector2(900,176); head.color=Color(0.067,0.106,0.20,0.92); game_layer.add_child(head)
 	var title:=Label.new(); title.text="ТРИ В РЯД"; title.position=Vector2(138,12); title.add_theme_font_size_override("font_size",36); title.add_theme_color_override("font_color",Color("#f2f5ff")); game_layer.add_child(title)
 	var hint_desc:=Label.new(); hint_desc.text="Выполни все цели уровня до окончания ходов"; hint_desc.position=Vector2(140,53); hint_desc.add_theme_font_size_override("font_size",13); hint_desc.add_theme_color_override("font_color",Color("#8495bb")); game_layer.add_child(hint_desc)
@@ -2422,7 +2439,7 @@ func _create_visuals()->void:
 func _input(event:InputEvent)->void:
 	if event is InputEventKey:
 		var key:=event as InputEventKey
-		if key.pressed and not key.echo and key.keycode==KEY_D and key.ctrl_pressed and key.shift_pressed:
+		if key.pressed and not key.echo and (key.keycode==KEY_F10 or (key.keycode==KEY_D and key.ctrl_pressed and key.shift_pressed)):
 			_toggle_dev_mode()
 			return
 	if busy or not game_layer.visible:
