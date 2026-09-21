@@ -39,6 +39,11 @@ const SPECIAL_TEXTURES = {
 const VINE_TEXTURE = preload("res://art/obstacles/vine_blocker.svg")
 const COCONUT_TEXTURE = preload("res://art/obstacles/coconut.svg")
 const FIRE_STONE_TEXTURE = preload("res://art/obstacles/fire_stone.svg")
+const TIDE_TEXTURE = preload("res://art/obstacles/tide_swirl.svg")
+const CURSED_TOTEM_TEXTURE = preload("res://art/obstacles/cursed_totem.svg")
+const MONKEY_TEXTURE = preload("res://art/obstacles/monkey.svg")
+const FOG_TEXTURE = preload("res://art/obstacles/fog.svg")
+const FINAL_TOTEM_TEXTURE = preload("res://art/obstacles/final_totem.svg")
 const SPIDER_TEXTURE = preload("res://art/obstacles/spider.svg")
 const MECHANICS := [
 	"Фрукты • базовая механика",
@@ -1786,9 +1791,19 @@ func _create_blocker_visuals()->void:
 	var tier:=int(LEVELS[current_level]["mechanic"])
 	for p in blockers.keys():
 		var node:Node
-		if tier==1 or tier==2 or tier==8:
+		var obstacle_texture:Texture2D = null
+		match tier:
+			1: obstacle_texture=VINE_TEXTURE
+			2: obstacle_texture=COCONUT_TEXTURE
+			3: obstacle_texture=TIDE_TEXTURE
+			4: obstacle_texture=CURSED_TOTEM_TEXTURE
+			5: obstacle_texture=MONKEY_TEXTURE
+			7: obstacle_texture=FOG_TEXTURE
+			8: obstacle_texture=FIRE_STONE_TEXTURE
+			9: obstacle_texture=FINAL_TOTEM_TEXTURE
+		if obstacle_texture != null:
 			var sprite:=Sprite2D.new()
-			sprite.texture=VINE_TEXTURE if tier==1 else (COCONUT_TEXTURE if tier==2 else FIRE_STONE_TEXTURE)
+			sprite.texture=obstacle_texture
 			sprite.position=_cell_pos(p)
 			sprite.scale=Vector2.ONE*.64
 			sprite.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
