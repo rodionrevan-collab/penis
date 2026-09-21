@@ -1989,12 +1989,15 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 		elif special_triggered:
 			wave.append_array(_special_effect_cells(a,b))
 			special_triggered=false
+		var propeller_targets:=_propeller_targets_from_wave(wave)
 		var matched_specials:Array[Vector2i]=[]
 		for p in wave:
-			if specials.has(p) and _is_active_special_type(int(specials.get(p,0))):
+			var special_here:=int(specials.get(p,0))
+			if special_here!=6 and specials.has(p) and _is_active_special_type(special_here):
 				matched_specials.append(p)
 		for p in matched_specials:
 			wave.append_array(_special_effect_cells(p,p))
+		wave.append_array(propeller_targets)
 		wave=_unique_cells(wave)
 		for cleared_cell in wave:
 			if not turn_cleared.has(cleared_cell):
@@ -2366,24 +2369,60 @@ func _create_special_from_match(cells:Array[Vector2i],preferred:Vector2i=Vector2
 					return
 
 func _find_propeller_target(origin:Vector2i)->Vector2i:
-	var priority:Array[Vector2i]=[]
-	for p in spiders.keys():
-		var spider_pos:Vector2i=p
-		if spider_pos!=origin and _valid_cell(spider_pos):
-			priority.append(spider_pos)
-	if not priority.is_empty():
-		return priority[rng.randi_range(0,priority.size()-1)]
 	var candidates:Array[Vector2i]=[]
 	for y in range(SIZE):
 		for x in range(SIZE):
 			var p:=Vector2i(x,y)
 			if p==origin:
 				continue
-			if _valid_cell(p) and board[y][x]>=0:
+			if not _valid_cell(p):
+				continue
+			# Пропеллер всегда забирает обычную фишку и не запускает
+			# вторую спецфишку по цепочке.
+			var target_special:=int(specials.get(p,0))
+			if target_special!=0:
+				continue
+			if board[y][x]>=0:
 				candidates.append(p)
 	if candidates.is_empty():
 		return origin
 	return candidates[rng.randi_range(0,candidates.size()-1)]
+
+func _spawn_propeller_flight(origin:Vector2i,target:Vector2i)->void:
+	if origin==target:
+		return
+	var flyer:=Sprite2D.new()
+	flyer.texture=SPECIAL_TEXTURES[6]
+	flyer.position=_cell_pos(origin)
+	flyer.scale=Vector2.ONE*.36
+	flyer.z_index=25
+	flyer.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
+	fx.add_child(flyer)
+	var distance:=_cell_pos(origin).distance_to(_cell_pos(target))
+	var duration:float=clampf(.22+distance/1250.0,.24,.55)
+	var mid:=(_cell_pos(origin)+_cell_pos(target))*0.5
+	mid.y-=clampf(distance*.18,18.0,60.0)
+	var tw:=flyer.create_tween()
+	tw.tween_property(flyer,"position",mid,duration*.52).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(flyer,"position",_cell_pos(target),duration*.48).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(flyer,"rotation",TAU*1.35,duration)
+	tw.parallel().tween_property(flyer,"scale",Vector2.ONE*.18,duration)
+	tw.tween_callback(func():
+		if is_instance_valid(flyer):
+			flyer.queue_free()
+			_spawn_special_flash(_cell_pos(target))
+	)
+
+func _propeller_targets_from_wave(wave:Array[Vector2i])->Array:
+	var targets:Array[Vector2i]=[]
+	for p in wave:
+		if int(specials.get(p,0))!=6:
+			continue
+		var target:=_find_propeller_target(p)
+		if target!=p and not targets.has(target):
+			targets.append(target)
+			_spawn_propeller_flight(p,target)
+	return targets
 
 func _special_combo_cells(a:Vector2i,b:Vector2i)->Array[Vector2i]:
 	var result:Array[Vector2i]=[]
