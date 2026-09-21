@@ -8,6 +8,7 @@ const COLORS := [Color("#ff5b67"), Color("#4d9cff"), Color("#43d98b"), Color("#f
 const SYMBOLS := ["●", "◆", "■", "★", "⬟", "▲"]
 const TYPE_NAMES := ["красных кругов", "синих ромбов", "зелёных квадратов", "звёзд", "фиолетовых кристаллов", "оранжевых треугольников"]
 const ISLAND_ART = preload("res://island_art.gd")
+const ISLAND2_DATA = preload("res://island2_data.gd")
 const MENU_BACKGROUND = preload("res://art/backgrounds/menu_background.svg")
 const GAME_BACKGROUND = preload("res://art/backgrounds/game_background.svg")
 const LEVEL_MAP_BACKGROUND = preload("res://art/backgrounds/level_map_background.svg")
@@ -53,6 +54,10 @@ const MONKEY_TEXTURE = preload("res://art/obstacles/monkey.svg")
 const FOG_TEXTURE = preload("res://art/obstacles/fog.svg")
 const FINAL_TOTEM_TEXTURE = preload("res://art/obstacles/final_totem.svg")
 const SPIDER_TEXTURE = preload("res://art/obstacles/spider.svg")
+const ISLAND2_MAP_BACKGROUND = preload("res://art/backgrounds/island2_map_background.svg")
+const ISLAND2_LEVEL_COMPLETED_TEXTURE = preload("res://art/island2/level_completed.svg")
+const ISLAND2_LEVEL_AVAILABLE_TEXTURE = preload("res://art/island2/level_available.svg")
+const ISLAND2_LEVEL_LOCKED_TEXTURE = preload("res://art/island2/level_locked.svg")
 const MECHANICS := [
 	"Фрукты • базовая механика",
 	"Лианы • блокираторы",
@@ -119,6 +124,7 @@ var mini_sequence_progress := 0
 var mini_goods_collected := {}
 var mini_status_label: Label
 var mini_activity_buttons: Array[Button] = []
+var dev_mode := false
 
 class Gem extends Node2D:
 	var kind := 0
@@ -245,6 +251,7 @@ class BoardFrame extends Node2D:
 
 func _ready() -> void:
 	rng.randomize()
+	_load_dev_mode()
 	mechanics = get_node_or_null("IslandMechanics")
 	island_progression = get_node_or_null("IslandProgression")
 	island_art_factory = ISLAND_ART.new()
