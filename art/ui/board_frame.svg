@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="680" viewBox="0 0 680 680">
+<defs>
+ <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6f4a32"/><stop offset=".35" stop-color="#9d6942"/><stop offset=".72" stop-color="#6b442d"/><stop offset="1" stop-color="#4b3024"/></linearGradient>
+ <linearGradient id="inner" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#102b39"/><stop offset="1" stop-color="#071b28"/></linearGradient>
+ <pattern id="grain" width="54" height="54" patternUnits="userSpaceOnUse"><path d="M5 13 Q27 2 49 15 M-5 43 Q20 31 59 46" fill="none" stroke="#d79b64" stroke-opacity=".12" stroke-width="4"/></pattern>
+</defs>
+<rect x="17" y="17" width="646" height="646" rx="48" fill="#000" opacity=".28"/>
+<rect x="10" y="10" width="660" height="660" rx="48" fill="url(#wood)" stroke="#d8aa6f" stroke-width="5"/>
+<rect x="27" y="27" width="626" height="626" rx="36" fill="url(#grain)"/>
+<rect x="43" y="43" width="594" height="594" rx="30" fill="url(#inner)" stroke="#d1a364" stroke-width="4"/>
+<path d="M58 73 Q340 28 622 73 M58 607 Q340 652 622 607" fill="none" stroke="#e5be78" stroke-opacity=".35" stroke-width="5"/>
+<circle cx="66" cy="66" r="7" fill="#f0c77c"/><circle cx="614" cy="66" r="7" fill="#f0c77c"/><circle cx="66" cy="614" r="7" fill="#f0c77c"/><circle cx="614" cy="614" r="7" fill="#f0c77c"/>
+<path d="M62 335 Q38 270 62 205 M618 345 Q642 410 618 475" fill="none" stroke="#7dd3b3" stroke-opacity=".22" stroke-width="6"/>
+</svg>
