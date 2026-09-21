@@ -149,7 +149,7 @@ func _has_legal_move(board: Array) -> bool:
 
 func _is_active_special(p: Vector2i, specials: Dictionary) -> bool:
 	var sp := int(specials.get(p, 0))
-	return sp >= 1 and sp <= 4
+	return sp >= 1 and sp <= 4 or sp == 6
 
 func _swap_creates_match(board: Array, x1: int, y1: int, x2: int, y2: int) -> bool:
 	var a = board[y1][x1]
