@@ -16,12 +16,17 @@
 - art/ui/board_frame.svg
 - art/ui/cell.svg
 - art/ui/selection.svg
+- art/ui/star_filled.svg
+- art/ui/star_empty.svg
+- art/ui/level_open.svg
+- art/ui/level_locked.svg
 - art/ui/booster_hammer.svg
 - art/ui/booster_moves.svg
 - art/ui/booster_shuffle.svg
 - art/fx/match_burst.svg
 - art/fx/combo_ring.svg
 - art/fx/special_ray.svg
+- art/fx/propeller_trail.svg
 - art/island/map_pin.svg
 - art/island/unlocked_zone_badge.svg
 
@@ -43,8 +48,7 @@
 - art/specials/vertical.svg
 - art/specials/bomb.svg
 - art/specials/rainbow.svg
-- art/specials/map_fragment.svg
-- art/specials/propeller.svg
+undefined
 
 ### Препятствия
 - art/obstacles/vine_blocker.svg
