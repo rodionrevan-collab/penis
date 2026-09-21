@@ -38,6 +38,8 @@
 - art/backgrounds/game_background.svg
 - art/backgrounds/island_map_background.svg
 - art/backgrounds/level_map_background.svg
+- art/backgrounds/island2_game_background.svg
+- art/backgrounds/island2_map_background.svg
 
 ### Базовые фишки
 - art/gems/gem_red.svg
@@ -81,3 +83,17 @@
 3. Отдельный проход мелких UI/UX багов и выравнивания элементов.
 4. Проверка обменов/каскадов после визуального прохода.
 5. Затем — финальный аудит всех механик и прогрессии без изменения рабочей логики.
+### Остров 2
+- art/obstacles/coral_blocker.svg
+- art/obstacles/shell.svg
+- art/obstacles/current_stream.svg
+- art/obstacles/coral_growth.svg
+- art/obstacles/crab.svg
+- art/obstacles/whirlpool.svg
+- art/obstacles/jellyfish.svg
+- art/obstacles/reef_guardian.svg
+- art/island2/pearl.svg
+- art/island2/coral_special.svg
+- art/island2/level_completed.svg
+- art/island2/level_available.svg
+- art/island2/level_locked.svg
