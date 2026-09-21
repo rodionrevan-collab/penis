@@ -544,6 +544,367 @@ func _create_island_card(index:int,pos:Vector2,open:bool,title_text:String,subti
 	var b:=Button.new(); b.text="ОТКРЫТЬ ОСТРОВ" if open else "ЗАБЛОКИРОВАНО"; b.position=Vector2(55,204); b.size=Vector2(220,36); b.disabled=not open; b.add_theme_stylebox_override("normal",_style(Color("#237e55") if open else Color("#192535"),Color("#61d79d") if open else Color("#33445b"))); panel.add_child(b)
 	if open: b.pressed.connect(_show_map)
 
+func _load_dev_mode()->void:
+	if FileAccess.file_exists("user://developer_mode.txt"):
+		dev_mode=FileAccess.get_file_as_string("user://developer_mode.txt").strip_edges()=="1"
+
+func _save_dev_mode()->void:
+	var file:=FileAccess.open("user://developer_mode.txt",FileAccess.WRITE)
+	if file:
+		file.store_string("1" if dev_mode else "0")
+
+func _toggle_dev_mode()->void:
+	dev_mode=not dev_mode
+	_save_dev_mode()
+	if dev_mode:
+		_show_dev_panel()
+	else:
+		if modal:
+			modal.queue_free()
+			modal=null
+		_show_menu()
+
+func _dev_unlock_all()->void:
+	unlocked_level=99
+	_save_progress()
+	_show_dev_panel()
+
+func _dev_complete_island1()->void:
+	unlocked_level=99
+	for i in range(100):
+		completed[i]=true
+		level_stars[i]=3
+	island_stars=300
+	if is_instance_valid(island_progression):
+		island_progression.call("dev_complete_all")
+	_save_progress()
+	_show_dev_panel()
+
+func _dev_grant_resources()->void:
+	island_stars+=100
+	for key in booster_inventory.keys():
+		booster_inventory[key]=99
+	_save_progress()
+	_show_dev_panel()
+
+func _dev_reset_progress()->void:
+	unlocked_level=0
+	for i in range(100):
+		completed[i]=false
+		level_stars[i]=0
+	island_stars=0
+	booster_inventory={"hammer":3,"extra_moves":2,"shuffle":2,"pre_bomb":2,"pre_rainbow":1}
+	if is_instance_valid(island_progression):
+		island_progression.call("reset_for_tests")
+		island_progression.call("save")
+	_save_progress()
+	_show_dev_panel()
+
+func _dev_start_level(spin:SpinBox)->void:
+	var index:=clampi(int(spin.value)-1,0,99)
+	unlocked_level=maxi(unlocked_level,index)
+	_save_progress()
+	if modal:
+		modal.queue_free()
+		modal=null
+	_show_level_intro(index)
+
+func _show_dev_panel()->void:
+	if modal:
+		modal.queue_free()
+		modal=null
+	modal=Control.new()
+	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new()
+	shade.size=Vector2(900,900)
+	shade.color=Color(0.025,0.015,0.06,.92)
+	modal.add_child(shade)
+	var box:=Panel.new()
+	box.position=Vector2(120,90)
+	box.size=Vector2(660,720)
+	box.add_theme_stylebox_override("panel",_style(Color("#17152b"),Color("#9f72cf"),24))
+	modal.add_child(box)
+
+	var title:=Label.new()
+	title.text="🛠 РЕЖИМ РАЗРАБОТЧИКА"
+	title.position=Vector2(30,22)
+	title.size=Vector2(600,42)
+	title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size",24)
+	title.add_theme_color_override("font_color",Color("#f0dcff"))
+	box.add_child(title)
+
+	var info:=Label.new()
+	info.text="DEV работает локально и позволяет тестировать контент без прохождения игры."
+	info.position=Vector2(35,66)
+	info.size=Vector2(590,30)
+	info.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	info.add_theme_font_size_override("font_size",11)
+	info.add_theme_color_override("font_color",Color("#b8a9c8"))
+	box.add_child(info)
+
+	var unlock:=Button.new()
+	unlock.text="ОТКРЫТЬ ВСЕ 100 УРОВНЕЙ"
+	unlock.position=Vector2(45,115)
+	unlock.size=Vector2(270,52)
+	unlock.add_theme_stylebox_override("normal",_style(Color("#214c68"),Color("#66cce0"),12))
+	unlock.pressed.connect(_dev_unlock_all)
+	box.add_child(unlock)
+
+	var complete:=Button.new()
+	complete.text="ПРОЙТИ ОСТРОВ 1 ЦЕЛИКОМ"
+	complete.position=Vector2(345,115)
+	complete.size=Vector2(270,52)
+	complete.add_theme_stylebox_override("normal",_style(Color("#285642"),Color("#6de3a3"),12))
+	complete.pressed.connect(_dev_complete_island1)
+	box.add_child(complete)
+
+	var resources:=Button.new()
+	resources.text="⭐ +100 / БУСТЕРЫ ×99"
+	resources.position=Vector2(45,180)
+	resources.size=Vector2(270,52)
+	resources.add_theme_stylebox_override("normal",_style(Color("#5a4727"),Color("#e3c05d"),12))
+	resources.pressed.connect(_dev_grant_resources)
+	box.add_child(resources)
+
+	var island2:=Button.new()
+	island2.text="ОТКРЫТЬ ОСТРОВ 2"
+	island2.position=Vector2(345,180)
+	island2.size=Vector2(270,52)
+	island2.add_theme_stylebox_override("normal",_style(Color("#185168"),Color("#71dfe1"),12))
+	island2.pressed.connect(_show_island2_map)
+	box.add_child(island2)
+
+	var spin_label:=Label.new()
+	spin_label.text="Быстрый переход к уровню:"
+	spin_label.position=Vector2(50,255)
+	spin_label.add_theme_font_size_override("font_size",13)
+	spin_label.add_theme_color_override("font_color",Color("#d3c8df"))
+	box.add_child(spin_label)
+
+	var spin:=SpinBox.new()
+	spin.min_value=1
+	spin.max_value=100
+	spin.step=1
+	spin.value=current_level+1
+	spin.position=Vector2(50,288)
+	spin.size=Vector2(180,42)
+	box.add_child(spin)
+
+	var go:=Button.new()
+	go.text="ИГРАТЬ"
+	go.position=Vector2(245,288)
+	go.size=Vector2(150,42)
+	go.add_theme_stylebox_override("normal",_style(Color("#2d5b78"),Color("#7bd9ea"),10))
+	go.pressed.connect(_dev_start_level.bind(spin))
+	box.add_child(go)
+
+	var reset:=Button.new()
+	reset.text="СБРОСИТЬ ПРОГРЕСС"
+	reset.position=Vector2(405,288)
+	reset.size=Vector2(210,42)
+	reset.add_theme_stylebox_override("normal",_style(Color("#5d2d3a"),Color("#e77a88"),10))
+	reset.pressed.connect(_dev_reset_progress)
+	box.add_child(reset)
+
+	var state:=Label.new()
+	state.text="Уровень: %d • Открыто: %d/100 • ⭐ %d"%[current_level+1,unlocked_level+1,island_stars]
+	state.position=Vector2(45,355)
+	state.size=Vector2(570,30)
+	state.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	state.add_theme_font_size_override("font_size",13)
+	state.add_theme_color_override("font_color",Color("#8fe4cc"))
+	box.add_child(state)
+
+	var shortcuts:=Label.new()
+	shortcuts.text="Ctrl+Shift+D — включить/выключить DEV"
+	shortcuts.position=Vector2(50,586)
+	shortcuts.size=Vector2(560,28)
+	shortcuts.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	shortcuts.add_theme_font_size_override("font_size",10)
+	shortcuts.add_theme_color_override("font_color",Color("#817593"))
+	box.add_child(shortcuts)
+
+	var close:=Button.new()
+	close.text="ЗАКРЫТЬ"
+	close.position=Vector2(160,635)
+	close.size=Vector2(340,45)
+	close.add_theme_stylebox_override("normal",_style(Color("#22203d"),Color("#7d7196"),12))
+	close.pressed.connect(func():
+		if modal:
+			modal.queue_free()
+			modal=null
+	)
+	box.add_child(close)
+
+func _show_island2_map()->void:
+	if modal:
+		modal.queue_free()
+		modal=null
+	if map_layer:
+		map_layer.queue_free()
+	map_layer=Control.new()
+	map_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(map_layer)
+
+	var bg:=TextureRect.new()
+	bg.texture=ISLAND2_MAP_BACKGROUND
+	bg.size=Vector2(900,900)
+	bg.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode=TextureRect.STRETCH_SCALE
+	bg.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	map_layer.add_child(bg)
+
+	var top:=ColorRect.new()
+	top.size=Vector2(900,135)
+	top.color=Color("#082f44")
+	map_layer.add_child(top)
+
+	var title:=Label.new()
+	title.text="КОРАЛЛОВЫЕ РУИНЫ"
+	title.position=Vector2(45,20)
+	title.add_theme_font_size_override("font_size",30)
+	title.add_theme_color_override("font_color",Color("#efffff"))
+	map_layer.add_child(title)
+
+	var sub:=Label.new()
+	sub.text="ОСТРОВ 2 • ЗАТОНУВШИЙ АРХИПЕЛАГ"
+	sub.position=Vector2(48,60)
+	sub.add_theme_font_size_override("font_size",12)
+	sub.add_theme_color_override("font_color",Color("#78d7df"))
+	map_layer.add_child(sub)
+
+	var mech:=Label.new()
+	mech.text="Кораллы • течения • крабы • водовороты • медузы"
+	mech.position=Vector2(48,91)
+	mech.size=Vector2(650,24)
+	mech.add_theme_font_size_override("font_size",10)
+	mech.add_theme_color_override("font_color",Color("#9ccad3"))
+	map_layer.add_child(mech)
+
+	var back:=Button.new()
+	back.text="← DEV"
+	back.position=Vector2(760,28)
+	back.size=Vector2(105,42)
+	back.add_theme_stylebox_override("normal",_style(Color("#183e54"),Color("#72dfe1"),10))
+	back.pressed.connect(_show_dev_panel)
+	map_layer.add_child(back)
+
+	var scroll:=ScrollContainer.new()
+	scroll.position=Vector2(25,145)
+	scroll.size=Vector2(850,730)
+	scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+	map_layer.add_child(scroll)
+
+	var world:=Control.new()
+	world.custom_minimum_size=Vector2(850,3900)
+	scroll.add_child(world)
+
+	var road:=Line2D.new()
+	road.width=18
+	road.default_color=Color("#2b777b")
+	world.add_child(road)
+	var inner:=Line2D.new()
+	inner.width=4
+	inner.default_color=Color("#72d5ce")
+	world.add_child(inner)
+
+	var points:=PackedVector2Array()
+	var xs:Array[float]=[105.0,265.0,425.0,585.0,745.0]
+	for row in range(20):
+		var y:=65.0+row*200.0
+		for step in range(5):
+			var col:=step if row%2==0 else 4-step
+			points.append(Vector2(xs[col],y))
+		if row<19:
+			points.append(Vector2(xs[4 if row%2==0 else 0],y+200.0))
+	road.points=points
+	inner.points=points
+
+	var levels:=Island2Data.build_levels()
+	for i in range(100):
+		var row:=int(i/5)
+		var step:=i%5
+		var col:=step if row%2==0 else 4-step
+		var pos:=Vector2(xs[col],65.0+row*200.0)
+		var node:=Button.new()
+		node.position=pos-Vector2(25,25)
+		node.size=Vector2(50,50)
+		node.text=str(i+1)
+		node.disabled=not dev_mode and i>0
+		node.add_theme_font_size_override("font_size",12)
+		node.add_theme_color_override("font_color",Color("#e9ffff"))
+		node.add_theme_stylebox_override("normal",_style(Color("#1f6f83") if i==0 else Color("#394a55"),Color("#80e8e4") if i==0 else Color("#6c828b"),25))
+		if dev_mode:
+			node.pressed.connect(_show_island2_level_preview.bind(i,levels[i]))
+		world.add_child(node)
+
+	var note:=Label.new()
+	note.text="ОСТРОВ 2 В РАЗРАБОТКЕ • 100 уровней и 10 механик уже спроектированы"
+	note.position=Vector2(130,3830)
+	note.size=Vector2(590,35)
+	note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	note.add_theme_font_size_override("font_size",11)
+	note.add_theme_color_override("font_color",Color("#80cfd0"))
+	world.add_child(note)
+
+func _show_island2_level_preview(index:int,data:Dictionary)->void:
+	if modal:
+		modal.queue_free()
+		modal=null
+	modal=Control.new()
+	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter=Control.MOUSE_FILTER_STOP
+	var shade:=ColorRect.new()
+	shade.size=Vector2(900,900)
+	shade.color=Color(0.01,0.06,0.10,.90)
+	modal.add_child(shade)
+
+	var box:=Panel.new()
+	box.position=Vector2(155,230)
+	box.size=Vector2(590,390)
+	box.add_theme_stylebox_override("panel",_style(Color("#123448"),Color("#6bd9d7"),22))
+	modal.add_child(box)
+
+	var title:=Label.new()
+	title.text="ОСТРОВ 2 • УРОВЕНЬ %d"%(index+1)
+	title.position=Vector2(30,25)
+	title.size=Vector2(530,40)
+	title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size",23)
+	title.add_theme_color_override("font_color",Color("#f1ffff"))
+	box.add_child(title)
+
+	var desc:=Label.new()
+	desc.text=str(Island2Data.get_mechanics()[int(data["mechanic"])])+"\n\nХодов: %d\nЦель: %d очков\nСобрать: %d"%[int(data["moves"]),int(data["score"]),int(data["count"])]
+	desc.position=Vector2(45,85)
+	desc.size=Vector2(500,130)
+	desc.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	desc.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+	desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	desc.add_theme_font_size_override("font_size",15)
+	desc.add_theme_color_override("font_color",Color("#c0dfe6"))
+	box.add_child(desc)
+
+	var note:=Label.new()
+	note.text="Игровая логика второго острова будет подключена отдельным этапом."
+	note.position=Vector2(40,230)
+	note.size=Vector2(510,50)
+	note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_font_size_override("font_size",11)
+	note.add_theme_color_override("font_color",Color("#82b9c4"))
+	box.add_child(note)
+
+	var close:=Button.new()
+	close.text="← КАРТА ОСТРОВА 2"
+	close.position=Vector2(90,315)
+	close.size=Vector2(410,45)
+	close.add_theme_stylebox_override("normal",_style(Color("#16485c"),Color("#75dedd"),12))
+	close.pressed.connect(_show_island2_map)
+	box.add_child(close)
+
 func _show_map()->void:
 	busy=true
 	if modal:
