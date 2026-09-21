@@ -1,7 +1,9 @@
 extends Node2D
 
-# Рисуемые временные ассеты острова. Они не зависят от внешних PNG и
-# позднее могут быть заменены на спрайты без изменения прогрессии.
+const MAP_BACKGROUND = preload("res://art/backgrounds/island_map_background.svg")
+
+# Временный процедурный слой теперь используется как интерактивный overlay
+# поверх основной 2D-картины острова.
 
 class IslandBackdrop extends Node2D:
 	var unlocked: Array[bool] = []
@@ -9,8 +11,8 @@ class IslandBackdrop extends Node2D:
 		unlocked = states
 		queue_redraw()
 	func _draw() -> void:
-		draw_rect(Rect2(0,0,770,655),Color("#0d4b63"))
-		# волны
+		draw_texture_rect(MAP_BACKGROUND,Rect2(0,0,770,655),false)
+		# лёгкий водный overlay
 		for y in range(15,650,34):
 			for x in range((int(y/34)%2)*22,770,44):
 				draw_arc(Vector2(x,y),9,PI,TAU,12,Color(1,1,1,.09),2.0)
@@ -26,8 +28,9 @@ class IslandBackdrop extends Node2D:
 		for i in range(zone_polys.size()):
 			var open := i < unlocked.size() and unlocked[i]
 			var fill := Color("#5b995a") if open else Color("#32474b")
-			draw_colored_polygon(zone_polys[i],Color(fill.r,fill.g,fill.b,.94))
-			draw_polyline(zone_polys[i],Color("#99c96a") if open else Color("#526166"),4.0)
+			var alpha:=0.20 if open else 0.12
+			draw_colored_polygon(zone_polys[i],Color(fill.r,fill.g,fill.b,alpha))
+			draw_polyline(zone_polys[i],Color("#c5e88b") if open else Color("#849397"),2.5)
 			var center := _centroid(zone_polys[i])
 			draw_string(ThemeDB.fallback_font,center-Vector2(45,-60),names[i],HORIZONTAL_ALIGNMENT_CENTER,90,12,Color("#eaf6dd") if open else Color("#9eafb2"))
 		# дорога
