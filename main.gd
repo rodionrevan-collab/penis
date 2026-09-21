@@ -1989,7 +1989,9 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 		elif special_triggered:
 			wave.append_array(_special_effect_cells(a,b))
 			special_triggered=false
-		var propeller_targets:=_propeller_targets_from_wave(wave)
+		var propeller_result:Dictionary=_propeller_targets_from_wave(wave)
+		var propeller_targets:Array[Vector2i]=propeller_result["targets"]
+		var propeller_duration:float=float(propeller_result["duration"])
 		var matched_specials:Array[Vector2i]=[]
 		for p in wave:
 			var special_here:=int(specials.get(p,0))
@@ -2019,6 +2021,8 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 			var burst_color:Color=COLORS[burst_kind] if burst_kind>=0 and burst_kind<COLORS.size() else Color.WHITE
 			_spawn_match_burst(_cell_pos(wave[0]),burst_color)
 		_popup(_cell_pos(wave[0]),gained)
+		if propeller_duration>0.0:
+			await get_tree().create_timer(propeller_duration).timeout
 		await _destroy_matches(wave)
 		await _collapse_and_refill()
 		matches=_find_matches()
@@ -2388,9 +2392,9 @@ func _find_propeller_target(origin:Vector2i)->Vector2i:
 		return origin
 	return candidates[rng.randi_range(0,candidates.size()-1)]
 
-func _spawn_propeller_flight(origin:Vector2i,target:Vector2i)->void:
+func _spawn_propeller_flight(origin:Vector2i,target:Vector2i)->float:
 	if origin==target:
-		return
+		return 0.0
 	var flyer:=Sprite2D.new()
 	flyer.texture=SPECIAL_TEXTURES[6]
 	flyer.position=_cell_pos(origin)
@@ -2412,17 +2416,19 @@ func _spawn_propeller_flight(origin:Vector2i,target:Vector2i)->void:
 			flyer.queue_free()
 			_spawn_special_flash(_cell_pos(target))
 	)
+	return duration
 
-func _propeller_targets_from_wave(wave:Array[Vector2i])->Array:
+func _propeller_targets_from_wave(wave:Array[Vector2i])->Dictionary:
 	var targets:Array[Vector2i]=[]
+	var max_duration:=0.0
 	for p in wave:
 		if int(specials.get(p,0))!=6:
 			continue
 		var target:=_find_propeller_target(p)
 		if target!=p and not targets.has(target):
 			targets.append(target)
-			_spawn_propeller_flight(p,target)
-	return targets
+			max_duration=maxf(max_duration,_spawn_propeller_flight(p,target))
+	return {"targets":targets,"duration":max_duration}
 
 func _special_combo_cells(a:Vector2i,b:Vector2i)->Array[Vector2i]:
 	var result:Array[Vector2i]=[]
@@ -2488,9 +2494,8 @@ func _special_effect_cells(a:Vector2i,b:Vector2i)->Array[Vector2i]:
 				for y in range(SIZE):
 					for x in range(SIZE):
 						result.append(Vector2i(x,y))
-		elif sp==6:
-			var target_cell:=_find_propeller_target(p)
-			result.append(target_cell)
+		# Пропеллер обрабатывается отдельно в _resolve(), чтобы выбрать
+		# одну цель и показать полёт до её удаления.
 	return _unique_cells(result)
 
 func _find_matches()->Array[Vector2i]:
