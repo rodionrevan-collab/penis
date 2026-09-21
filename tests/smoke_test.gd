@@ -38,6 +38,63 @@ func _initialize() -> void:
 	var sp_pos:Vector2i = g.specials.keys()[0]
 	assert(int(g.specials[sp_pos]) == 1)
 
+	# Пять в линию создают радугу.
+	board[2] = [2,2,2,2,2,5,0,1]
+	g.board = board
+	g.specials.clear()
+	var five:Array[Vector2i] = g._find_matches()
+	assert(five.size() >= 5)
+	g._create_special_from_match(five)
+	assert(g.specials.size() == 1)
+	var rainbow_pos:Vector2i = g.specials.keys()[0]
+	assert(int(g.specials[rainbow_pos]) == 4)
+
+	# T/L-пересечение создаёт бомбу.
+	g.board = [
+		[0,1,2,3,4,5,0,1],
+		[1,1,1,4,5,0,1,2],
+		[2,3,1,3,4,5,0,1],
+		[3,4,1,5,0,1,2,3],
+		[4,5,0,1,2,3,4,5],
+		[5,0,1,2,3,4,5,0],
+		[0,1,2,3,4,5,0,1],
+		[1,2,3,4,5,0,1,2]
+	]
+	g.specials.clear()
+	var t_match:Array[Vector2i] = g._find_matches()
+	assert(t_match.size() >= 5)
+	g._create_special_from_match(t_match)
+	assert(g.specials.size() == 1)
+	var bomb_pos:Vector2i = g.specials.keys()[0]
+	assert(int(g.specials[bomb_pos]) == 3)
+
+	# Квадрат 2x2 создаёт пропеллер.
+	g.board = [
+		[0,1,1,3,4,5,0,2],
+		[1,1,1,4,5,0,2,3],
+		[2,3,4,5,0,1,2,3],
+		[3,4,5,0,1,2,3,4],
+		[4,5,0,1,2,3,4,5],
+		[5,0,1,2,3,4,5,0],
+		[0,1,2,3,4,5,0,1],
+		[1,2,3,4,5,0,1,2]
+	]
+	g.specials.clear()
+	var square_match:Array[Vector2i] = g._find_matches()
+	assert(square_match.size() >= 4)
+	var square_only:Array[Vector2i] = [Vector2i(1,0),Vector2i(2,0),Vector2i(1,1),Vector2i(2,1)]
+	g._create_special_from_match(square_only)
+	assert(g.specials.size() == 1)
+	var propeller_pos:Vector2i = g.specials.keys()[0]
+	assert(int(g.specials[propeller_pos]) == 6)
+	assert(g._is_active_special_type(6))
+
+	# Пропеллер выбирает допустимую цель.
+	g.spiders.clear()
+	var prop_target:Array[Vector2i] = g._special_effect_cells(propeller_pos,propeller_pos)
+	assert(prop_target.size() == 1)
+	assert(prop_target[0] != propeller_pos)
+
 	# Бомба очищает область 3x3.
 	g.board = board
 	g.specials.clear()
