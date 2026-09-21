@@ -390,6 +390,16 @@ func _show_menu() -> void:
 	sub.add_theme_color_override("font_color",Color("#71d7ad"))
 	menu_layer.add_child(sub)
 
+	if dev_mode:
+		var dev_button:=Button.new()
+		dev_button.text="DEV • ON"
+		dev_button.position=Vector2(515,28)
+		dev_button.size=Vector2(105,34)
+		dev_button.add_theme_font_size_override("font_size",10)
+		dev_button.add_theme_stylebox_override("normal",_style(Color("#4b315f"),Color("#d5adff"),10))
+		dev_button.pressed.connect(_show_dev_panel)
+		menu_layer.add_child(dev_button)
+
 	var progress:=Label.new()
 	var completed_count:=0
 	for done in completed:
@@ -488,8 +498,9 @@ func _show_menu() -> void:
 	road_inner.points=road.points
 	menu_layer.add_child(road_inner)
 
+	var island2_open:=dev_mode or _completed_level_count()>=100
 	_create_world_menu_node(0,Vector2(150,615),"1","ЗАБЫТЫЕ\nТРОПИКИ",true)
-	_create_world_menu_node(1,Vector2(470,590),"2","???",false)
+	_create_world_menu_node(1,Vector2(470,590),"2","КОРАЛЛОВЫЕ\nРУИНЫ",island2_open)
 	_create_world_menu_node(2,Vector2(770,550),"3","???",false)
 
 	var foot:=Label.new()
@@ -513,7 +524,7 @@ func _create_world_menu_node(index:int,pos:Vector2,number:String,title_text:Stri
 	b.add_theme_stylebox_override("hover",_style(Color("#2e9c6d") if open else Color("#1c2b3e"),Color.WHITE if open else Color("#42566d"),48))
 	b.disabled=not open
 	if open:
-		b.pressed.connect(_show_map)
+		b.pressed.connect(_show_island2_map if index==1 else _show_map)
 	menu_layer.add_child(b)
 	var l:=Label.new()
 	l.text=title_text
@@ -2041,6 +2052,11 @@ func _create_visuals()->void:
 	_create_spider_visuals()
 
 func _input(event:InputEvent)->void:
+	if event is InputEventKey:
+		var key:=event as InputEventKey
+		if key.pressed and not key.echo and key.keycode==KEY_D and key.ctrl_pressed and key.shift_pressed:
+			_toggle_dev_mode()
+			return
 	if busy or not game_layer.visible:
 		return
 	if event is InputEventScreenTouch:
