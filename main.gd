@@ -13,6 +13,10 @@ const GAME_BACKGROUND = preload("res://art/backgrounds/game_background.svg")
 const BOARD_FRAME_TEXTURE = preload("res://art/ui/board_frame.svg")
 const CELL_TEXTURE = preload("res://art/ui/cell.svg")
 const SELECTION_TEXTURE = preload("res://art/ui/selection.svg")
+const LEVEL_OPEN_TEXTURE = preload("res://art/ui/level_open.svg")
+const LEVEL_LOCKED_TEXTURE = preload("res://art/ui/level_locked.svg")
+const STAR_FILLED_TEXTURE = preload("res://art/ui/star_filled.svg")
+const STAR_EMPTY_TEXTURE = preload("res://art/ui/star_empty.svg")
 const BOOSTER_TEXTURES = {
 	"🔨": preload("res://art/ui/booster_hammer.svg"),
 	"+3": preload("res://art/ui/booster_moves.svg"),
@@ -21,6 +25,7 @@ const BOOSTER_TEXTURES = {
 const MATCH_BURST_TEXTURE = preload("res://art/fx/match_burst.svg")
 const COMBO_RING_TEXTURE = preload("res://art/fx/combo_ring.svg")
 const SPECIAL_RAY_TEXTURE = preload("res://art/fx/special_ray.svg")
+const PROPELLER_TRAIL_TEXTURE = preload("res://art/fx/propeller_trail.svg")
 const GEM_TEXTURES = [
 	preload("res://art/gems/gem_red.svg"),
 	preload("res://art/gems/gem_blue.svg"),
@@ -1365,19 +1370,55 @@ func _create_level_node(parent:Control,index:int,pos:Vector2)->void:
 	var unlocked:=index<=unlocked_level
 	var done:=completed[index]
 	var c:=Color("#39cf78") if done else (Color("#328dff") if unlocked else Color("#c94253"))
-	var b:=Button.new(); b.position=pos-Vector2(28,28); b.size=Vector2(56,56); b.text=("✓" if done else (str(index+1) if unlocked else "🔒")); b.disabled=not unlocked; b.add_theme_font_size_override("font_size",18); b.add_theme_color_override("font_color",Color.WHITE); b.add_theme_stylebox_override("normal",_style(c,c.lightened(.25),28)); b.add_theme_stylebox_override("hover",_style(c.lightened(.12),Color.WHITE,28)); b.add_theme_stylebox_override("pressed",_style(c.darkened(.08),Color.WHITE,28)); b.tooltip_text="Уровень %d"%(index+1); b.pressed.connect(_show_level_intro.bind(index)); parent.add_child(b)
+	var b:=Button.new()
+	b.position=pos-Vector2(28,28)
+	b.size=Vector2(56,56)
+	b.text=""
+	b.disabled=not unlocked
+	b.tooltip_text="Уровень %d"%(index+1)
+	b.add_theme_stylebox_override("normal",_style(Color(0,0,0,0),Color(0,0,0,0),28))
+	b.add_theme_stylebox_override("hover",_style(Color(1,1,1,.08),Color("#dffdf4"),28))
+	b.add_theme_stylebox_override("pressed",_style(Color(1,1,1,.12),Color.WHITE,28))
+	var node_art:=TextureRect.new()
+	node_art.texture=LEVEL_OPEN_TEXTURE if unlocked else LEVEL_LOCKED_TEXTURE
+	node_art.position=Vector2.ZERO
+	node_art.size=Vector2(56,56)
+	node_art.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+	node_art.stretch_mode=TextureRect.STRETCH_SCALE
+	node_art.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	b.add_child(node_art)
+	var number_label:=Label.new()
+	number_label.text="✓" if done else str(index+1)
+	number_label.position=Vector2(5,7)
+	number_label.size=Vector2(46,42)
+	number_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	number_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+	number_label.add_theme_font_size_override("font_size",16 if done else 13)
+	number_label.add_theme_color_override("font_color",Color("#f7fff9") if unlocked else Color("#91a0ad"))
+	number_label.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	b.add_child(number_label)
+	b.pressed.connect(_show_level_intro.bind(index))
+	parent.add_child(b)
 	if unlocked:
-		var stars:=Label.new()
-		stars.text=_stars_string(level_stars[index])
-		stars.position=pos+Vector2(-30,52)
-		stars.size=Vector2(60,20)
-		stars.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-		stars.add_theme_font_size_override("font_size",10)
-		stars.add_theme_color_override("font_color",Color("#ffd86a"))
-		parent.add_child(stars)
-	var l:=Label.new(); l.text=str(index+1); l.position=pos+Vector2(-30,31); l.size=Vector2(60,22); l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; l.add_theme_font_size_override("font_size",10); l.add_theme_color_override("font_color",Color("#b8d2d9")); parent.add_child(l)
+		var star_y:=pos.y+52
+		for s in range(3):
+			var star:=TextureRect.new()
+			star.texture=STAR_FILLED_TEXTURE if s<int(level_stars[index]) else STAR_EMPTY_TEXTURE
+			star.position=Vector2(pos.x-24+s*16,star_y)
+			star.size=Vector2(16,16)
+			star.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+			star.stretch_mode=TextureRect.STRETCH_SCALE
+			star.mouse_filter=Control.MOUSE_FILTER_IGNORE
+			parent.add_child(star)
 	if index%10==0:
-		var chapter:=Label.new(); chapter.text="ГЛАВА %d"%(int(index/10)+1); chapter.position=pos+Vector2(-65,-55); chapter.size=Vector2(130,24); chapter.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; chapter.add_theme_font_size_override("font_size",11); chapter.add_theme_color_override("font_color",c.lightened(.25)); parent.add_child(chapter)
+		var chapter:=Label.new()
+		chapter.text="ГЛАВА %d"%(int(index/10)+1)
+		chapter.position=pos+Vector2(-65,-55)
+		chapter.size=Vector2(130,24)
+		chapter.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+		chapter.add_theme_font_size_override("font_size",11)
+		chapter.add_theme_color_override("font_color",c.lightened(.25))
+		parent.add_child(chapter)
 
 func _stars_string(value:int)->String:
 	return ("★" if value>=1 else "☆")+" "+("★" if value>=2 else "☆")+" "+("★" if value>=3 else "☆")
@@ -2406,6 +2447,15 @@ func _spawn_propeller_flight(origin:Vector2i,target:Vector2i)->float:
 	flyer.z_index=25
 	flyer.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
 	fx.add_child(flyer)
+	var trail:=Sprite2D.new()
+	trail.texture=PROPELLER_TRAIL_TEXTURE
+	trail.position=(_cell_pos(origin)+_cell_pos(target))*0.5
+	trail.scale=Vector2(.45,.28)
+	trail.rotation=_cell_pos(origin).angle_to_point(_cell_pos(target))
+	trail.modulate=Color(1,1,1,.50)
+	trail.z_index=24
+	trail.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR
+	fx.add_child(trail)
 	var distance:=_cell_pos(origin).distance_to(_cell_pos(target))
 	var duration:float=clampf(.22+distance/1250.0,.24,.55)
 	var mid:=(_cell_pos(origin)+_cell_pos(target))*0.5
@@ -2415,10 +2465,13 @@ func _spawn_propeller_flight(origin:Vector2i,target:Vector2i)->float:
 	tw.tween_property(flyer,"position",_cell_pos(target),duration*.48).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.parallel().tween_property(flyer,"rotation",TAU*1.35,duration)
 	tw.parallel().tween_property(flyer,"scale",Vector2.ONE*.18,duration)
+	tw.parallel().tween_property(trail,"modulate:a",0.0,duration)
 	tw.tween_callback(func():
 		if is_instance_valid(flyer):
 			flyer.queue_free()
-			_spawn_special_flash(_cell_pos(target))
+		if is_instance_valid(trail):
+			trail.queue_free()
+		_spawn_special_flash(_cell_pos(target))
 	)
 	return duration
 
