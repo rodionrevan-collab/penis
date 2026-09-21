@@ -213,6 +213,7 @@ class IslandInteractiveArt extends Node2D:
 	var state := 0 # 0 locked, 1 available, 2 completed
 	var pulse := 0.0
 	var sprite:Sprite2D
+
 	func setup(id:String,visual_state:int)->void:
 		object_id=id
 		state=visual_state
@@ -226,37 +227,31 @@ class IslandInteractiveArt extends Node2D:
 		if state==1:
 			pulse=1.0
 		queue_redraw()
+
 	func _process(delta:float)->void:
 		if state==1:
 			pulse=maxf(0.0,pulse-delta)
-			if pulse<=0.0: pulse=1.0
+			if pulse<=0.0:
+				pulse=1.0
 			queue_redraw()
+
 	func _draw()->void:
-		draw_ellipse_shadow()
+		draw_set_transform(Vector2.ZERO,0.0,Vector2(1.0,0.45))
+		draw_circle(Vector2(0,10),28,Color(0,0,0,.22))
+		draw_set_transform(Vector2.ZERO,0.0,Vector2.ONE)
 		if state==1:
 			draw_circle(Vector2.ZERO,34+pulse*2.0,Color(0.55,0.90,0.78,0.08))
 		elif state==2:
 			draw_circle(Vector2.ZERO,32,Color(0.42,0.86,0.68,0.08))
-	func draw_ellipse_shadow()->void:
-		draw_set_transform(Vector2.ZERO,0.0,Vector2(1.0,0.45))
-		draw_circle(Vector2(0,10),28,Color(0,0,0,.22))
-		draw_set_transform(Vector2.ZERO,0.0,Vector2.ONE)
 
-func create_interactive(id:String,visual_state:int)->Node2D:
-	var n:=IslandInteractiveArt.new()
-	n.setup(id,visual_state)
-	return n
-
-func create_activity(icon:String,visual_state:int,is_secret:bool=false)->Node2D:
-	var n:=IslandActivityArt.new()
-	n.setup(icon,visual_state,is_secret)
-	return nclass IslandActivityArt extends Node2D:
-	var icon := ""
+class IslandActivityArt extends Node2D:
+	var activity_icon := ""
 	var state := 0 # 0 locked, 1 available, 2 completed
 	var secret := false
 	var sprite:Sprite2D
-	func setup(activity_icon:String,visual_state:int,is_secret:bool=false)->void:
-		icon=activity_icon
+
+	func setup(icon_id:String,visual_state:int,is_secret:bool=false)->void:
+		activity_icon=icon_id
 		state=visual_state
 		secret=is_secret
 		sprite=Sprite2D.new()
@@ -274,6 +269,7 @@ func create_activity(icon:String,visual_state:int,is_secret:bool=false)->Node2D:
 			sprite.modulate=Color(0.70,1.0,0.88,1.0)
 		add_child(sprite)
 		queue_redraw()
+
 	func _draw()->void:
 		draw_set_transform(Vector2.ZERO,0.0,Vector2(1.0,0.45))
 		draw_circle(Vector2(0,10),27,Color(0,0,0,.22))
@@ -285,7 +281,32 @@ func create_activity(icon:String,visual_state:int,is_secret:bool=false)->Node2D:
 		elif state==2:
 			draw_arc(Vector2.ZERO,31,-PI*0.82,PI*0.82,18,ring_color,3.0)
 
-func create_activity(icon:String,visual_state:int,is_secret:bool=false)->Node2D:
+func create_backdrop(states:Array[bool])->Node2D:
+	var n:=IslandBackdrop.new()
+	n.setup(states)
+	return n
+
+func create_object(id:String,done:bool)->Node2D:
+	var n:=IslandObjectArt.new()
+	n.setup(id,done)
+	return n
+
+func create_npc(npc_role:String)->Node2D:
+	var n:=IslandNPCArt.new()
+	n.setup(npc_role)
+	return n
+
+func create_chest(done:bool)->Node2D:
+	var n:=IslandChestArt.new()
+	n.setup(done)
+	return n
+
+func create_interactive(id:String,visual_state:int)->Node2D:
+	var n:=IslandInteractiveArt.new()
+	n.setup(id,visual_state)
+	return n
+
+func create_activity(activity_icon:String,visual_state:int,is_secret:bool=false)->Node2D:
 	var n:=IslandActivityArt.new()
-	n.setup(icon,visual_state,is_secret)
+	n.setup(activity_icon,visual_state,is_secret)
 	return n
