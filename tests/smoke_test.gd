@@ -51,18 +51,18 @@ func _initialize() -> void:
 
 	# T/L-пересечение создаёт бомбу.
 	g.board = [
-		[0,1,2,3,4,5,0,1],
-		[1,1,1,4,5,0,1,2],
-		[2,3,1,3,4,5,0,1],
-		[3,4,1,5,0,1,2,3],
-		[4,5,0,1,2,3,4,5],
-		[5,0,1,2,3,4,5,0],
-		[0,1,2,3,4,5,0,1],
-		[1,2,3,4,5,0,1,2]
+		[0,1,2,3,4,5,0,2],
+		[1,2,1,4,5,0,2,3],
+		[2,3,1,3,4,5,0,4],
+		[3,4,1,5,0,1,2,5],
+		[4,5,0,1,2,3,4,0],
+		[5,0,1,2,3,4,5,1],
+		[0,1,2,3,4,5,0,2],
+		[1,2,3,4,5,0,1,3]
 	]
 	g.specials.clear()
 	var t_match:Array[Vector2i] = g._find_matches()
-	assert(t_match.size() >= 5)
+	assert(t_match.size() == 5)
 	g._create_special_from_match(t_match)
 	assert(g.specials.size() == 1)
 	var bomb_pos:Vector2i = g.specials.keys()[0]
