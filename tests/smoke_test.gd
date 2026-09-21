@@ -314,6 +314,13 @@ func _initialize() -> void:
 	assert(g._consume_booster("extra_moves") == true)
 	assert(int(g.booster_inventory["extra_moves"]) == 0)
 
+	# DEV entry and visual decor must stay wired.
+	var main_source := FileAccess.get_file_as_string("res://main.gd")
+	assert(main_source.contains("KEY_F10"))
+	assert(main_source.contains('dev_button.text="🛠 DEV • ON" if dev_mode else "🛠 DEV"'))
+	assert(main_source.contains('const GAME_DECOR = preload("res://art/backgrounds/game_decor.svg")'))
+	assert(main_source.contains('const LEVEL_MAP_DECOR = preload("res://art/backgrounds/level_map_decor.svg")'))
+
 	# Island 2 data pack содержит 100 уровней и 10 новых механик.
 	var island2_script = load("res://island2_data.gd")
 	var island2_levels:Array = island2_script.build_levels()
