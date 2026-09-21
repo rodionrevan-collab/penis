@@ -289,6 +289,7 @@ func _initialize() -> void:
 
 	# Система целей и звёзд.
 	g._build_levels()
+	assert(int(g.LEVELS[25]["score"]) == 2100)
 	g.current_level=10
 	var blocker_goal:Array = g._goal_defs(10)
 	assert(blocker_goal.size() >= 1)
