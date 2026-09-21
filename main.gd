@@ -2003,7 +2003,7 @@ func _resolve(a:Vector2i,b:Vector2i)->void:
 	_update_best()
 	_update_labels()
 	_check_level_state()
-	if not busy:
+	if modal == null:
 		busy=false
 
 func _swap_data(a:Vector2i,b:Vector2i)->void:
