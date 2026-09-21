@@ -281,26 +281,6 @@ class IslandActivityArt extends Node2D:
 		elif state==2:
 			draw_arc(Vector2.ZERO,31,-PI*0.82,PI*0.82,18,ring_color,3.0)
 
-func create_backdrop(states:Array[bool])->Node2D:
-	var n:=IslandBackdrop.new()
-	n.setup(states)
-	return n
-
-func create_object(id:String,done:bool)->Node2D:
-	var n:=IslandObjectArt.new()
-	n.setup(id,done)
-	return n
-
-func create_npc(npc_role:String)->Node2D:
-	var n:=IslandNPCArt.new()
-	n.setup(npc_role)
-	return n
-
-func create_chest(done:bool)->Node2D:
-	var n:=IslandChestArt.new()
-	n.setup(done)
-	return n
-
 func create_interactive(id:String,visual_state:int)->Node2D:
 	var n:=IslandInteractiveArt.new()
 	n.setup(id,visual_state)
