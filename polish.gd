@@ -34,13 +34,11 @@ func _process(delta: float) -> void:
 	if not is_instance_valid(game_layer) or not game_layer.visible:
 		return
 
-	# main.gd оставляет busy=true после успешного каскада.
-	# Снимаем блокировку только когда анимации фишек действительно закончились.
+	# main.gd управляет busy до полного завершения обмена и каскадов.
+	# Не снимаем блокировку из стороннего watchdog, иначе следующий клик
+	# может попасть внутрь текущего каскада и нарушить матч.
 	if bool(game.get("busy")):
-		if game.get("modal") == null and _board_animation_finished():
-			game.set("busy", false)
-		else:
-			return
+		return
 
 	if shuffle_cooldown > 0.0:
 		return
