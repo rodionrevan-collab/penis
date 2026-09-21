@@ -11,6 +11,19 @@
 - Интерфейс использует тот же язык цветов, но остаётся достаточно тёмным для контраста игрового поля.
 
 ## Уже подключено
+### UI и эффекты
+- art/ui/board_frame.svg
+- art/ui/cell.svg
+- art/ui/selection.svg
+- art/ui/booster_hammer.svg
+- art/ui/booster_moves.svg
+- art/ui/booster_shuffle.svg
+- art/fx/match_burst.svg
+- art/fx/combo_ring.svg
+- art/fx/special_ray.svg
+- art/island/map_pin.svg
+- art/island/unlocked_zone_badge.svg
+
 ### Фоны
 - art/backgrounds/menu_background.svg
 - art/backgrounds/game_background.svg
@@ -41,14 +54,15 @@
 - NPC: Lisa, Tom, Keeper, Merchant.
 - Объекты: bridge, hut, jungle path, dock, pirate cove, lighthouse, cave, village.
 - Отдельный сундук.
+- Интерактивы: lantern, pirate chart, ancient lock, trade scale.
+- Активности: compass, rune, goods, trade order.
+- Map pin и badge для разблокированных зон.
 
 ## Правило дальнейшей разработки
 Новый игровой объект сначала получает отдельный 2D-ассет, затем подключается к логике. Новые важные объекты не должны снова превращаться в Label с символом или простую геометрическую заглушку.
 
 ## Следующий визуальный блок
-1. Полная замена procedural-спецэффектов.
-2. Улучшение рамки и клетки игрового поля.
-3. Анимации фишек и спецфишек.
-4. Полировка UI уровней, результата и бустеров.
-5. Замена оставшихся procedural-объектов острова.
-6. Затем отдельный проход мелких UI/UX багов.
+1. Проверка нового ассет-пака в Godot 4.7.2 и корректировка масштабов после реального запуска.
+2. Полировка экрана результата, карты уровней и главного меню.
+3. Отдельный проход мелких UI/UX багов и выравнивания элементов.
+4. Затем — финальный аудит всех механик и прогрессии без изменения работающей логики.
